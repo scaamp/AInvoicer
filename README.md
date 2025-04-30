@@ -13,6 +13,7 @@ This project demonstrates the integration of:
 - ✅ **SAP BTP Cloud Foundry** – deployment of Python microservice
 - ✅ **SAP HANA Cloud** – optional cache layer for analytics/AI input
 - ✅ **GitHub** – full code versioned and open
+- ✅ **Postman** – requests testing
 
 ---
 
@@ -33,6 +34,6 @@ This project demonstrates the integration of:
 | Backend      | ABAP RAP (ZFI_ACDOCA table, OData v4 service)             |
 | Frontend     | SAPUI5 (Freestyle)                                        |
 | AI Service   | Python Flask + OpenAI SDK                                 |
-| Integration  | REST (between ABAP ↔ Python), OData v4 (UI5 ↔ ABAP)       |
+| Integration  | OData v4 (UI5 ↔ ABAP), REST (SAPUI5 ↔ Python/CF)          |
 | Hosting      | SAP BTP (ABAP Environment + Cloud Foundry)                |
 | Database     | SAP HANA Cloud (for optional caching or ML training data) |
