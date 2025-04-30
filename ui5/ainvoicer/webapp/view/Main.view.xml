@@ -1,6 +1,68 @@
-<mvc:View controllerName="ainvoicer.controller.Main"
+<mvc:View
+    controllerName="ainvoicer.controller.Main"
     xmlns:mvc="sap.ui.core.mvc"
-    xmlns="sap.m">
-    <Page id="page" title="{i18n>title}">
+    xmlns="sap.m"
+    xmlns:mdc="sap.ui.mdc"
+    xmlns:macro="sap.fe.macros"
+    xmlns:html="http://www.w3.org/1999/xhtml"
+    xmlns:f="sap.f"
+    xmlns:core="sap.ui.core"
+    xmlns:mdct="sap.ui.mdc.table"
+    height="100%"
+>
+    <Page title="Invoices">
+        <content>
+            <Table
+                id="invoiceTable"
+                inset="false"
+                items="{
+               path: '/ZC_FI_ACDOCA'
+             }"
+            >
+                <headerToolbar>
+                    <Toolbar>
+                        <ToolbarSpacer />
+                        <ToolbarSeparator />
+
+                        <Button
+                            text="Add"
+                            id="addButton"
+                            press="onPressAddButton"
+                        />
+                        <!-- <Title text="Invoice Entries" level="H2"/> -->
+                    </Toolbar>
+                </headerToolbar>
+
+                <columns>
+                    <Column>
+                        <Text text="Company Code" />
+                    </Column>
+                    <Column>
+                        <Text text="Fiscal Year" />
+                    </Column>
+                    <Column>
+                        <Text text="Document Number" />
+                    </Column>
+                    <Column>
+                        <Text text="Line Item" />
+                    </Column>
+                    <Column>
+                        <Text text="Posting Date" />
+                    </Column>
+                </columns>
+
+                <items>
+                    <ColumnListItem>
+                        <cells>
+                            <Text text="{CompanyCode}" />
+                            <Text text="{FiscalYear}" />
+                            <Text text="{DocumentNo}" />
+                            <Text text="{LineItem}" />
+                            <Text text="{PostingDate}" />
+                        </cells>
+                    </ColumnListItem>
+                </items>
+            </Table>
+        </content>
     </Page>
 </mvc:View>

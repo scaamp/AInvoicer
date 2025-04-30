@@ -5,6 +5,13 @@ sap.ui.define([
 
     return Controller.extend("ainvoicer.controller.Main", {
         onInit() {
+            this.oView = this.getView();
+            
+        },
+
+        onPressAddButton(oEvent)
+        {
+            console.log("xD");
         }
     });
 });
