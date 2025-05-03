@@ -8,11 +8,10 @@
     "sapui5"
   ],
   "main": "webapp/index.html",
-  "dependencies": {},
   "devDependencies": {
-    "@ui5/cli": "^3.0.0",
-    "@sap/ux-ui5-tooling": "1",
-    "@sap-ux/ui5-middleware-fe-mockserver": "2"
+    "@sap-ux/ui5-middleware-fe-mockserver": "2",
+    "@sap/ux-ui5-tooling": "^1.17.4",
+    "@ui5/cli": "^3.0.0"
   },
   "scripts": {
     "start": "fiori run --open \"test/flpSandbox.html?sap-ui-xx-viewCache=false#ainvoicer-display\"",
@@ -26,5 +25,8 @@
     "start-variants-management": "fiori run --open \"preview.html?sap-ui-xx-viewCache=false&fiori-tools-rta-mode=true&sap-ui-rta-skip-flex-validation=true#preview-app\"",
     "unit-test": "fiori run --config ./ui5-mock.yaml --open 'test/unit/unitTests.qunit.html'"
   },
-  "sapuxLayer": "CUSTOMER_BASE"
+  "sapuxLayer": "CUSTOMER_BASE",
+  "dependencies": {
+    "ainvoicer": "file:"
+  }
 }

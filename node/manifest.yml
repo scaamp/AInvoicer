@@ -1,0 +1,8 @@
+---
+applications:
+- name: node-app
+  random-route: true
+  path: node-app
+  memory: 128M
+  buildpacks:
+  - nodejs_buildpack
