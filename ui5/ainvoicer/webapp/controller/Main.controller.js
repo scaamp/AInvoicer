@@ -53,7 +53,7 @@ sap.ui.define([
 
         onCancelDialog: function () {
             this._oAddDialog.close();
-        }
+        },
 
         onSaveDocument: function () {
             var oView = this.getView();
@@ -161,13 +161,14 @@ sap.ui.define([
             this._readFile(oFile)
                 .then(function (fileData) {
                     oFileModel.setProperty("/status", "Plik wczytany, przygotowanie do wysłania...");
-                    return that._sendToOpenAI(fileData, oFile.type);
+                    return that._sendToNodeJs(fileData, oFile.type);
+                    // return that._sendToOpenAI(fileData, oFile.type);
                 })
                 .then(function (response) {
-                    var rawContent = response.choices[0].message.content;
+                    // var rawContent = response.choices[0].message.content;
 
                     // Usuń otoczkę ```json i ``` z początku i końca
-                    var cleaned = rawContent.replace(/^```json\s*/, "").replace(/```$/, "");
+                    var cleaned = response.replace(/^```json\s*/, "").replace(/```$/, "");
                     try {
                         oParsed = JSON.parse(cleaned);
 
@@ -175,7 +176,7 @@ sap.ui.define([
                         oParsed.amount_document = oParsed.amount_document.replace(",", ".");
                         oParsed.amount_local = oParsed.amount_local.replace(",", ".");
                         // oParsed = this._getSimulatedAIResponse();
-                        if (oParsed) that.fillFormWithAIData(oParsed);
+                        if (oParsed) that._fillFormWithAIData(oParsed);
                     }
                     catch (err) {
                         console.error("Błąd parsowania JSON z odpowiedzi AI:", err);
@@ -183,7 +184,7 @@ sap.ui.define([
 
                     oFileModel.setProperty("/status", "Analiza zakończona");
                     oFileModel.setProperty("/resultVisible", true);
-                    oFileModel.setProperty("/result", JSON.stringify(response, null, 2));              
+                    oFileModel.setProperty("/result", JSON.stringify(response, null, 2));
                 })
                 .catch(function (error) {
                     oFileModel.setProperty("/status", "Błąd: " + error.message);
@@ -339,6 +340,66 @@ sap.ui.define([
             });
         },
 
+        _sendToNodeJs(fileData, fileType) {
+            var that = this;
+            var oFileModel = this.getView().getModel("file");
+
+            oFileModel.setProperty("/status", "Wysyłanie do backendu...");
+
+            return new Promise(function (resolve, reject) {
+                // Konwertuj plik do base64 jeśli nie jest jeszcze zakodowany
+                var blob;
+                if (typeof fileData === "string" && fileData.startsWith("data:")) {
+                    var base64Data = fileData.split(",")[1];
+                    var mimeType = fileData.split(",")[0].split(":")[1].split(";")[0];
+                    blob = that._base64ToBlob(base64Data, mimeType);
+                } else {
+                    blob = new Blob([fileData], { type: fileType });
+                }
+
+                that._fileToBase64(blob)
+                    .then(function (base64Data) {
+                        // Przygotuj payload do wysłania do backendu
+                        var requestPayload = {
+                            filename: "invoice." + (fileType.includes("pdf") ? "pdf" : "jpg"),
+                            mimeType: fileType,
+                            base64: base64Data
+                        };
+
+                        var requestImageUrl = { image_url: "" };
+                        requestImageUrl.image_url = requestPayload.base64;
+
+                        // $.ajax({
+                        //     url: "https://node-app-stellar-mouse-fl.cfapps.us10-001.hana.ondemand.com/analyze", // backend endpoint
+                        //     type: "POST",
+                        //     data: JSON.stringify(requestImageUrl),
+                        //     contentType: "application/json",
+                        //     success: function (response) {
+                        //         resolve(response);
+                        //     },
+                        //     error: function (jqXHR, textStatus, errorThrown) {
+                        //         reject(new Error("Błąd backendu: " + errorThrown));
+                        //     }
+                        // });
+
+                        fetch("https://node-app-stellar-mouse-fl.cfapps.us10-001.hana.ondemand.com/analyze", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify(requestImageUrl)
+                        })
+                            .then(res => res.json())
+                            .then(data => resolve(data.result));
+                    });
+            })
+                .catch(function (error) {
+                    reject(error);
+                });
+
+
+        },
+
         _sendToOpenAI: function (fileData, fileType) {
             var that = this;
             var oFileModel = this.getView().getModel("file");
@@ -446,6 +507,7 @@ sap.ui.define([
                                 "data:" + fileType + ";base64," + base64Data :
                                 "data:application/pdf;base64," + base64Data;
 
+
                         // Wysłanie zapytania do OpenAI
                         $.ajax({
                             url: "https://api.openai.com/v1/chat/completions",
@@ -453,7 +515,7 @@ sap.ui.define([
                             data: JSON.stringify(requestData),
                             contentType: "application/json",
                             headers: {
-                                "Authorization": "API_KEY"
+                                "Authorization": "Bearer sk"
                             },
                             success: function (response) {
                                 resolve(response);
@@ -502,7 +564,7 @@ sap.ui.define([
             return new Blob(byteArrays, { type: mimeType });
         },
 
-                // onPressAddButton(oEvent) {
+        // onPressAddButton(oEvent) {
         //     this.byId("fileInput").getDomRef().click();
         //     // fetch("https://python-app-grouchy-platypus-jj.cfapps.us10-001.hana.ondemand.com/predict", {
         //     //     method: "POST",
