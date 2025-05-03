@@ -1,0 +1,246 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:u="sap.ui.unified"
+    xmlns:l="sap.ui.layout"
+    xmlns:f="sap.ui.layout.form"
+>
+    <Dialog
+        id="addInvoiceDialog"
+        title="Dodaj fakturę"
+        draggable="true"
+        resizable="true"
+        contentWidth="700px"
+    >
+        <VBox class="sapUiSmallMargin">
+            <f:SimpleForm
+                id="invoiceForm"
+                layout="ResponsiveGridLayout"
+                editable="true"
+                labelSpanL="3"
+                labelSpanM="3"
+                emptySpanL="4"
+                emptySpanM="4"
+                columnsL="1"
+                columnsM="1"
+            >
+                <f:toolbar>
+                    <Toolbar id="TB1">
+                        <Title id="Title1" text="Scanner"/>
+                        <ToolbarSpacer />
+
+                        <Button
+                            text="Analyze"
+                            press="handleAnalyzeInvoice"
+                            enabled="{/fileSelected}"
+                            class="sapUiTinyMarginEnd"
+                        />
+                        <u:FileUploader
+                            id="fileUploader"
+                            name="invoiceFile"
+                            uploadUrl="upload/"
+                            tooltip="Select invoice file (PDF or image)"
+                            uploadComplete=".handleUploadComplete"
+                            change=".handleFileChange"
+                            buttonText="Select file"
+                            fileType="pdf,jpg,jpeg,png"
+                            width="200px"
+                        />
+                    </Toolbar>
+                </f:toolbar>
+                <f:content>
+                    <Label
+                        text="Company Code"
+                        required="true"
+                    />
+                    <Input
+                        value="{/company_code}"
+                        maxLength="4"
+                        required="true"
+                        type="Number"
+                    />
+
+                    <Label
+                        text="Fiscal Year"
+                        required="true"
+                    />
+                    <Input
+                        value="{/fiscal_year}"
+                        maxLength="4"
+                        required="true"
+                        type="Number"
+                    />
+
+                    <Label
+                        text="Document Number"
+                        required="true"
+                    />
+                    <Input
+                        value="{/document_no}"
+                        maxLength="10"
+                        required="true"
+                    />
+
+                    <Label
+                        text="Line Item"
+                        required="true"
+                    />
+                    <Input
+                        value="{/line_item}"
+                        maxLength="3"
+                        required="true"
+                        type="Number"
+                    />
+
+                    <!-- Daty -->
+                    <Label text="Posting Date" />
+                    <DatePicker
+                        value="{/posting_date}"
+                        displayFormat="yyyy-MM-dd"
+                    />
+
+                    <Label text="Document Date" />
+                    <DatePicker
+                        value="{/document_date}"
+                        displayFormat="yyyy-MM-dd"
+                    />
+
+                    <Label text="Entry Date" />
+                    <DatePicker
+                        value="{/entry_date}"
+                        displayFormat="yyyy-MM-dd"
+                    />
+
+                    <!-- Informacje dokumentu -->
+                    <Label text="Document Type" />
+                    <Input
+                        value="{/document_type}"
+                        maxLength="2"
+                    />
+
+                    <Label text="Reference Document" />
+                    <Input
+                        value="{/reference}"
+                        maxLength="16"
+                    />
+
+                    <Label text="Debit/Credit Indicator" />
+                    <Select selectedKey="{/debit_credit}">
+                        <items>
+                            <core:Item
+                                key="D"
+                                text="Debit"
+                            />
+                            <core:Item
+                                key="C"
+                                text="Credit"
+                            />
+                        </items>
+                    </Select>
+
+                    <!-- Konta i jednostki organizacyjne -->
+                    <Label text="G/L Account" />
+                    <Input
+                        value="{/account}"
+                        maxLength="10"
+                    />
+
+                    <Label text="Vendor Number" />
+                    <Input
+                        value="{/vendor}"
+                        maxLength="10"
+                    />
+
+                    <Label text="Customer Number" />
+                    <Input
+                        value="{/customer}"
+                        maxLength="10"
+                    />
+
+                    <Label text="Cost Center" />
+                    <Input
+                        value="{/cost_center}"
+                        maxLength="10"
+                    />
+
+                    <Label text="Profit Center" />
+                    <Input
+                        value="{/profit_center}"
+                        maxLength="10"
+                    />
+
+                    <Label text="Segment" />
+                    <Input
+                        value="{/segment}"
+                        maxLength="10"
+                    />
+
+                    <!-- Kwoty i waluta -->
+                    <Label text="Currency" />
+                    <Input
+                        value="{/currency_code}"
+                        maxLength="5"
+                    />
+
+                    <Label text="Amount in Document Currency" />
+                    <Input
+                        value="{/amount_document}"
+                        type="Number"
+                    />
+
+                    <Label text="Amount in Local Currency" />
+                    <Input
+                        value="{/amount_local}"
+                        type="Number"
+                    />
+
+                    <!-- Płatności -->
+                    <Label text="Payment Terms" />
+                    <Input
+                        value="{/payment_terms}"
+                        maxLength="4"
+                    />
+
+                    <Label text="Payment Method" />
+                    <Input
+                        value="{/payment_method}"
+                        maxLength="1"
+                    />
+
+                    <Label text="Due Date" />
+                    <DatePicker
+                        value="{/due_date}"
+                        displayFormat="yyyy-MM-dd"
+                    />
+
+                    <!-- Rozliczenie -->
+                    <Label text="Clearing Document" />
+                    <Input
+                        value="{/clearing_doc}"
+                        maxLength="10"
+                    />
+
+                    <Label text="Clearing Date" />
+                    <DatePicker
+                        value="{/clearing_date}"
+                        displayFormat="yyyy-MM-dd"
+                    />
+                </f:content>
+            </f:SimpleForm>
+        </VBox>
+
+        <beginButton>
+            <Button
+                text="Zapisz"
+                type="Emphasized"
+                press="onSaveDocument"
+            />
+        </beginButton>
+        <endButton>
+            <Button
+                text="Cancel"
+                press="onCancelDialog"
+            />
+        </endButton>
+    </Dialog>
+</core:FragmentDefinition>

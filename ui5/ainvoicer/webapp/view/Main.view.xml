@@ -9,6 +9,7 @@
     xmlns:core="sap.ui.core"
     xmlns:mdct="sap.ui.mdc.table"
     height="100%"
+    xmlns:u="sap.ui.unified"
 >
     <Page title="Invoices">
         <content>
@@ -23,13 +24,12 @@
                     <Toolbar>
                         <ToolbarSpacer />
                         <ToolbarSeparator />
-
                         <Button
-                            text="Add"
                             id="addButton"
-                            press="onPressAddButton"
+                            text="Add"
+                            type="Emphasized"
+                            press="onAddButton"
                         />
-                        <!-- <Title text="Invoice Entries" level="H2"/> -->
                     </Toolbar>
                 </headerToolbar>
 
