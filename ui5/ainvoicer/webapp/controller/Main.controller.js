@@ -4,8 +4,9 @@ sap.ui.define([
     "sap/m/MessageBox",
     "sap/m/MessageToast",
     "sap/ui/core/Fragment",
-    "sap/ui/core/format/DateFormat"
-], (Controller, JSONModel, MessageBox, MessageToast, Fragment, DateFormat) => {
+    "sap/ui/core/format/DateFormat",
+    "sap/ui/core/BusyIndicator"
+], (Controller, JSONModel, MessageBox, MessageToast, Fragment, DateFormat, BusyIndicator) => {
     "use strict";
 
     return Controller.extend("ainvoicer.controller.Main", {
@@ -56,78 +57,223 @@ sap.ui.define([
         },
 
         onSaveDocument: function () {
-            var oView = this.getView();
-            var oDataModel = oView.getModel();
-            var oNewDocument = oView.getModel("newDocument").getData();
+            // Walidacja danych formularza przed zapisem
+            if (!this._validateInvoiceForm()) {
+                return;
+            }
 
-            // Ustawienie wskaźnika zajętości
-            this.oViewModel.setProperty("/busy", true);
+            // Pokaż wskaźnik zajętości
+            BusyIndicator.show();
 
-            // Utworzenie wpisu
-            var oContext = oDataModel.createEntry("/ZC_FI_ACDOCA'", {
-                properties: oNewDocument,
-                groupId: "changes"
-            });
+            // Wywołaj funkcję tworzącą encję - przekazujemy:
+            // 1. Nazwę zbioru encji w OData (np. "InvoiceSet")
+            // 2. ID dialogu, który zawiera dane
+            // 3. Nazwę modelu JSON w dialogu (jeśli pusta, użyje domyślnego modelu)
+            this.onCreateODataEntity("ZC_FI_ACDOCA", "addInvoiceDialog", "")
+                .then(function (oResult) {
+                    // Sukces
+                    BusyIndicator.hide();
 
-            // Wykonanie żądania na serwerze
-            oDataModel.submitChanges({
-                groupId: "changes",
-                success: function (oData) {
-                    this.oViewModel.setProperty("/busy", false);
+                    // Pokaż informację o sukcesie
+                    MessageToast.show(oResult.message);
 
-                    // Sprawdzenie, czy zapis się powiódł
-                    var oResponse = oData.__batchResponses[0].__changeResponses;
-                    if (oResponse && oResponse.length > 0 && oResponse[0].statusCode >= 200 && oResponse[0].statusCode < 300) {
-                        MessageBox.success("Dokument został dodany pomyślnie.", {
-                            onClose: function () {
-                                this._oAddDialog.close();
-                                oDataModel.refresh(true);
-                            }.bind(this)
-                        });
-                    } else {
-                        MessageBox.error("Wystąpił błąd podczas dodawania dokumentu.");
-                    }
-                }.bind(this),
-                error: function (oError) {
-                    this.oViewModel.setProperty("/busy", false);
-                    MessageBox.error("Wystąpił błąd podczas dodawania dokumentu: " + oError.message);
-                }.bind(this)
-            });
+                    // Zamknij dialog
+                    this.byId("addInvoiceDialog").close();
+
+                    // Odśwież widok (jeśli potrzeba)
+                    this._refreshInvoiceList();
+
+                }.bind(this))
+                .catch(function (oError) {
+                    // Błąd
+                    BusyIndicator.hide();
+
+                    // Pokaż informację o błędzie
+                    MessageBox.error(oError.message);
+                });
         },
 
         /**
-         * Pomocnicza funkcja tworząca pusty dokument z domyślnymi wartościami
-         * @private
-         * @returns {Object} Nowy pusty dokument
+         * Funkcja tworząca encję w OData v4 na podstawie danych z JSONModel dialogu
+         * @param {string} sEntitySetName - nazwa encji w serwisie OData, np. "InvoiceSet"
+         * @param {string} sDialogId - ID dialogu zawierającego JSONModel z danymi
+         * @param {string} [sJSONModelName=""] - opcjonalna nazwa modelu JSON (jeśli nie jest to domyślny model dialogu)
+         * @returns {Promise} - Promise zawierający rezultat operacji
          */
-        _createEmptyDocument: function () {
-            return {
-                client: "100", // Domyślny klient
-                company_code: "",
-                fiscal_year: new Date().getFullYear().toString(),
-                document_no: "",
-                line_item: "",
-                posting_date: new Date(),
-                document_date: new Date(),
-                entry_date: new Date(),
-                document_type: "",
-                reference: "",
-                debit_credit: "D", // Domyślnie Debit
-                account: "",
-                vendor: "",
-                customer: "",
-                cost_center: "",
-                profit_center: "",
-                segment: "",
-                currency_code: "PLN", // Domyślna waluta
-                amount_document: "0.00",
-                amount_local: "0.00",
-                payment_terms: "",
-                payment_method: "",
-                due_date: null,
-                clearing_doc: "",
-                clearing_date: null
-            };
+        onCreateODataEntity: async function (sEntitySetName, sDialogId, sJSONModelName) {
+            // Pobierz dialog
+            const oDialog = this.byId(sDialogId);
+            if (!oDialog) {
+                return Promise.reject("Dialog o ID " + sDialogId + " nie został znaleziony");
+            }
+
+            // Pobierz JSONModel z danymi formularza
+            const oJSONModel = sJSONModelName ?
+                oDialog.getModel(sJSONModelName) :
+                oDialog.getModel();
+
+            // Sprawdź czy model istnieje
+            if (!oJSONModel) {
+                return Promise.reject("Model JSON nie został znaleziony");
+            }
+
+            // Pobierz dane z modelu JSON
+            const oFormData = oJSONModel.getData();
+
+            // Pobierz główny model OData v4
+            const oODataModel = this.getView().getModel();
+            if (!oODataModel) {
+                return Promise.reject("Model OData v4 nie został znaleziony");
+            }
+
+            // Przygotuj dane do wysłania - usuń niepotrzebne pola i sformatuj wartości
+            const oCleanData = this._prepareDataForODataRequest(oFormData);
+
+            console.log("Dane wysyłane do OData:", oCleanData);
+
+            // try {
+            try {
+
+                // 1. Utwórz binding do listy encji
+                const oListBinding = oODataModel.bindList("/ZC_FI_ACDOCA", undefined, [], [], {
+                    $$updateGroupId: "draftGroup"
+                });
+
+                // 2. Utwórz nową encję w trybie draft
+                const oContext = oListBinding.create(oCleanData);
+
+                // 3. Zapisz encję do backendu
+                await oODataModel.submitBatch("draftGroup");
+
+                // 4. Poczekaj aż encja przestanie być transient
+                while (oContext.isTransient && oContext.isTransient()) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+
+                // 5. Pobierz ETag
+                await oContext.requestObject(); // załaduj dane z backendu
+                const sEtag = oContext.getObject()["@odata.etag"];
+
+                // 6. Utwórz binding do operacji `draftActivate`
+                const oActivationBinding = oODataModel.bindContext(
+                    "com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.Activate(...)",
+                    oContext,
+                    { $$groupId: "activationGroup" }
+                );
+
+                // 7. Wykonaj operację aktywacji z konkretnym groupId i parameterami
+                // try {
+                await oActivationBinding.execute("$auto", undefined, {
+                    "If-Match": sEtag
+                });
+                // } 
+                // catch (oError) {
+                //     console.error("Błąd podczas aktywacji:", oError);
+                //     throw oError;
+                // }
+            } catch (error) {
+                console.error("Błąd podczas tworzenia lub aktywacji encji:", error);
+                throw error;
+            }
+
+        },
+
+        /**
+        * Przygotowuje dane z formularza do wysłania do OData
+        * @private
+        * @param {object} oData - dane z formularza JSONModel
+        * @returns {object} - przygotowane dane do wysłania
+        */
+        _prepareDataForODataRequest: function (oData) {
+            // Tworzymy kopię obiektu, żeby nie modyfikować oryginału
+            const oCleanData = JSON.parse(JSON.stringify(oData));
+
+            // Lista pól, które nie powinny być wysyłane do serwera
+            const aFieldsToRemove = ["fileSelected"];
+
+            // Usuń niepotrzebne pola
+            aFieldsToRemove.forEach(function (sField) {
+                delete oCleanData[sField];
+            });
+
+            // Konwertuj daty z formatu string na obiekt Date dla OData
+            const aDateFields = ["PostingDate", "DocumentDate", "EntryDate", "DueDate", "ClearingDate"];
+
+            // aDateFields.forEach(function (sField) {
+            //     if (oCleanData[sField]) {
+            //         // Sprawdź czy wartość to string czy obiekt Date
+            //         if (typeof oCleanData[sField] === "string") {
+            //             // Przekształć yyyy-MM-dd na obiekt Date
+            //             const aParts = oCleanData[sField].split("-");
+            //             if (aParts.length === 3) {
+            //                 const oDate = new Date(parseInt(aParts[0], 10),
+            //                     parseInt(aParts[1], 10) - 1, // miesiące w JS są 0-11
+            //                     parseInt(aParts[2], 10));
+            //                 oCleanData[sField] = oDate;
+            //             }
+            //         }
+            //     }
+            // });
+
+            // Konwertuj liczby z formatu string na liczby
+            // const aNumberFields = ["AmountDocument", "AmountLocal", "FiscalYear", "LineItem"];
+
+            // aNumberFields.forEach(function (sField) {
+            //     if (oCleanData[sField]) {
+            //         // Usuń wszystkie spacje i zamień przecinek na kropkę
+            //         let sValue = oCleanData[sField].toString().replace(/\s/g, '').replace(',', '.');
+
+            //         // Konwertuj na liczbę (jeśli zawiera kropkę - float, w przeciwnym razie - int)
+            //         if (sValue.includes('.')) {
+            //             oCleanData[sField] = parseFloat(sValue);
+            //         } else {
+            //             oCleanData[sField] = parseInt(sValue, 10);
+            //         }
+            //     }
+            // });
+            return oCleanData;
+        },
+
+        /**
+        * Walidacja danych formularza przed zapisem
+        * @private
+        * @returns {boolean} - czy formularz jest poprawny
+        */
+        _validateInvoiceForm: function () {
+            // Pobierz dialog
+            const oDialog = this.byId("addInvoiceDialog");
+
+            // Pobierz dane z modelu
+            const oData = oDialog.getModel().getData();
+
+            // Lista wymaganych pól
+            const aRequiredFields = ["CompanyCode", "FiscalYear", "DocumentNo"];
+
+            // Sprawdź wymagane pola
+            for (let i = 0; i < aRequiredFields.length; i++) {
+                const sField = aRequiredFields[i];
+                if (!oData[sField]) {
+                    MessageBox.error("Pole '" + sField + "' jest wymagane.");
+                    return false;
+                }
+            }
+
+            return true;
+        },
+
+        /**
+         * Odświeżenie listy faktur (jeśli istnieje)
+         * @private
+         */
+        _refreshInvoiceList: function () {
+            // Przykład odświeżenia bindingu listy
+            const oList = this.byId("invoiceList");
+            if (oList) {
+                const oBinding = oList.getBinding("items");
+                if (oBinding) {
+                    oBinding.refresh();
+                }
+            }
         },
 
         handleFileChange: function (oEvent) {
@@ -161,21 +307,21 @@ sap.ui.define([
             this._readFile(oFile)
                 .then(function (fileData) {
                     oFileModel.setProperty("/status", "Plik wczytany, przygotowanie do wysłania...");
-                    return that._sendToNodeJs(fileData, oFile.type);
+                    // return that._sendToNodeJs(fileData, oFile.type);
                     // return that._sendToOpenAI(fileData, oFile.type);
                 })
                 .then(function (response) {
                     // var rawContent = response.choices[0].message.content;
 
                     // Usuń otoczkę ```json i ``` z początku i końca
-                    var cleaned = response.replace(/^```json\s*/, "").replace(/```$/, "");
+                    // var cleaned = response.replace(/^```json\s*/, "").replace(/```$/, "");
                     try {
-                        oParsed = JSON.parse(cleaned);
+                        // oParsed = JSON.parse(cleaned);
 
                         // (1) Poprawka na polskie przecinki w liczbach
-                        oParsed.amount_document = oParsed.amount_document.replace(",", ".");
-                        oParsed.amount_local = oParsed.amount_local.replace(",", ".");
-                        // oParsed = this._getSimulatedAIResponse();
+                        // oParsed.amount_document = oParsed.amount_document.replace(",", ".");
+                        // oParsed.amount_local = oParsed.amount_local.replace(",", ".");
+                        oParsed = that._getSimulatedAIResponse();
                         if (oParsed) that._fillFormWithAIData(oParsed);
                     }
                     catch (err) {
@@ -198,124 +344,127 @@ sap.ui.define([
          * @returns {Object} Dane z odpowiedzi API
          */
         _getSimulatedAIResponse: function () {
+            // return {
+            //     FiscalYear: "2024",
+            //     DocumentNo: "51952/12/2024",
+            //     LineItem: "",
+            //     AmountDocument: "1230,00",
+            //     AmountLocal: "",
+            //     // ChangedAt: "",
+            //     // ChangedBy: "",
+            //     ClearingDate: "",
+            //     ClearingDoc: "",
+            //     CompanyCode: "",
+            //     CostCenter: "",
+            //     // CreatedAt: "",
+            //     // CreatedBy: "",
+            //     CurrencyCode: "PLN",
+            //     Customer: "ABC INFO Andrzej Kowalski",
+            //     DebitCredit: "",
+            //     DocumentDate: "13-12-2024",
+            //     DocumentType: "",
+            //     DueDate: "",
+            //     EntryDate: "",
+            //     PaymentMethod: "przelew",
+            //     PaymentTerms: "14 dni",
+            //     PostingDate: "13-12-2024",
+            //     ProfitCenter: "",
+            //     Reference: "",
+            //     Segment: "",
+            //     Vendor: "Usługi Informatyczne Jan Nowak"
+            // };
             return {
-                client: "",
-                company_code: "",
-                fiscal_year: "2024",
-                document_no: "51952/12/2024",
-                line_item: "",
-                amount_document: "1230,00",
-                amount_local: "",
-                changed_at: "",
-                changed_by: "",
-                clearing_date: "",
-                clearing_doc: "",
-                client: "",
-                company_code: "",
-                cost_center: "",
-                created_at: "",
-                created_by: "",
-                currency_code: "PLN",
-                customer: "ABC INFO Andrzej Kowalski",
-                debit_credit: "",
-                document_date: "13-12-2024",
-                document_no: "51952/12/2024",
-                document_type: "",
-                due_date: "",
-                entry_date: "",
-                fiscal_year: "2024",
-                line_item: "",
-                payment_method: "przelew",
-                payment_terms: "14 dni",
-                posting_date: "13-12-2024",
-                profit_center: "",
-                reference: "",
-                segment: "",
-                vendor: "Usługi Informatyczne Jan Nowak"
-            };
+                "FiscalYear": "2024",
+                "DocumentNo": "1111",
+                "LineItem": "001",
+                "AmountDocument": "1230.00",
+                "AmountLocal": "1230.00",
+                "CompanyCode": "1234",
+                "CurrencyCode": "PLN",
+                "Customer": "777777",
+                "DebitCredit": "D",
+                "DocumentDate": "2024-12-11",
+                "PostingDate": "2024-12-11",
+                "EntryDate": "2024-12-11",
+                "PaymentMethod": "P",
+                "PaymentTerms": "14D",
+                "Vendor": "888888",
+                "Account": "300000",
+                "DocumentType": "",
+                "Reference": "",
+                "CostCenter": "",
+                "ProfitCenter": "",
+                "Segment": "",
+                "ClearingDoc": ""
+            }
+
         },
 
         _fillFormWithAIData(oParsed) {
-            // var oModel = this.getView().getModel("newDocument");
             var oDialogJSONModel = new sap.ui.model.json.JSONModel(oParsed);
-            var oDateFormat = DateFormat.getDateInstance({ pattern: "dd-MM-yyyy" });
+            var oDateFormat = DateFormat.getDateInstance({ pattern: "yyyy-mm-dd" });
 
-            // Mapowanie pól z odpowiedzi AI do modelu formularza
             if (oParsed) {
-                // Najpierw ustawiamy główne pola
-                oDialogJSONModel.setProperty("/client", oParsed.client || "");
-                oDialogJSONModel.setProperty("/company_code", oParsed.company_code || "");
-                oDialogJSONModel.setProperty("/fiscal_year", oParsed.fiscal_year || "");
-                oDialogJSONModel.setProperty("/document_no", oParsed.document_no || "");
-                oDialogJSONModel.setProperty("/line_item", oParsed.line_item || "");
+                // oDialogJSONModel.setProperty("/Client", oParsed.Client || "");
+                oDialogJSONModel.setProperty("/CompanyCode", oParsed.CompanyCode || "");
+                oDialogJSONModel.setProperty("/FiscalYear", oParsed.FiscalYear || "");
+                oDialogJSONModel.setProperty("/DocumentNo", oParsed.DocumentNo || "");
+                oDialogJSONModel.setProperty("/LineItem", oParsed.LineItem || "");
 
-                // Kwoty
-                oDialogJSONModel.setProperty("/amount_document", oParsed.amount_document || "0.00");
-                oDialogJSONModel.setProperty("/amount_local", oParsed.amount_local || "0.00");
+                oDialogJSONModel.setProperty("/AmountDocument", oParsed.AmountDocument || "0.00");
+                oDialogJSONModel.setProperty("/AmountLocal", oParsed.AmountLocal || "0.00");
 
-                // Daty - konwersja z formatu tekstowego na obiekt Date
-                if (oParsed.posting_date) {
-                    try {
-                        var oPostingDate = oDateFormat.parse(oParsed.posting_date);
-                        oDialogJSONModel.setProperty("/posting_date", oPostingDate);
-                    } catch (e) {
-                        // W przypadku błędu formatu daty, zachowujemy obecną wartość
-                    }
-                }
+                // if (oParsed.PostingDate) {
+                //     try {
+                //         var oPostingDate = oDateFormat.parse(oParsed.PostingDate);
+                //         oDialogJSONModel.setProperty("/PostingDate", oPostingDate);
+                //     } catch (e) {}
+                // }
 
-                if (oParsed.document_date) {
-                    try {
-                        var oDocumentDate = oDateFormat.parse(oParsed.document_date);
-                        oDialogJSONModel.setProperty("/document_date", oDocumentDate);
-                    } catch (e) {
-                        // W przypadku błędu formatu daty, zachowujemy obecną wartość
-                    }
-                }
+                // if (oParsed.DocumentDate) {
+                //     try {
+                //         var oDocumentDate = oDateFormat.parse(oParsed.DocumentDate);
+                //         oDialogJSONModel.setProperty("/DocumentDate", oDocumentDate);
+                //     } catch (e) {}
+                // }
 
-                if (oParsed.entry_date) {
-                    try {
-                        var oEntryDate = oDateFormat.parse(oParsed.entry_date);
-                        oDialogJSONModel.setProperty("/entry_date", oEntryDate);
-                    } catch (e) {
-                        // W przypadku błędu formatu daty, zachowujemy obecną wartość
-                    }
-                }
+                // if (oParsed.EntryDate) {
+                //     try {
+                //         var oEntryDate = oDateFormat.parse(oParsed.EntryDate);
+                //         oDialogJSONModel.setProperty("/EntryDate", oEntryDate);
+                //     } catch (e) {}
+                // }
 
-                if (oParsed.due_date) {
-                    try {
-                        var oDueDate = oDateFormat.parse(oParsed.due_date);
-                        oDialogJSONModel.setProperty("/due_date", oDueDate);
-                    } catch (e) {
-                        // W przypadku błędu formatu daty, zachowujemy obecną wartość
-                    }
-                }
+                // if (oParsed.DueDate) {
+                //     try {
+                //         var oDueDate = oDateFormat.parse(oParsed.DueDate);
+                //         oDialogJSONModel.setProperty("/DueDate", oDueDate);
+                //     } catch (e) {}
+                // }
 
-                if (oParsed.clearing_date) {
-                    try {
-                        var oClearingDate = oDateFormat.parse(oParsed.clearing_date);
-                        oDialogJSONModel.setProperty("/clearing_date", oClearingDate);
-                    } catch (e) {
-                        // W przypadku błędu formatu daty, zachowujemy obecną wartość
-                    }
-                }
+                // if (oParsed.ClearingDate) {
+                //     try {
+                //         var oClearingDate = oDateFormat.parse(oParsed.ClearingDate);
+                //         oDialogJSONModel.setProperty("/ClearingDate", oClearingDate);
+                //     } catch (e) {}
+                // }
 
-                // Pozostałe pola
-                oDialogJSONModel.setProperty("/document_type", oParsed.document_type || "");
-                oDialogJSONModel.setProperty("/reference", oParsed.reference || "");
-                oDialogJSONModel.setProperty("/debit_credit", oParsed.debit_credit || "D");
-                oDialogJSONModel.setProperty("/account", oParsed.account || "");
-                oDialogJSONModel.setProperty("/vendor", oParsed.vendor || "");
-                oDialogJSONModel.setProperty("/customer", oParsed.customer || "");
-                oDialogJSONModel.setProperty("/cost_center", oParsed.cost_center || "");
-                oDialogJSONModel.setProperty("/profit_center", oParsed.profit_center || "");
-                oDialogJSONModel.setProperty("/segment", oParsed.segment || "");
-                oDialogJSONModel.setProperty("/currency_code", oParsed.currency_code || "PLN");
-                oDialogJSONModel.setProperty("/payment_terms", oParsed.payment_terms || "");
-                oDialogJSONModel.setProperty("/payment_method", oParsed.payment_method || "");
-                oDialogJSONModel.setProperty("/clearing_doc", oParsed.clearing_doc || "");
+                oDialogJSONModel.setProperty("/DocumentType", oParsed.DocumentType || "");
+                oDialogJSONModel.setProperty("/Reference", oParsed.Reference || "");
+                oDialogJSONModel.setProperty("/DebitCredit", oParsed.DebitCredit || "D");
+                oDialogJSONModel.setProperty("/Account", oParsed.Account || "");
+                oDialogJSONModel.setProperty("/Vendor", oParsed.Vendor || "");
+                oDialogJSONModel.setProperty("/Customer", oParsed.Customer || "");
+                oDialogJSONModel.setProperty("/CostCenter", oParsed.CostCenter || "");
+                oDialogJSONModel.setProperty("/ProfitCenter", oParsed.ProfitCenter || "");
+                oDialogJSONModel.setProperty("/Segment", oParsed.Segment || "");
+                oDialogJSONModel.setProperty("/CurrencyCode", oParsed.CurrencyCode || "PLN");
+                oDialogJSONModel.setProperty("/PaymentTerms", oParsed.PaymentTerms || "");
+                oDialogJSONModel.setProperty("/PaymentMethod", oParsed.PaymentMethod || "");
+                oDialogJSONModel.setProperty("/ClearingDoc", oParsed.ClearingDoc || "");
             }
 
-            var oDialog = this.oView.byId("addInvoiceDialog").setModel(oDialogJSONModel);
+            this.oView.byId("addInvoiceDialog").setModel(oDialogJSONModel);
         },
 
         _readFile: function (file) {
@@ -368,19 +517,6 @@ sap.ui.define([
 
                         var requestImageUrl = { image_url: "" };
                         requestImageUrl.image_url = requestPayload.base64;
-
-                        // $.ajax({
-                        //     url: "https://node-app-stellar-mouse-fl.cfapps.us10-001.hana.ondemand.com/analyze", // backend endpoint
-                        //     type: "POST",
-                        //     data: JSON.stringify(requestImageUrl),
-                        //     contentType: "application/json",
-                        //     success: function (response) {
-                        //         resolve(response);
-                        //     },
-                        //     error: function (jqXHR, textStatus, errorThrown) {
-                        //         reject(new Error("Błąd backendu: " + errorThrown));
-                        //     }
-                        // });
 
                         fetch("https://node-app-stellar-mouse-fl.cfapps.us10-001.hana.ondemand.com/analyze", {
                             method: "POST",

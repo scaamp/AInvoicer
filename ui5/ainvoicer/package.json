@@ -25,8 +25,5 @@
     "start-variants-management": "fiori run --open \"preview.html?sap-ui-xx-viewCache=false&fiori-tools-rta-mode=true&sap-ui-rta-skip-flex-validation=true#preview-app\"",
     "unit-test": "fiori run --config ./ui5-mock.yaml --open 'test/unit/unitTests.qunit.html'"
   },
-  "sapuxLayer": "CUSTOMER_BASE",
-  "dependencies": {
-    "ainvoicer": "file:"
-  }
+  "sapuxLayer": "CUSTOMER_BASE"
 }

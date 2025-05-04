@@ -26,7 +26,10 @@
             >
                 <f:toolbar>
                     <Toolbar id="TB1">
-                        <Title id="Title1" text="Scanner"/>
+                        <Title
+                            id="Title1"
+                            text="Scanner"
+                        />
                         <ToolbarSpacer />
 
                         <Button
@@ -54,7 +57,7 @@
                         required="true"
                     />
                     <Input
-                        value="{/company_code}"
+                        value="{/CompanyCode}"
                         maxLength="4"
                         required="true"
                         type="Number"
@@ -65,7 +68,7 @@
                         required="true"
                     />
                     <Input
-                        value="{/fiscal_year}"
+                        value="{/FiscalYear}"
                         maxLength="4"
                         required="true"
                         type="Number"
@@ -76,7 +79,7 @@
                         required="true"
                     />
                     <Input
-                        value="{/document_no}"
+                        value="{/DocumentNo}"
                         maxLength="10"
                         required="true"
                     />
@@ -86,7 +89,7 @@
                         required="true"
                     />
                     <Input
-                        value="{/line_item}"
+                        value="{/LineItem}"
                         maxLength="3"
                         required="true"
                         type="Number"
@@ -95,37 +98,37 @@
                     <!-- Daty -->
                     <Label text="Posting Date" />
                     <DatePicker
-                        value="{/posting_date}"
+                        value="{/PostingDate}"
                         displayFormat="yyyy-MM-dd"
                     />
 
                     <Label text="Document Date" />
                     <DatePicker
-                        value="{/document_date}"
+                        value="{/DocumentDate}"
                         displayFormat="yyyy-MM-dd"
                     />
 
                     <Label text="Entry Date" />
                     <DatePicker
-                        value="{/entry_date}"
+                        value="{/EntryDate}"
                         displayFormat="yyyy-MM-dd"
                     />
 
                     <!-- Informacje dokumentu -->
                     <Label text="Document Type" />
                     <Input
-                        value="{/document_type}"
+                        value="{/DocumentType}"
                         maxLength="2"
                     />
 
                     <Label text="Reference Document" />
                     <Input
-                        value="{/reference}"
+                        value="{/Reference}"
                         maxLength="16"
                     />
 
                     <Label text="Debit/Credit Indicator" />
-                    <Select selectedKey="{/debit_credit}">
+                    <Select selectedKey="{/DebitCredit}">
                         <items>
                             <core:Item
                                 key="D"
@@ -141,88 +144,88 @@
                     <!-- Konta i jednostki organizacyjne -->
                     <Label text="G/L Account" />
                     <Input
-                        value="{/account}"
+                        value="{/Account}"
                         maxLength="10"
                     />
 
                     <Label text="Vendor Number" />
                     <Input
-                        value="{/vendor}"
+                        value="{/Vendor}"
                         maxLength="10"
                     />
 
                     <Label text="Customer Number" />
                     <Input
-                        value="{/customer}"
+                        value="{/Customer}"
                         maxLength="10"
                     />
 
                     <Label text="Cost Center" />
                     <Input
-                        value="{/cost_center}"
+                        value="{/CostCenter}"
                         maxLength="10"
                     />
 
                     <Label text="Profit Center" />
                     <Input
-                        value="{/profit_center}"
+                        value="{/ProfitCenter}"
                         maxLength="10"
                     />
 
                     <Label text="Segment" />
                     <Input
-                        value="{/segment}"
+                        value="{/Segment}"
                         maxLength="10"
                     />
 
                     <!-- Kwoty i waluta -->
                     <Label text="Currency" />
                     <Input
-                        value="{/currency_code}"
+                        value="{/CurrencyCode}"
                         maxLength="5"
                     />
 
                     <Label text="Amount in Document Currency" />
                     <Input
-                        value="{/amount_document}"
+                        value="{/AmountDocument}"
                         type="Number"
                     />
 
                     <Label text="Amount in Local Currency" />
                     <Input
-                        value="{/amount_local}"
+                        value="{/AmountLocal}"
                         type="Number"
                     />
 
                     <!-- Płatności -->
                     <Label text="Payment Terms" />
                     <Input
-                        value="{/payment_terms}"
+                        value="{/PaymentTerms}"
                         maxLength="4"
                     />
 
                     <Label text="Payment Method" />
                     <Input
-                        value="{/payment_method}"
+                        value="{/PaymentMethod}"
                         maxLength="1"
                     />
 
                     <Label text="Due Date" />
                     <DatePicker
-                        value="{/due_date}"
+                        value="{/DueDate}"
                         displayFormat="yyyy-MM-dd"
                     />
 
                     <!-- Rozliczenie -->
                     <Label text="Clearing Document" />
                     <Input
-                        value="{/clearing_doc}"
+                        value="{/ClearingDoc}"
                         maxLength="10"
                     />
 
                     <Label text="Clearing Date" />
                     <DatePicker
-                        value="{/clearing_date}"
+                        value="{/ClearingDate}"
                         displayFormat="yyyy-MM-dd"
                     />
                 </f:content>

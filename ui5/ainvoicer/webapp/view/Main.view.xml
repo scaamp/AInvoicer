@@ -17,8 +17,11 @@
                 id="invoiceTable"
                 inset="false"
                 items="{
-               path: '/ZC_FI_ACDOCA'
-             }"
+                    path: '/ZC_FI_ACDOCA',
+                    parameters: {
+                    countMode: 'Request'
+                    }
+                }"
             >
                 <headerToolbar>
                     <Toolbar>
