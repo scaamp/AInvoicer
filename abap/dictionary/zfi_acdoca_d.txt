@@ -1,0 +1,41 @@
+@EndUserText.label : 'Draft Database Table for ZFI_ACDOCA_D'
+@AbapCatalog.enhancement.category : #EXTENSIBLE_ANY
+@AbapCatalog.tableCategory : #TRANSPARENT
+@AbapCatalog.deliveryClass : #A
+@AbapCatalog.dataMaintenance : #RESTRICTED
+define table zfi_acdoca_d {
+
+  key mandt       : mandt not null;
+  key companycode : abap.numc(4) not null;
+  key fiscalyear  : abap.numc(4) not null;
+  key documentno  : abap.char(10) not null;
+  key lineitem    : abap.numc(3) not null;
+  postingdate     : abap.dats;
+  documentdate    : abap.dats;
+  entrydate       : abap.dats;
+  documenttype    : abap.char(2);
+  reference       : abap.char(16);
+  debitcredit     : abap.char(1);
+  account         : abap.char(10);
+  vendor          : abap.char(10);
+  customer        : abap.char(10);
+  costcenter      : abap.char(10);
+  profitcenter    : abap.char(10);
+  segment         : abap.char(10);
+  currencycode    : abap.cuky;
+  @Semantics.amount.currencyCode : 'zfi_acdoca_d.currencycode'
+  amountdocument  : abap.curr(13,2);
+  @Semantics.amount.currencyCode : 'zfi_acdoca_d.currencycode'
+  amountlocal     : abap.curr(13,2);
+  paymentterms    : abap.char(4);
+  paymentmethod   : abap.char(1);
+  duedate         : abap.dats;
+  clearingdoc     : abap.char(10);
+  clearingdate    : abap.dats;
+  createdby       : abp_creation_user;
+  createdat       : abp_creation_tstmpl;
+  changedby       : abp_lastchange_user;
+  changedat       : abp_lastchange_tstmpl;
+  "%admin"        : include sych_bdl_draft_admin_inc;
+
+}
