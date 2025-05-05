@@ -49,7 +49,10 @@
       "minUI5Version": "1.130.8",
       "libs": {
         "sap.m": {},
-        "sap.ui.core": {}
+        "sap.ui.core": {},
+        "sap.ui.mdc": {},
+        "sap.fe.macros": {},
+        "sap.fe.templates": {}
       }
     },
     "contentDensities": {
@@ -67,10 +70,11 @@
         "dataSource": "mainService",
         "preload": true,
         "settings": {
+          "synchronizationMode": "None",
           "operationMode": "Server",
-          "autoExpandSelect": true,
-          "earlyRequests": true
-        }
+          "autoExpandSelect": true
+        },
+        "type": "sap.ui.model.odata.v4.ODataModel"
       }
     },
     "resources": {

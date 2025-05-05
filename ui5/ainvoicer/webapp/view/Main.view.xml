@@ -2,63 +2,93 @@
     controllerName="ainvoicer.controller.Main"
     xmlns:mvc="sap.ui.core.mvc"
     xmlns="sap.m"
-    xmlns:mdc="sap.ui.mdc"
-    xmlns:macro="sap.fe.macros"
     xmlns:html="http://www.w3.org/1999/xhtml"
     xmlns:f="sap.f"
     xmlns:core="sap.ui.core"
-    xmlns:mdct="sap.ui.mdc.table"
     height="100%"
     xmlns:u="sap.ui.unified"
+    xmlns:fb="sap.ui.comp.filterbar"
 >
     <Page title="Invoices">
         <content>
-        <Panel id="aiCommandPanel" expandable="true" expanded="false" headerText="AI Assistant">
+            <Panel
+                id="aiCommandPanel"
+                expandable="true"
+                expanded="false"
+                headerText="AI Assistant"
+            >
                 <headerToolbar>
                     <Toolbar>
                         <Title text="AI Assistant" />
                         <ToolbarSpacer />
-                        <Button 
-                            icon="sap-icon://history" 
-                            tooltip="Show History" 
-                            press="onToggleHistory" />
+                        <Button
+                            icon="sap-icon://history"
+                            tooltip="Show History"
+                            press="onToggleHistory"
+                        />
                     </Toolbar>
                 </headerToolbar>
-                
-                <FlexBox direction="Column" width="100%">
+
+                <FlexBox
+                    direction="Column"
+                    width="100%"
+                >
                     <!-- Wybór kontekstu zapytania -->
-                    <ComboBox id="contextSelector" 
-                        placeholder="Select Context" 
-                        width="30%" 
-                        change="onContextChange">
+                    <ComboBox
+                        id="contextSelector"
+                        placeholder="Select Context"
+                        width="30%"
+                        change="onContextChange"
+                    >
                         <items>
-                            <core:Item key="search" text="Data Search" />
-                            <core:Item key="analyze" text="Data Analysis" />
-                            <core:Item key="help" text="Help Documentation" />
+                            <core:Item
+                                key="search"
+                                text="Data Search"
+                            />
+                            <core:Item
+                                key="analyze"
+                                text="Data Analysis"
+                            />
+                            <core:Item
+                                key="help"
+                                text="Help Documentation"
+                            />
                         </items>
                     </ComboBox>
-                    
+
                     <!-- Główny input do wprowadzania poleceń -->
-                    <FlexBox alignItems="Center" width="100%" class="sapUiTinyMarginTop">
-                        <SearchField id="aiCommandInput" 
-                            width="100%" 
-                            placeholder="Type your query in natural language (e.g., 'show invoices over 5000 zł')" 
-                            search="onAiCommandExecute" />
-                        <Button 
-                            icon="sap-icon://microphone" 
-                            tooltip="Voice Input" 
-                            press="onVoiceInput" 
-                            class="sapUiTinyMarginBegin" />
+                    <FlexBox
+                        alignItems="Center"
+                        width="100%"
+                        class="sapUiTinyMarginTop"
+                    >
+                        <SearchField
+                            id="aiCommandInput"
+                            width="100%"
+                            placeholder="Type your query in natural language (e.g., 'show invoices over 5000 zł')"
+                            search="onAiCommandExecute"
+                        />
+                        <Button
+                            icon="sap-icon://microphone"
+                            tooltip="Voice Input"
+                            press="onVoiceInput"
+                            class="sapUiTinyMarginBegin"
+                        />
                     </FlexBox>
-                    
+
                     <!-- Historia zapytań i odpowiedzi -->
-                    <VBox id="aiCommandHistory" visible="false" class="sapUiSmallMarginTop" width="100%">
-                        <List 
-                            id="commandHistoryList" 
-                            showSeparators="All" 
-                            inset="false" 
-                            width="100%">
-                        </List>
+                    <VBox
+                        id="aiCommandHistory"
+                        visible="false"
+                        class="sapUiSmallMarginTop"
+                        width="100%"
+                    >
+                        <List
+                            id="commandHistoryList"
+                            showSeparators="All"
+                            inset="false"
+                            width="100%"
+                        />
                     </VBox>
                 </FlexBox>
             </Panel>
@@ -75,37 +105,58 @@
             >
                 <headerToolbar>
                     <Toolbar>
-                        <!-- <ComboBox
-                            id="miniContextSelector"
-                            width="10rem"
-                            placeholder="Context"
-                            change="onContextChange"
+                        <!-- <HBox
+                            class="sapUiSmallMarginBottom"
+                            alignItems="Center"
                         >
-                            <items>
-                                <core:Item
-                                    key="search"
-                                    text="Data Search"
-                                />
-                                <core:Item
-                                    key="analyze"
-                                    text="Data Analysis"
-                                />
-                                <core:Item
-                                    key="help"
-                                    text="Help Documentation"
-                                />
-                            </items>
-                        </ComboBox>
-                        <SearchField 
-                            id="miniAiCommand" 
-                            width="20rem" 
-                            placeholder="Natural language query..." 
-                            search="onAiCommandExecute" />
-                        <Button 
-                            icon="sap-icon://message-popup"
-                            tooltip="Expand AI Assistant"
-                            press="onExpandAiPanel" /> -->
-
+                            <Label
+                                text="Company Code"
+                                labelFor="companyCodeInput"
+                            />
+                            <Input
+                                id="companyCodeInput"
+                                placeholder="Enter Company Code"
+                                width="10rem"
+                            />
+                            <Button
+                                text="Apply Filter"
+                                press="onFilterApply"
+                                class="sapUiTinyMarginBegin"
+                            />
+                        </HBox> -->
+                        <fb:FilterBar
+                            id="filterbar"
+                            persistencyKey="myPersKey"
+                            useToolbar="false"
+                            search=".onSearch"
+                            filterChange=".onFilterChange"
+                            afterVariantLoad=".onAfterVariantLoad"
+                        >
+                            <fb:filterGroupItems>
+                                <fb:FilterGroupItem
+                                    name="CompanyCode"
+                                    label="CompanyCode"
+                                    groupName="Group1"
+                                    visibleInFilterBar="true"
+                                >
+                                    <fb:control>
+                                        <MultiComboBox
+                                            name="CompanyCode"
+                                            selectionChange=".onSelectionChange"
+                                            items="{
+												path: '/ZC_FI_ACDOCA',
+												templateShareable: true
+											}"
+                                        >
+                                            <core:Item
+                                                key="{CompanyCode}"
+                                                text="{CompanyCode}"
+                                            />
+                                        </MultiComboBox>
+                                    </fb:control>
+                                </fb:FilterGroupItem>
+                            </fb:filterGroupItems>
+                        </fb:FilterBar>
                         <ToolbarSpacer />
                         <ToolbarSeparator />
                         <Button
@@ -149,29 +200,34 @@
             </Table>
         </content>
 
-         <!-- Dialog do wyświetlania szczegółowej konwersacji -->
+        <!-- Dialog do wyświetlania szczegółowej konwersacji -->
         <dependents>
             <Dialog
                 id="aiChatDialog"
                 title="AI Assistant Chat"
                 resizable="true"
                 draggable="true"
-                contentWidth="40rem">
+                contentWidth="40rem"
+            >
                 <content>
                     <ScrollContainer
                         height="24rem"
                         width="100%"
                         vertical="true"
-                        horizontal="false">
+                        horizontal="false"
+                    >
                         <List
                             id="chatDialogList"
                             showSeparators="None"
-                            noDataText="No conversation history">
-                        </List>
+                            noDataText="No conversation history"
+                        />
                     </ScrollContainer>
                 </content>
                 <buttons>
-                    <Button text="Close" press="onCloseChatDialog" />
+                    <Button
+                        text="Close"
+                        press="onCloseChatDialog"
+                    />
                 </buttons>
             </Dialog>
         </dependents>
