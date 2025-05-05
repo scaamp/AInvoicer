@@ -5,8 +5,14 @@ sap.ui.define([
     "sap/m/MessageToast",
     "sap/ui/core/Fragment",
     "sap/ui/core/format/DateFormat",
-    "sap/ui/core/BusyIndicator"
-], (Controller, JSONModel, MessageBox, MessageToast, Fragment, DateFormat, BusyIndicator) => {
+    "sap/ui/core/BusyIndicator",
+    "sap/m/StandardListItem",
+    "sap/m/CustomListItem",
+    "sap/m/VBox",
+    "sap/m/Text",
+    "sap/m/Link",
+    "sap/m/BusyDialog"
+], (Controller, JSONModel, MessageBox, MessageToast, Fragment, DateFormat, BusyIndicator, StandardListItem, CustomListItem, VBox, Text, Link, BusyDialog ) => {
     "use strict";
 
     return Controller.extend("ainvoicer.controller.Main", {
@@ -20,16 +26,248 @@ sap.ui.define([
             });
             this.getView().setModel(oFileModel, "file");
 
+            // Model do przechowywania historii zapytań i odpowiedzi
+            var oHistoryModel = new JSONModel({
+                conversations: [],
+                currentContext: "search",
+                expanded: false
+            });
+            this.getView().setModel(oHistoryModel, "history");
+
+            // Model do przechowywania stanu wyszukiwania
+            var oSearchModel = new JSONModel({
+                lastQuery: "",
+                lastSql: "",
+                isFiltered: false
+            });
+            this.getView().setModel(oSearchModel, "search");
+
             // Twój klucz API OpenAI
             this._openAIApiKey = ""; // To powinno być pobierane z bezpiecznego źródła
         },
 
+        // Obsługa zmiany kontekstu
+        onContextChange: function (oEvent) {
+            var sSelectedKey = oEvent.getSource().getSelectedKey();
+            var oHistoryModel = this.getView().getModel("history");
+            
+            oHistoryModel.setProperty("/currentContext", sSelectedKey);
+            
+            // Można dodać dodatkową logikę dla różnych kontekstów
+            MessageToast.show("Context changed to: " + sSelectedKey);
+        },
+
+        // Wykonywanie poleceń AI
+        onAiCommandExecute: function (oEvent) {
+            var sQuery = oEvent.getParameter("query");
+            if (!sQuery) {
+                return;
+            }
+            
+            var oHistoryModel = this.getView().getModel("history");
+            var oSearchModel = this.getView().getModel("search");
+            var sCurrentContext = oHistoryModel.getProperty("/currentContext");
+            
+            // Zapisanie zapytania w historii
+            var aConversations = oHistoryModel.getProperty("/conversations");
+            var oNewConversation = {
+                query: sQuery,
+                timestamp: new Date(),
+                context: sCurrentContext,
+                response: null,
+                sql: null,
+                isProcessed: false
+            };
+            
+            aConversations.unshift(oNewConversation);
+            oHistoryModel.setProperty("/conversations", aConversations);
+            
+            // Pokazanie wskaźnika zajętości
+            var oBusyDialog = new BusyDialog({
+                title: "Processing",
+                text: "Analyzing your request..."
+            });
+            oBusyDialog.open();
+            
+            // Symulacja wywołania API LLM
+            setTimeout(function() {
+                this._processAiQuery(sQuery, sCurrentContext, 0);
+                oBusyDialog.close();
+                oBusyDialog.destroy();
+            }.bind(this), 1000);
+            
+            // Jeśli historia nie jest widoczna, pokazujemy ją
+            this.byId("aiCommandHistory").setVisible(true);
+            
+            // Czyścimy pole wprowadzania po wykonaniu
+            this.byId("aiCommandInput").setValue("");
+        },
+
+        // Symulacja przetwarzania zapytania przez LLM
+        _processAiQuery: function(sQuery, sContext, iIndex) {
+            var oHistoryModel = this.getView().getModel("history");
+            var aConversations = oHistoryModel.getProperty("/conversations");
+            var sGeneratedSQL = "";
+            var sResponse = "";
+            
+            // Symulacja różnych odpowiedzi w zależności od kontekstu
+            if (sContext === "search") {
+                if (sQuery.toLowerCase().includes("ponad 5000") || 
+                    sQuery.toLowerCase().includes("przekracza 5000") ||
+                    sQuery.toLowerCase().includes("over 5000")) {
+                    sGeneratedSQL = "SELECT * FROM ZC_FI_ACDOCA WHERE Amount > 5000";
+                    sResponse = "Znaleziono dokumenty, których kwota przekracza 5000 zł. Zastosowano filtr do tabeli.";
+                    
+                    // Symulacja filtrowania tabeli
+                    this._applyTableFilter("Amount", 5000, "GT");
+                } else if (sQuery.toLowerCase().includes("2023")) {
+                    sGeneratedSQL = "SELECT * FROM ZC_FI_ACDOCA WHERE FiscalYear = '2023'";
+                    sResponse = "Wyświetlam dokumenty z roku fiskalnego 2023.";
+                    
+                    // Symulacja filtrowania tabeli
+                    this._applyTableFilter("FiscalYear", "2023", "EQ");
+                } else {
+                    sGeneratedSQL = "/* Nie mogłem wygenerować SQL dla tego zapytania */";
+                    sResponse = "Przepraszam, nie udało mi się przetworzyć tego zapytania. Spróbuj inaczej sformułować polecenie.";
+                }
+            } else if (sContext === "analyze") {
+                sResponse = "Przeprowadziłem analizę danych. Oto wyniki...";
+                sGeneratedSQL = "SELECT AVG(Amount) FROM ZC_FI_ACDOCA GROUP BY CompanyCode";
+            } else {
+                sResponse = "Jak mogę pomóc w kwestii dotyczącej faktur?";
+            }
+            
+            // Aktualizacja historii o odpowiedź
+            aConversations[iIndex].response = sResponse;
+            aConversations[iIndex].sql = sGeneratedSQL;
+            aConversations[iIndex].isProcessed = true;
+            
+            oHistoryModel.setProperty("/conversations", aConversations);
+            
+            // Aktualizacja listy historii
+            this._updateHistoryList();
+        },
+        
+        // Symulacja filtrowania tabeli
+        _applyTableFilter: function(sField, vValue, sOperator) {
+            var oSearchModel = this.getView().getModel("search");
+            
+            // Tutaj byłaby rzeczywista logika filtrowania tabeli
+            // Na potrzeby demonstracji tylko aktualizujemy model
+            
+            oSearchModel.setProperty("/lastQuery", sField + " " + sOperator + " " + vValue);
+            oSearchModel.setProperty("/isFiltered", true);
+            
+            MessageToast.show("Filtrowanie tabeli: " + sField + " " + sOperator + " " + vValue);
+        },
+        
+        // Aktualizacja listy historii
+        _updateHistoryList: function() {
+            var oHistoryList = this.byId("commandHistoryList");
+            var oChatDialogList = this.byId("chatDialogList");
+            
+            oHistoryList.removeAllItems();
+            oChatDialogList.removeAllItems();
+            
+            var aConversations = this.getView().getModel("history").getProperty("/conversations");
+            
+            // Dodanie elementów do listy historii w panelu
+            aConversations.forEach(function(oConv, index) {
+                // Tworzenie elementu listy dla panelu
+                var oListItem = new CustomListItem({
+                    content: [
+                        new VBox({
+                            items: [
+                                new Text({
+                                    text: "Q: " + oConv.query,
+                                    wrapping: true
+                                }).addStyleClass("sapUiTinyMarginBottom sapMTextMaxWidth"),
+                                
+                                new Text({
+                                    text: oConv.isProcessed ? "A: " + oConv.response : "Przetwarzanie...",
+                                    wrapping: true
+                                }).addStyleClass("sapUiTinyMarginBottom sapMTextMaxWidth"),
+                                
+                                new Link({
+                                    text: "Zobacz SQL",
+                                    press: this.onShowSqlDialog.bind(this, index),
+                                    visible: oConv.isProcessed // && oConv.sql
+                                })
+                            ]
+                        }).addStyleClass("sapUiTinyMargin")
+                    ]
+                });
+                
+                oHistoryList.addItem(oListItem);
+                
+                // Tworzenie elementu listy dla dialogu
+                var oChatItem = new CustomListItem({
+                    content: [
+                        new VBox({
+                            items: [
+                                new Text({
+                                    text: "Ty: " + oConv.query,
+                                    wrapping: true
+                                }).addStyleClass("sapUiTinyMarginBottom sapMTextMaxWidth userQuery"),
+                                
+                                new Text({
+                                    text: oConv.isProcessed ? "Asystent: " + oConv.response : "Przetwarzanie...",
+                                    wrapping: true
+                                }).addStyleClass("sapUiTinyMarginBottom sapMTextMaxWidth assistantResponse"),
+                                
+                                new Link({
+                                    text: "Zobacz SQL",
+                                    press: this.onShowSqlDialog.bind(this, index),
+                                    visible: oConv.isProcessed //&& oConv.sql
+                                })
+                            ]
+                        }).addStyleClass("sapUiTinyMargin")
+                    ]
+                });
+                
+                oChatDialogList.addItem(oChatItem);
+            }.bind(this));
+        },
+        
+        // Pokazanie/ukrycie historii zapytań
+        onToggleHistory: function() {
+            var oHistoryPanel = this.byId("aiCommandHistory");
+            var bVisible = oHistoryPanel.getVisible();
+            
+            oHistoryPanel.setVisible(!bVisible);
+        },
+        
+        // Otwarcie dialogu chat
+        onOpenChatDialog: function() {
+            var oDialog = this.byId("aiChatDialog");
+            oDialog.open();
+        },
+        
+        // Zamknięcie dialogu chat
+        onCloseChatDialog: function() {
+            var oDialog = this.byId("aiChatDialog");
+            oDialog.close();
+        },
+        
+        // Pokazanie dialogu z SQL
+        onShowSqlDialog: function(iIndex) {
+            var oHistoryModel = this.getView().getModel("history");
+            var aConversations = oHistoryModel.getProperty("/conversations");
+            var sSql = aConversations[iIndex].sql;
+            
+            MessageBox.information(sSql, {
+                title: "Wygenerowane zapytanie SQL"
+            });
+        },
+        
+        // Symulacja wejścia głosowego
+        onVoiceInput: function() {
+            MessageToast.show("Funkcja wprowadzania głosowego nie jest jeszcze dostępna.");
+        },
+        
+
         onAddButton() {
             var oView = this.getView();
-
-            // Tworzenie nowego modelu dla formularza
-            // var oNewDocumentModel = new JSONModel(this._createEmptyDocument());
-            // this.getView().setModel(oNewDocumentModel, "newDocument");
 
             // Otwarcie dialogu
             if (!this._oAddDialog) {
@@ -41,11 +279,6 @@ sap.ui.define([
                     this._oAddDialog = oDialog;
                     oView.addDependent(this._oAddDialog);
                     this._oAddDialog.open();
-
-                    // Ustawienie kontekstu modelu na dialogu
-                    // this._oAddDialog.bindElement({
-                    //     path: "/"
-                    // });
                 }.bind(this));
             } else {
                 this._oAddDialog.open();
@@ -69,7 +302,7 @@ sap.ui.define([
             // 1. Nazwę zbioru encji w OData (np. "InvoiceSet")
             // 2. ID dialogu, który zawiera dane
             // 3. Nazwę modelu JSON w dialogu (jeśli pusta, użyje domyślnego modelu)
-            this.onCreateODataEntity("ZC_FI_ACDOCA", "addInvoiceDialog", "")
+            this.onCreateODataEntity("/ZC_FI_ACDOCA", "addInvoiceDialog", "")
                 .then(function (oResult) {
                     // Sukces
                     BusyIndicator.hide();
@@ -135,7 +368,7 @@ sap.ui.define([
             try {
 
                 // 1. Utwórz binding do listy encji
-                const oListBinding = oODataModel.bindList("/ZC_FI_ACDOCA", undefined, [], [], {
+                const oListBinding = oODataModel.bindList(sEntitySetName, undefined, [], [], {
                     $$updateGroupId: "draftGroup"
                 });
 

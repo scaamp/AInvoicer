@@ -13,6 +13,56 @@
 >
     <Page title="Invoices">
         <content>
+        <Panel id="aiCommandPanel" expandable="true" expanded="false" headerText="AI Assistant">
+                <headerToolbar>
+                    <Toolbar>
+                        <Title text="AI Assistant" />
+                        <ToolbarSpacer />
+                        <Button 
+                            icon="sap-icon://history" 
+                            tooltip="Show History" 
+                            press="onToggleHistory" />
+                    </Toolbar>
+                </headerToolbar>
+                
+                <FlexBox direction="Column" width="100%">
+                    <!-- Wybór kontekstu zapytania -->
+                    <ComboBox id="contextSelector" 
+                        placeholder="Select Context" 
+                        width="30%" 
+                        change="onContextChange">
+                        <items>
+                            <core:Item key="search" text="Data Search" />
+                            <core:Item key="analyze" text="Data Analysis" />
+                            <core:Item key="help" text="Help Documentation" />
+                        </items>
+                    </ComboBox>
+                    
+                    <!-- Główny input do wprowadzania poleceń -->
+                    <FlexBox alignItems="Center" width="100%" class="sapUiTinyMarginTop">
+                        <SearchField id="aiCommandInput" 
+                            width="100%" 
+                            placeholder="Type your query in natural language (e.g., 'show invoices over 5000 zł')" 
+                            search="onAiCommandExecute" />
+                        <Button 
+                            icon="sap-icon://microphone" 
+                            tooltip="Voice Input" 
+                            press="onVoiceInput" 
+                            class="sapUiTinyMarginBegin" />
+                    </FlexBox>
+                    
+                    <!-- Historia zapytań i odpowiedzi -->
+                    <VBox id="aiCommandHistory" visible="false" class="sapUiSmallMarginTop" width="100%">
+                        <List 
+                            id="commandHistoryList" 
+                            showSeparators="All" 
+                            inset="false" 
+                            width="100%">
+                        </List>
+                    </VBox>
+                </FlexBox>
+            </Panel>
+
             <Table
                 id="invoiceTable"
                 inset="false"
@@ -25,6 +75,37 @@
             >
                 <headerToolbar>
                     <Toolbar>
+                        <!-- <ComboBox
+                            id="miniContextSelector"
+                            width="10rem"
+                            placeholder="Context"
+                            change="onContextChange"
+                        >
+                            <items>
+                                <core:Item
+                                    key="search"
+                                    text="Data Search"
+                                />
+                                <core:Item
+                                    key="analyze"
+                                    text="Data Analysis"
+                                />
+                                <core:Item
+                                    key="help"
+                                    text="Help Documentation"
+                                />
+                            </items>
+                        </ComboBox>
+                        <SearchField 
+                            id="miniAiCommand" 
+                            width="20rem" 
+                            placeholder="Natural language query..." 
+                            search="onAiCommandExecute" />
+                        <Button 
+                            icon="sap-icon://message-popup"
+                            tooltip="Expand AI Assistant"
+                            press="onExpandAiPanel" /> -->
+
                         <ToolbarSpacer />
                         <ToolbarSeparator />
                         <Button
@@ -67,5 +148,32 @@
                 </items>
             </Table>
         </content>
+
+         <!-- Dialog do wyświetlania szczegółowej konwersacji -->
+        <dependents>
+            <Dialog
+                id="aiChatDialog"
+                title="AI Assistant Chat"
+                resizable="true"
+                draggable="true"
+                contentWidth="40rem">
+                <content>
+                    <ScrollContainer
+                        height="24rem"
+                        width="100%"
+                        vertical="true"
+                        horizontal="false">
+                        <List
+                            id="chatDialogList"
+                            showSeparators="None"
+                            noDataText="No conversation history">
+                        </List>
+                    </ScrollContainer>
+                </content>
+                <buttons>
+                    <Button text="Close" press="onCloseChatDialog" />
+                </buttons>
+            </Dialog>
+        </dependents>
     </Page>
 </mvc:View>
