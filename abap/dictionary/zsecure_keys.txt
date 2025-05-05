@@ -1,0 +1,1 @@
+define table zsecure_api_keys { ... }

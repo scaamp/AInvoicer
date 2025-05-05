@@ -1,0 +1,3 @@
+*.secret
+.env
+openai_secrets.json

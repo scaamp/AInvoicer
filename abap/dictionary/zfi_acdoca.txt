@@ -1,0 +1,65 @@
+@EndUserText.label : 'zfi_acdoca – Simulated ACDOCA table for invoice processing'
+@AbapCatalog.enhancement.category : #EXTENSIBLE_ANY
+@AbapCatalog.tableCategory : #TRANSPARENT
+@AbapCatalog.deliveryClass : #A
+@AbapCatalog.dataMaintenance : #RESTRICTED
+define table zfi_acdoca {
+
+  @EndUserText.label : 'Client'
+  key client       : abap.clnt not null;
+  @EndUserText.label : 'Company Code'
+  key company_code : abap.numc(4) not null;
+  @EndUserText.label : 'Fiscal Year'
+  key fiscal_year  : abap.numc(4) not null;
+  @EndUserText.label : 'Document Number'
+  key document_no  : abap.char(10) not null;
+  @EndUserText.label : 'Line Item'
+  key line_item    : abap.numc(3) not null;
+  @EndUserText.label : 'Posting Date'
+  posting_date     : abap.dats;
+  @EndUserText.label : 'Document Date'
+  document_date    : abap.dats;
+  @EndUserText.label : 'Entry Date'
+  entry_date       : abap.dats;
+  @EndUserText.label : 'Document Type'
+  document_type    : abap.char(2);
+  @EndUserText.label : 'Reference Document'
+  reference        : abap.char(16);
+  @EndUserText.label : 'Debit/Credit Indicator'
+  debit_credit     : abap.char(1);
+  @EndUserText.label : 'G/L Account'
+  account          : abap.char(10);
+  @EndUserText.label : 'Vendor Number'
+  vendor           : abap.char(10);
+  @EndUserText.label : 'Customer Number'
+  customer         : abap.char(10);
+  @EndUserText.label : 'Cost Center'
+  cost_center      : abap.char(10);
+  @EndUserText.label : 'Profit Center'
+  profit_center    : abap.char(10);
+  @EndUserText.label : 'Segment'
+  segment          : abap.char(10);
+  @EndUserText.label : 'Currency'
+  currency_code    : abap.cuky;
+  @EndUserText.label : 'Amount in Document Currency'
+  @Semantics.amount.currencyCode : 'zfi_acdoca.currency_code'
+  amount_document  : abap.curr(13,2);
+  @EndUserText.label : 'Amount in Local Currency'
+  @Semantics.amount.currencyCode : 'zfi_acdoca.currency_code'
+  amount_local     : abap.curr(13,2);
+  @EndUserText.label : 'Payment Terms'
+  payment_terms    : abap.char(4);
+  @EndUserText.label : 'Payment Method'
+  payment_method   : abap.char(1);
+  @EndUserText.label : 'Due Date'
+  due_date         : abap.dats;
+  @EndUserText.label : 'Clearing Document'
+  clearing_doc     : abap.char(10);
+  @EndUserText.label : 'Clearing Date'
+  clearing_date    : abap.dats;
+  created_by       : abp_creation_user;
+  created_at       : abp_creation_tstmpl;
+  changed_by       : abp_lastchange_user;
+  changed_at       : abp_lastchange_tstmpl;
+
+}

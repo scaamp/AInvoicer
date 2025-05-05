@@ -1,0 +1,1 @@
+service binding ZUI_FI_ACDOCA_O4 as OData V4 { ... }
