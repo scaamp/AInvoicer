@@ -31,52 +31,69 @@ app.post('/analyze', async (req, res) => {
             Zwróć **wyłącznie JSON**, zawierający poniższe pola jako klucze. Jeśli pole nie występuje w dokumencie lub nie da się go rozpoznać, przypisz pusty string \`""\`.
 
             Oto lista wymaganych pól:
-            - client
-            - company_code
-            - fiscal_year
-            - document_no
-            - line_item
-            - posting_date
-            - document_date
-            - entry_date
-            - document_type
-            - reference
-            - debit_credit
-            - account
-            - vendor
-            - customer
-            - cost_center
-            - profit_center
-            - segment
-            - currency_code
-            - amount_document
-            - amount_local
-            - payment_terms
-            - payment_method
-            - due_date
-            - clearing_doc
-            - clearing_date
-            - created_by
-            - created_at
-            - changed_by
-            - changed_at
+            - CompanyCode
+            - FiscalYear
+            - DocumentNo
+            - LineItem
+            - PostingDate
+            - DocumentDate
+            - EntryDate
+            - DocumentType
+            - Reference
+            - DebitCredit
+            - Account
+            - Vendor
+            - Customer
+            - CostCenter
+            - ProfitCenter
+            - Segment
+            - CurrencyCode
+            - AmountDocument
+            - AmountLocal
+            - PaymentTerms
+            - PaymentMethod
+            - DueDate
+            - ClearingDoc
+            - ClearingDate
+            - CreatedBy
+            - CreatedAt
+            - ChangedBy
+            - ChangedAt
 
-            Przykład odpowiedzi:
+            Przykład odpowiedzi:          
             {
-            "client": "100",
-            "company_code": "2000",
-            "fiscal_year": "2024",
-            "document_no": "5100001234",
-            ...
-            "created_by": "",
-            "created_at": "",
-            "changed_by": "",
-            "changed_at": ""
+                "CompanyCode": "7777",
+                "FiscalYear": "2024",
+                "DocumentNo": "51952/12/2024",
+                "LineItem": "",
+                "AmountDocument": "1230,00",
+                "AmountLocal": "",
+                "ChangedAt": "",
+                "ChangedBy": "",
+                "ClearingDate": "",
+                "ClearingDoc": "",
+                "CostCenter": "",
+                "CreatedAt": "",
+                "CreatedBy": "",
+                "CurrencyCode": "PLN",
+                "Customer": "ABC INFO Andrzej Kowalski",
+                "DebitCredit": "",
+                "DocumentDate": "13-12-2024",
+                "DocumentType": "",
+                "DueDate": "",
+                "EntryDate": "",
+                "PaymentMethod": "przelew",
+                "PaymentTerms": "14 dni",
+                "PostingDate": "13-12-2024",
+                "ProfitCenter": "",
+                "Reference": "",
+                "Segment": "",
+                "Vendor": "Usługi Informatyczne Jan Nowak"
             }
 
             Nie dodawaj żadnego opisu, komentarza, ani dodatkowych tekstów. Zwróć **tylko JSON**.
         `;
-        
+
         const response = await openai.chat.completions.create({
             model: 'gpt-4o',
             messages: [
