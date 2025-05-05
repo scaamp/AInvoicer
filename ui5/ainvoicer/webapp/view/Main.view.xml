@@ -93,6 +93,39 @@
                 </FlexBox>
             </Panel>
 
+            <fb:FilterBar
+                            id="filterbar"
+                            persistencyKey="myPersKey"
+                            useToolbar="false"
+                            search=".onSearch"
+                            filterChange=".onFilterChange"
+                            afterVariantLoad=".onAfterVariantLoad"
+                        >
+                            <fb:filterGroupItems>
+                                <fb:FilterGroupItem
+                                    name="CompanyCode"
+                                    label="Company Code"
+                                    groupName="Group1"
+                                    visibleInFilterBar="true"
+                                >
+                                    <fb:control>
+                                        <MultiComboBox
+                                            name="CompanyCode"
+                                            selectionChange=".onSelectionChange"
+                                            items="{
+												path: '/ZC_FI_ACDOCA',
+												templateShareable: true
+											}"
+                                        >
+                                            <core:Item
+                                                key="{CompanyCode}"
+                                                text="{CompanyCode}"
+                                            />
+                                        </MultiComboBox>
+                                    </fb:control>
+                                </fb:FilterGroupItem>
+                            </fb:filterGroupItems>
+                        </fb:FilterBar>
             <Table
                 id="invoiceTable"
                 inset="false"
@@ -124,39 +157,7 @@
                                 class="sapUiTinyMarginBegin"
                             />
                         </HBox> -->
-                        <fb:FilterBar
-                            id="filterbar"
-                            persistencyKey="myPersKey"
-                            useToolbar="false"
-                            search=".onSearch"
-                            filterChange=".onFilterChange"
-                            afterVariantLoad=".onAfterVariantLoad"
-                        >
-                            <fb:filterGroupItems>
-                                <fb:FilterGroupItem
-                                    name="CompanyCode"
-                                    label="CompanyCode"
-                                    groupName="Group1"
-                                    visibleInFilterBar="true"
-                                >
-                                    <fb:control>
-                                        <MultiComboBox
-                                            name="CompanyCode"
-                                            selectionChange=".onSelectionChange"
-                                            items="{
-												path: '/ZC_FI_ACDOCA',
-												templateShareable: true
-											}"
-                                        >
-                                            <core:Item
-                                                key="{CompanyCode}"
-                                                text="{CompanyCode}"
-                                            />
-                                        </MultiComboBox>
-                                    </fb:control>
-                                </fb:FilterGroupItem>
-                            </fb:filterGroupItems>
-                        </fb:FilterBar>
+                        
                         <ToolbarSpacer />
                         <ToolbarSeparator />
                         <Button
