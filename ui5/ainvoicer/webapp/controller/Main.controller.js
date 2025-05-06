@@ -12,7 +12,7 @@ sap.ui.define([
     "sap/m/Link",
     "sap/m/BusyDialog",
     'sap/ui/model/Filter',
-	'sap/ui/model/FilterOperator',
+    'sap/ui/model/FilterOperator',
 ], (Controller, JSONModel, MessageBox, MessageToast, Fragment, DateFormat, BusyIndicator, CustomListItem, VBox, Text, Link, BusyDialog, Filter, FilterOperator) => {
     "use strict";
 
@@ -49,30 +49,30 @@ sap.ui.define([
         },
 
         onSearch: function () {
-			var aTableFilters = this.oFilterBar.getFilterGroupItems().reduce(function (aResult, oFilterGroupItem) {
-				var oControl = oFilterGroupItem.getControl(),
-					aSelectedKeys = oControl.getSelectedKeys(),
-					aFilters = aSelectedKeys.map(function (sSelectedKey) {
-						return new Filter({
-							path: oFilterGroupItem.getName(),
-							operator: FilterOperator.Contains,
-							value1: sSelectedKey
-						});
-					});
+            var aTableFilters = this.oFilterBar.getFilterGroupItems().reduce(function (aResult, oFilterGroupItem) {
+                var oControl = oFilterGroupItem.getControl(),
+                    aSelectedKeys = oControl.getSelectedKeys(),
+                    aFilters = aSelectedKeys.map(function (sSelectedKey) {
+                        return new Filter({
+                            path: oFilterGroupItem.getName(),
+                            operator: FilterOperator.Contains,
+                            value1: sSelectedKey
+                        });
+                    });
 
-				if (aSelectedKeys.length > 0) {
-					aResult.push(new Filter({
-						filters: aFilters,
-						and: false
-					}));
-				}
+                if (aSelectedKeys.length > 0) {
+                    aResult.push(new Filter({
+                        filters: aFilters,
+                        and: false
+                    }));
+                }
 
-				return aResult;
-			}, []);
+                return aResult;
+            }, []);
 
-			this.oTable.getBinding("items").filter(aTableFilters);
-			this.oTable.setShowOverlay(false);
-		},
+            this.oTable.getBinding("rows").filter(aTableFilters);
+            this.oTable.setShowOverlay(false);
+        },
 
 
         // Obsługa zmiany kontekstu
@@ -94,7 +94,6 @@ sap.ui.define([
             }
 
             var oHistoryModel = this.getView().getModel("history");
-            var oSearchModel = this.getView().getModel("search");
             var sCurrentContext = oHistoryModel.getProperty("/currentContext");
 
             // Zapisanie zapytania w historii
@@ -116,15 +115,17 @@ sap.ui.define([
                 title: "Processing",
                 text: "Analyzing your request..."
             });
-            oBusyDialog.open();
+            this.oBusyDialog = oBusyDialog;
+            this.oBusyDialog.open();
 
             // Symulacja wywołania API LLM
-            setTimeout(function () {
-                this._processAiQuery(sQuery, sCurrentContext, 0);
-                oBusyDialog.close();
-                oBusyDialog.destroy();
-            }.bind(this), 1000);
+            // setTimeout(function () {
+            //     this._processAiQuery(sQuery, sCurrentContext, 0);
+            //     oBusyDialog.close();
+            //     oBusyDialog.destroy();
+            // }.bind(this), 1000);
 
+            this._processAiQuery(sQuery, sCurrentContext, 0);
             // Jeśli historia nie jest widoczna, pokazujemy ją
             this.byId("aiCommandHistory").setVisible(true);
 
@@ -134,60 +135,185 @@ sap.ui.define([
 
         // Symulacja przetwarzania zapytania przez LLM
         _processAiQuery: function (sQuery, sContext, iIndex) {
+            var that = this;
             var oHistoryModel = this.getView().getModel("history");
             var aConversations = oHistoryModel.getProperty("/conversations");
-            var sGeneratedSQL = "";
-            var sResponse = "";
+            var oQuery = {
+                queryText: sQuery
+            };
 
-            // Symulacja różnych odpowiedzi w zależności od kontekstu
-            if (sContext === "search") {
-                if (sQuery.toLowerCase().includes("ponad 5000") ||
-                    sQuery.toLowerCase().includes("przekracza 5000") ||
-                    sQuery.toLowerCase().includes("over 5000")) {
-                    sGeneratedSQL = "SELECT * FROM ZC_FI_ACDOCA WHERE Amount > 5000";
-                    sResponse = "Znaleziono dokumenty, których kwota przekracza 5000 zł. Zastosowano filtr do tabeli.";
+            // // Przwrócenie domyślnego modelu za każym razem
+            // this.oTable.setModel(this.getOwnerComponent().getModel());
 
-                    // Symulacja filtrowania tabeli
-                    this._applyTableFilter("Amount", 5000, "GT");
-                } else if (sQuery.toLowerCase().includes("2023")) {
-                    sGeneratedSQL = "SELECT * FROM ZC_FI_ACDOCA WHERE FiscalYear = '2023'";
-                    sResponse = "Wyświetlam dokumenty z roku fiskalnego 2023.";
+            return new Promise(function (resolve, reject) {
+                if (sContext === "search") {
+                    fetch("https://python-app-grouchy-platypus-jj.cfapps.us10-001.hana.ondemand.com/filter", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify(oQuery)
+                    })
+                        .then(res => res.json())
+                        .then(data => {
 
-                    // Symulacja filtrowania tabeli
-                    this._applyTableFilter("FiscalYear", "2023", "EQ");
-                } else {
-                    sGeneratedSQL = "/* Nie mogłem wygenerować SQL dla tego zapytania */";
-                    sResponse = "Przepraszam, nie udało mi się przetworzyć tego zapytania. Spróbuj inaczej sformułować polecenie.";
+                            const oODataModel = that.getOwnerComponent().getModel(); // lub inny sposób uzyskania modelu głównego
+                            that.oTable.setModel(oODataModel);
+                            that.oTable.bindRows({ path: "/ZC_FI_ACDOCA" });
+
+                            // Limit – przycinamy dane na modelu view, jeśli trzeba
+                            if (data.limit) {
+                                if (data.limit && Number.isInteger(data.limit)) {
+                                    const oBinding = that.oTable.getBinding("rows");
+                                    if (!oBinding) {
+                                        MessageToast.show("Brak danych w tabeli.");
+                                        return;
+                                    }
+
+                                    // Nasłuchuj na zakończenie ładowania danych
+                                    oBinding.attachEventOnce("dataReceived", function () {
+                                        const aContexts = oBinding.getContexts(0, oBinding.getLength());
+                                        const aFullData = aContexts.map(oCtx => oCtx.getObject());
+
+                                        // Limit
+                                        const iLimit = data.limit || 10;
+                                        const aLimitedData = aFullData.slice(0, iLimit);
+
+                                        // Tymczasowy model
+                                        const oTempModel = new sap.ui.model.json.JSONModel({ ZC_FI_ACDOCA: aLimitedData });
+                                        that.oTable.setModel(oTempModel);
+                                        that.oTable.bindRows("/ZC_FI_ACDOCA");
+
+                                    });
+                                }
+
+                            }
+
+                            // Filtrowanie
+                            if (data.filters) {
+                                const aFilters = data.filters.map(f => {
+                                    if (f.operator === "BT") {
+                                        return new sap.ui.model.Filter(f.path, sap.ui.model.FilterOperator.BT, f.value1, f.value2);
+                                    } else {
+                                        return new sap.ui.model.Filter(f.path, sap.ui.model.FilterOperator[f.operator], f.value1);
+                                    }
+                                });
+
+                                // Domyślnie przypisanie waluty jeśli user jej nie poda / model jej nie zwróci
+                                if (data.filters.some(f => f.path === "AmountDocument") && !data.filters.some(f => f.path === "CurrencyCode")) {
+                                    aFilters.push(new sap.ui.model.Filter("CurrencyCode", sap.ui.model.FilterOperator.EQ, "PLN"));
+                                }
+
+                                that.oTable.getBinding("rows").filter(aFilters);
+
+                            }
+
+
+                            // Sortowanie
+                            if (data.sortBy) {
+                                const oSorter = new sap.ui.model.Sorter(
+                                    data.sortBy.path,
+                                    data.sortBy.descending // true = malejąco
+                                );
+                                that.oTable.getBinding("rows").sort(oSorter);
+                            }
+
+                            // wszystko co zależy od odpowiedzi
+                            aConversations[iIndex].response = data.description;
+                            aConversations[iIndex].filters = data.filters;
+                            aConversations[iIndex].oConversationData = data;
+                            aConversations[iIndex].isProcessed = true;
+                            oHistoryModel.setProperty("/conversations", aConversations);
+                            that._updateHistoryList();
+                            resolve(data); // na końcu
+                            that.oBusyDialog.close();
+                        })
                 }
-            } else if (sContext === "analyze") {
-                sResponse = "Przeprowadziłem analizę danych. Oto wyniki...";
-                sGeneratedSQL = "SELECT AVG(Amount) FROM ZC_FI_ACDOCA GROUP BY CompanyCode";
-            } else {
-                sResponse = "Jak mogę pomóc w kwestii dotyczącej faktur?";
-            }
-
-            // Aktualizacja historii o odpowiedź
-            aConversations[iIndex].response = sResponse;
-            aConversations[iIndex].sql = sGeneratedSQL;
-            aConversations[iIndex].isProcessed = true;
-
-            oHistoryModel.setProperty("/conversations", aConversations);
-
-            // Aktualizacja listy historii
-            this._updateHistoryList();
+                else {
+                    sResponse = "Konktekst jeszcze nie obsługiwany."
+                }
+            }).catch(function (error) {
+                // reject(error);
+            });
         },
 
-        // Symulacja filtrowania tabeli
-        _applyTableFilter: function (sField, vValue, sOperator) {
-            var oSearchModel = this.getView().getModel("search");
+        /**
+        * Generates a user-friendly summary of applied filters, sorting, and row limit.
+        * @param {object} data - The query data object containing filters, sortBy, and limit.
+        * @returns {string} A formatted string summarizing the query for display purposes.
+        */
+        _formatQuerySummary(data) {
+            var that = this;
+            const summary = [];
+            let count = 1;
+        
+            // Filters
+            if (Array.isArray(data.filters)) {
+                data.filters.forEach(filter => {
+                    const field = that._getFieldLabel(filter.path);
+                    const operator = that._getOperatorText(filter.operator);
+                    const value = filter.operator === "BT" ? `${filter.value1} and ${filter.value2}` : filter.value1;
+                    summary.push(`${count++}. Filter: ${field} ${operator} ${value}`);
+                });
+            }
+        
+            // Sort
+            if (data.sortBy && data.sortBy.path) {
+                const field = that._getFieldLabel(data.sortBy.path);
+                const order = data.sortBy.descending ? "descending" : "ascending";
+                summary.push(`${count++}. Sort: by ${field} in ${order} order`);
+            }
+        
+            // Limit
+            if (Number.isInteger(data.limit)) {
+                summary.push(`${count++}. Limit: showing maximum ${data.limit} record${data.limit === 1 ? "" : "s"}`);
+            }
+        
+            return summary.join("\n");
+        },
 
-            // Tutaj byłaby rzeczywista logika filtrowania tabeli
-            // Na potrzeby demonstracji tylko aktualizujemy model
+        /**
+        * Maps a technical filter path to a human-readable label.
+        * Example: "DocumentNo" → "Document Number"
+        * @param {string} path - Technical path name from the filter
+        * @returns {string} - User-friendly field label
+        */
+       _getFieldLabel(path) {
+            const labelMap = {
+                DocumentNo: "Document Number",
+                PostingDate: "Posting Date",
+                CompanyCode: "Company Code",
+                AmountDocument: "Amount",
+                CurrencyCode: "Currency",
+                Vendor: "Vendor",
+                Customer: "Customer",
+                Account: "G/L Account",
+                FiscalYear: "Fiscal Year"
+                // Add more if needed
+            };
 
-            oSearchModel.setProperty("/lastQuery", sField + " " + sOperator + " " + vValue);
-            oSearchModel.setProperty("/isFiltered", true);
+            return labelMap[path] || path;
+        },
 
-            MessageToast.show("Filtrowanie tabeli: " + sField + " " + sOperator + " " + vValue);
+        /**
+        * Converts a technical filter operator (e.g. "EQ", "BT") to a descriptive English phrase.
+        * @param {string} operator - The OData filter operator.
+        * @returns {string} A readable phrase describing the operation.
+        */
+        _getOperatorText(operator) {
+            const operatorMap = {
+                "EQ": "equals",
+                "NE": "does not equal",
+                "GT": "is greater than",
+                "GE": "is greater than or equal to",
+                "LT": "is less than",
+                "LE": "is less than or equal to",
+                "BT": "is between",
+                "Contains": "contains",
+                "StartsWith": "starts with",
+                "EndsWith": "ends with"
+            };
+            return operatorMap[operator] || operator;
         },
 
         // Aktualizacja listy historii
@@ -218,8 +344,8 @@ sap.ui.define([
                                 }).addStyleClass("sapUiTinyMarginBottom sapMTextMaxWidth"),
 
                                 new Link({
-                                    text: "Zobacz SQL",
-                                    press: this.onShowSqlDialog.bind(this, index),
+                                    text: "View filters",
+                                    press: this.onShowFiltersDialog.bind(this, index),
                                     visible: oConv.isProcessed // && oConv.sql
                                 })
                             ]
@@ -246,7 +372,7 @@ sap.ui.define([
 
                                 new Link({
                                     text: "Zobacz SQL",
-                                    press: this.onShowSqlDialog.bind(this, index),
+                                    press: this.onShowFiltersDialog.bind(this, index),
                                     visible: oConv.isProcessed //&& oConv.sql
                                 })
                             ]
@@ -278,14 +404,15 @@ sap.ui.define([
             oDialog.close();
         },
 
-        // Pokazanie dialogu z SQL
-        onShowSqlDialog: function (iIndex) {
+        // Show filters dialog
+        onShowFiltersDialog: function (iIndex) {
             var oHistoryModel = this.getView().getModel("history");
             var aConversations = oHistoryModel.getProperty("/conversations");
-            var sSql = aConversations[iIndex].sql;
+            var oConversationData = aConversations[iIndex].oConversationData;
+            var sMessage = this._formatQuerySummary(oConversationData);
 
-            MessageBox.information(sSql, {
-                title: "Wygenerowane zapytanie SQL"
+            MessageBox.information(sMessage, {
+                title: "Generated conditionals"
             });
         },
 
@@ -961,22 +1088,5 @@ sap.ui.define([
 
             return new Blob(byteArrays, { type: mimeType });
         },
-
-        // onPressAddButton(oEvent) {
-        //     this.byId("fileInput").getDomRef().click();
-        //     // fetch("https://python-app-grouchy-platypus-jj.cfapps.us10-001.hana.ondemand.com/predict", {
-        //     //     method: "POST",
-        //     //     headers: {
-        //     //       "Content-Type": "application/json"
-        //     //     },
-        //     //     body: JSON.stringify({
-        //     //       amount: 1000,
-        //     //       currency: "PLN"
-        //     //     })
-        //     //   })
-        //     //   .then(res => res.json())
-        //     //   .then(data => console.log(data));
-
-        // },
     });
 })
