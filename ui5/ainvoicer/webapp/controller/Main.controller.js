@@ -87,8 +87,7 @@ sap.ui.define([
         },
 
         // Wykonywanie poleceń AI
-        onAiCommandExecute: function (oEvent) {
-            var sQuery = oEvent.getParameter("query");
+        onAiCommandExecute: function (sQuery) {
             if (!sQuery) {
                 return;
             }
@@ -117,13 +116,6 @@ sap.ui.define([
             });
             this.oBusyDialog = oBusyDialog;
             this.oBusyDialog.open();
-
-            // Symulacja wywołania API LLM
-            // setTimeout(function () {
-            //     this._processAiQuery(sQuery, sCurrentContext, 0);
-            //     oBusyDialog.close();
-            //     oBusyDialog.destroy();
-            // }.bind(this), 1000);
 
             this._processAiQuery(sQuery, sCurrentContext, 0);
             // Jeśli historia nie jest widoczna, pokazujemy ją
@@ -172,6 +164,9 @@ sap.ui.define([
 
                                     // Nasłuchuj na zakończenie ładowania danych
                                     oBinding.attachEventOnce("dataReceived", function () {
+                                        // Odpinamy stare bindowanie przed ustawieniem nowego modelu
+                                        // that.oTable.unbindRows();
+
                                         const aContexts = oBinding.getContexts(0, oBinding.getLength());
                                         const aFullData = aContexts.map(oCtx => oCtx.getObject());
 
@@ -183,6 +178,7 @@ sap.ui.define([
                                         const oTempModel = new sap.ui.model.json.JSONModel({ ZC_FI_ACDOCA: aLimitedData });
                                         that.oTable.setModel(oTempModel);
                                         that.oTable.bindRows("/ZC_FI_ACDOCA");
+
 
                                     });
                                 }
@@ -225,6 +221,8 @@ sap.ui.define([
                             aConversations[iIndex].isProcessed = true;
                             oHistoryModel.setProperty("/conversations", aConversations);
                             that._updateHistoryList();
+
+                            that.oTable.invalidate();
                             resolve(data); // na końcu
                             that.oBusyDialog.close();
                         })
@@ -246,7 +244,7 @@ sap.ui.define([
             var that = this;
             const summary = [];
             let count = 1;
-        
+
             // Filters
             if (Array.isArray(data.filters)) {
                 data.filters.forEach(filter => {
@@ -256,19 +254,19 @@ sap.ui.define([
                     summary.push(`${count++}. Filter: ${field} ${operator} ${value}`);
                 });
             }
-        
+
             // Sort
             if (data.sortBy && data.sortBy.path) {
                 const field = that._getFieldLabel(data.sortBy.path);
                 const order = data.sortBy.descending ? "descending" : "ascending";
                 summary.push(`${count++}. Sort: by ${field} in ${order} order`);
             }
-        
+
             // Limit
             if (Number.isInteger(data.limit)) {
                 summary.push(`${count++}. Limit: showing maximum ${data.limit} record${data.limit === 1 ? "" : "s"}`);
             }
-        
+
             return summary.join("\n");
         },
 
@@ -278,7 +276,7 @@ sap.ui.define([
         * @param {string} path - Technical path name from the filter
         * @returns {string} - User-friendly field label
         */
-       _getFieldLabel(path) {
+        _getFieldLabel(path) {
             const labelMap = {
                 DocumentNo: "Document Number",
                 PostingDate: "Posting Date",
@@ -412,13 +410,36 @@ sap.ui.define([
             var sMessage = this._formatQuerySummary(oConversationData);
 
             MessageBox.information(sMessage, {
-                title: "Generated conditionals"
+                title: "Generated condiions"
             });
         },
 
-        // Symulacja wejścia głosowego
         onVoiceInput: function () {
-            MessageToast.show("Funkcja wprowadzania głosowego nie jest jeszcze dostępna.");
+            // MessageToast.show("Funkcja wprowadzania głosowego nie jest jeszcze dostępna.");
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                MessageToast.show("Your browser does not support speech recognition.");
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.lang = "pl-PL"; // lub "en-US"
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.start();
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                sap.m.MessageToast.show("Rozpoznano: " + transcript);
+                this.byId("aiCommandInput").setValue(transcript);
+                this.onAiCommandExecute(transcript); // np. automatyczne wykonanie
+            };
+
+            recognition.onerror = (event) => {
+                MessageToast.show("Speech recognition error: " + event.error);
+            };
         },
 
 
