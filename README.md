@@ -46,7 +46,7 @@ This project showcases how to build and deploy a modular invoice processing syst
 | Backend      | ABAP RAP (ZFI_ACDOCA table, OData v4 service)             |
 | Frontend     | SAPUI5 (Freestyle)                                        |
 | AI Services  | Python (Flask), Node.js (Express), OpenAI SDK             |
-| Integration  | OData v4 (UI5 ↔ ABAP), REST (SAPUI5 ↔ AI services)         |
+| Integration  | OData v4 (SAPUI5 ↔ ABAP), REST (SAPUI5 ↔ AI services)         |
 | Hosting      | SAP BTP (ABAP Env + Cloud Foundry for AI)                 |
 | Database     | SAP HANA Cloud (optional layer for cache/AI training)     |
 
