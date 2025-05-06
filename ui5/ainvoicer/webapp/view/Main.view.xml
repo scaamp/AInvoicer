@@ -38,9 +38,17 @@
                     <ComboBox
                         id="contextSelector"
                         placeholder="Select Context"
-                        width="30%"
+                        width="100%"
                         change="onContextChange"
                     >
+                        <layoutData>
+                            <FlexItemData
+                                minWidth="25rem"
+                                maxWidth="30rem"
+                                growFactor="1"
+                                shrinkFactor="1"
+                            />
+                        </layoutData>
                         <items>
                             <core:Item
                                 key="search"
@@ -68,7 +76,17 @@
                             width="100%"
                             placeholder="Type your query in natural language (e.g., 'show invoices over 5000 zł')"
                             search="onAiCommandExecute"
-                        />
+                        >
+                            <layoutData>
+                                <FlexItemData
+                                    minWidth="25rem"
+                                    maxWidth="30rem"
+                                    growFactor="1"
+                                    shrinkFactor="1"
+                                />
+                            </layoutData>
+                        </SearchField>
+
                         <Button
                             icon="sap-icon://microphone"
                             tooltip="Voice Input"
@@ -133,7 +151,7 @@
                 visibleRowCount="10"
                 selectionMode="None"
                 width="100%"
-            >   
+            >
                 <table:columns>
                     <table:Column
                         sortProperty="CompanyCode"
