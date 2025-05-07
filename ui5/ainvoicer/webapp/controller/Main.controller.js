@@ -87,7 +87,8 @@ sap.ui.define([
         },
 
         // Wykonywanie poleceń AI
-        onAiCommandExecute: function (sQuery) {
+        onAiCommandExecute: function (oEvent) {
+            var sQuery = oEvent.getParameter("query");
             if (!sQuery) {
                 return;
             }
@@ -414,6 +415,31 @@ sap.ui.define([
             });
         },
 
+        onClear: function (oEvent) {
+            // this.oView.byId("CompanyCodeFilter").removeAllSelectedItems();
+            
+            // Przejdź po wszystkich filtrach w FilterBarze
+            this.oFilterBar.getFilterGroupItems().forEach(oGroupItem => {
+                var oControl = oGroupItem.getControl();
+
+                if (!oControl) return;
+
+                if (oControl.removeAllSelectedItems) {
+                    // np. MultiComboBox
+                    oControl.removeAllSelectedItems();
+                } else if (oControl.setValue) {
+                    // np. Input, DatePicker
+                    oControl.setValue("");
+                } else if (oControl.setSelectedKey) {
+                    // np. Select
+                    oControl.setSelectedKey("");
+                } else if (oControl.setSelected) {
+                    // np. CheckBox
+                    oControl.setSelected(false);
+                }
+            });
+        },
+
         onVoiceInput: function () {
             // MessageToast.show("Funkcja wprowadzania głosowego nie jest jeszcze dostępna.");
 
@@ -434,7 +460,7 @@ sap.ui.define([
                 const transcript = event.results[0][0].transcript;
                 sap.m.MessageToast.show("Rozpoznano: " + transcript);
                 this.byId("aiCommandInput").setValue(transcript);
-                this.onAiCommandExecute(transcript); // np. automatyczne wykonanie
+                // this.onAiCommandExecute(transcript); // np. automatyczne wykonanie
             };
 
             recognition.onerror = (event) => {
@@ -443,7 +469,7 @@ sap.ui.define([
         },
 
 
-        onAddButton() {
+        onAddInvoice() {
             var oView = this.getView();
 
             // Otwarcie dialogu
@@ -746,6 +772,13 @@ sap.ui.define([
                     oFileModel.setProperty("/status", "Błąd: " + error.message);
                     MessageBox.error("Wystąpił błąd podczas analizy faktury: " + error.message);
                 });
+        },
+
+        onAfterClear: function (oEvent) {
+            console.log("Przycisk Wyczyść został kliknięty");
+
+            // Reszta kodu czyszczenia
+            // ...
         },
 
         /**

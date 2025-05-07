@@ -112,46 +112,114 @@
                 </FlexBox>
             </Panel>
 
-            <fb:FilterBar
-                id="filterbar"
-                persistencyKey="myPersKey"
-                useToolbar="false"
-                search=".onSearch"
-                filterChange=".onFilterChange"
-                afterVariantLoad=".onAfterVariantLoad"
+            <Panel
+                id="filterPanel"
+                headerText="Filters"
+                expandable="true"
+                expanded="false"
+                expandAnimation="true"
             >
-                <fb:filterGroupItems>
-                    <fb:FilterGroupItem
-                        name="CompanyCode"
-                        label="Company Code"
-                        groupName="Group1"
-                        visibleInFilterBar="true"
-                    >
-                        <fb:control>
-                            <MultiComboBox
-                                name="CompanyCode"
-                                selectionChange=".onSelectionChange"
-                                items="{
+                <fb:FilterBar
+                    id="filterbar"
+                    persistencyKey="myPersKey"
+                    useToolbar="false"
+                    search=".onSearch"
+                    filterChange=".onFilterChange"
+                    afterVariantLoad=".onAfterVariantLoad"
+                    clear="onClear"
+                    showClearOnFB="true"
+                >
+                    <fb:filterGroupItems>
+                        <fb:FilterGroupItem
+                            name="CompanyCode"
+                            label="Company Code"
+                            groupName="Group1"
+                            visibleInFilterBar="true"
+                        >
+                            <fb:control>
+                                <MultiComboBox
+                                    id="CompanyCodeFilter"
+                                    name="CompanyCode"
+                                    selectionChange=".onSelectionChange"
+                                    items="{
 												path: '/ZC_FI_ACDOCA',
 												templateShareable: true
 											}"
-                            >
-                                <core:Item
-                                    key="{CompanyCode}"
-                                    text="{CompanyCode}"
-                                />
-                            </MultiComboBox>
-                        </fb:control>
-                    </fb:FilterGroupItem>
-                </fb:filterGroupItems>
-            </fb:FilterBar>
+                                >
+                                    <core:Item
+                                        key="{CompanyCode}"
+                                        text="{CompanyCode}"
+                                    />
+                                </MultiComboBox>
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                        <fb:FilterGroupItem
+                            name="FiscalYear"
+                            label="Fiscal Year"
+                            groupName="Group1"
+                            visibleInFilterBar="true"
+                        >
+                            <fb:control>
+                                <MultiComboBox
+                                    id="FiscalYearFilter"
+                                    name="FiscalYear"
+                                    selectionChange=".onSelectionChange"
+                                    items="{
+												path: '/ZC_FI_ACDOCA',
+												templateShareable: true
+											}"
+                                >
+                                    <core:Item
+                                        key="{FiscalYear}"
+                                        text="{FiscalYear}"
+                                    />
+                                </MultiComboBox>
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                    </fb:filterGroupItems>
+                </fb:FilterBar>
+            </Panel>
+
+            <!-- <FlexBox direction="Column" height="100%" fitContainer="true"> -->
             <table:Table
                 id="invoiceTable"
-                rows="{path: '/ZC_FI_ACDOCA'}"
-                visibleRowCount="10"
+                rows="{
+					path: '/ZC_FI_ACDOCA',
+					parameters: {operationMode: 'Server'}
+				}"
                 selectionMode="None"
                 width="100%"
+                threshold="15"
+                scrollThreshold="50"
+                enableBusyIndicator="true"
+                visibleRowCount="20"
             >
+                <table:toolbar>
+                    <Toolbar>
+                        <ToolbarSpacer />
+                        <Button
+                            text="Add"
+                            icon="sap-icon://add"
+                            type="Emphasized"
+                            press="onAddInvoice"
+                        />
+                        <Button
+                            text="Delete"
+                            icon="sap-icon://delete"
+                            type="Transparent"
+                            press="onDeleteInvoice"
+                        />
+                        <Button
+                            text="Copy"
+                            icon="sap-icon://copy"
+                            type="Transparent"
+                            press="onCopyInvoice"
+                        />
+                    </Toolbar>
+                </table:toolbar>
+                <!-- <table:noData>
+                    <BusyIndicator class="sapUiMediumMargin" />
+                </table:noData> -->
                 <table:columns>
                     <table:Column
                         sortProperty="CompanyCode"
@@ -419,6 +487,7 @@
                     </table:Column>
                 </table:columns>
             </table:Table>
+            <!-- </FlexBox> -->
         </content>
 
         <!-- Dialog do wyświetlania szczegółowej konwersacji -->
