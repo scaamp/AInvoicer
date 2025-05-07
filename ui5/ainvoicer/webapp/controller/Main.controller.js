@@ -417,7 +417,7 @@ sap.ui.define([
 
         onClear: function (oEvent) {
             // this.oView.byId("CompanyCodeFilter").removeAllSelectedItems();
-            
+
             // Przejdź po wszystkich filtrach w FilterBarze
             this.oFilterBar.getFilterGroupItems().forEach(oGroupItem => {
                 var oControl = oGroupItem.getControl();
@@ -743,21 +743,23 @@ sap.ui.define([
             this._readFile(oFile)
                 .then(function (fileData) {
                     oFileModel.setProperty("/status", "Plik wczytany, przygotowanie do wysłania...");
-                    // return that._sendToNodeJs(fileData, oFile.type);
+                    return that._sendToNodeJs(fileData, oFile.type);
                     // return that._sendToOpenAI(fileData, oFile.type);
                 })
                 .then(function (response) {
                     // var rawContent = response.choices[0].message.content;
 
                     // Usuń otoczkę ```json i ``` z początku i końca
-                    // var cleaned = response.replace(/^```json\s*/, "").replace(/```$/, "");
+                    var cleaned = response.replace(/^```json\s*/, "").replace(/```$/, "");
                     try {
-                        // oParsed = JSON.parse(cleaned);
+                        oParsed = JSON.parse(cleaned);
 
                         // (1) Poprawka na polskie przecinki w liczbach
-                        // oParsed.amount_document = oParsed.amount_document.replace(",", ".");
-                        // oParsed.amount_local = oParsed.amount_local.replace(",", ".");
-                        oParsed = that._getSimulatedAIResponse();
+                        oParsed.AmountDocument = oParsed.AmountDocument.replace(",", ".");
+                        oParsed.AmountLocal = oParsed.AmountLocal.replace(",", ".");
+
+
+                        // oParsed = that._getSimulatedAIResponse();
                         if (oParsed) that._fillFormWithAIData(oParsed);
                     }
                     catch (err) {
@@ -857,40 +859,40 @@ sap.ui.define([
                 oDialogJSONModel.setProperty("/AmountDocument", oParsed.AmountDocument || "0.00");
                 oDialogJSONModel.setProperty("/AmountLocal", oParsed.AmountLocal || "0.00");
 
-                // if (oParsed.PostingDate) {
-                //     try {
-                //         var oPostingDate = oDateFormat.parse(oParsed.PostingDate);
-                //         oDialogJSONModel.setProperty("/PostingDate", oPostingDate);
-                //     } catch (e) {}
-                // }
+                if (oParsed.PostingDate) {
+                    try {
+                        var oPostingDate = oDateFormat.parse(oParsed.PostingDate);
+                        oDialogJSONModel.setProperty("/PostingDate", oPostingDate);
+                    } catch (e) { }
+                }
 
-                // if (oParsed.DocumentDate) {
-                //     try {
-                //         var oDocumentDate = oDateFormat.parse(oParsed.DocumentDate);
-                //         oDialogJSONModel.setProperty("/DocumentDate", oDocumentDate);
-                //     } catch (e) {}
-                // }
+                if (oParsed.DocumentDate) {
+                    try {
+                        var oDocumentDate = oDateFormat.parse(oParsed.DocumentDate);
+                        oDialogJSONModel.setProperty("/DocumentDate", oDocumentDate);
+                    } catch (e) { }
+                }
 
-                // if (oParsed.EntryDate) {
-                //     try {
-                //         var oEntryDate = oDateFormat.parse(oParsed.EntryDate);
-                //         oDialogJSONModel.setProperty("/EntryDate", oEntryDate);
-                //     } catch (e) {}
-                // }
+                if (oParsed.EntryDate) {
+                    try {
+                        var oEntryDate = oDateFormat.parse(oParsed.EntryDate);
+                        oDialogJSONModel.setProperty("/EntryDate", oEntryDate);
+                    } catch (e) { }
+                }
 
-                // if (oParsed.DueDate) {
-                //     try {
-                //         var oDueDate = oDateFormat.parse(oParsed.DueDate);
-                //         oDialogJSONModel.setProperty("/DueDate", oDueDate);
-                //     } catch (e) {}
-                // }
+                if (oParsed.DueDate) {
+                    try {
+                        var oDueDate = oDateFormat.parse(oParsed.DueDate);
+                        oDialogJSONModel.setProperty("/DueDate", oDueDate);
+                    } catch (e) { }
+                }
 
-                // if (oParsed.ClearingDate) {
-                //     try {
-                //         var oClearingDate = oDateFormat.parse(oParsed.ClearingDate);
-                //         oDialogJSONModel.setProperty("/ClearingDate", oClearingDate);
-                //     } catch (e) {}
-                // }
+                if (oParsed.ClearingDate) {
+                    try {
+                        var oClearingDate = oDateFormat.parse(oParsed.ClearingDate);
+                        oDialogJSONModel.setProperty("/ClearingDate", oClearingDate);
+                    } catch (e) { }
+                }
 
                 oDialogJSONModel.setProperty("/DocumentType", oParsed.DocumentType || "");
                 oDialogJSONModel.setProperty("/Reference", oParsed.Reference || "");
@@ -908,6 +910,19 @@ sap.ui.define([
             }
 
             this.oView.byId("addInvoiceDialog").setModel(oDialogJSONModel);
+            // oDialogJSONModel.refresh(true);
+
+            // 4. Ważne - upewnij się, że formularz też ma dostęp do modelu
+            var oForm = this.oView.byId("invoiceForm");
+            if (oForm) {
+                oForm.setModel(oDialogJSONModel);
+            }
+
+            // 5. Odśwież model i wymuszenie aktualizacji UI
+            oDialogJSONModel.refresh(true);
+
+            // 6. Sprawdź czy kontrolki są prawidłowo powiązane z modelem
+            console.log("Model został ustawiony:", oDialogJSONModel.getData());
         },
 
         _readFile: function (file) {
