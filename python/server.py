@@ -7,7 +7,11 @@ from hdbcli import dbapi
 import os
 from openai import OpenAI
 import json
+import time
+from langfuse_service import LangfuseService
 
+# Initialize LangfuseService
+langfuse_service = LangfuseService()
 
 app = Flask(__name__)
 CORS(app)
@@ -57,34 +61,58 @@ def filter_data():
 
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-        # Rozszerzone instrukcje dla modelu AI
+        # Create trace and span
+        trace = langfuse_service.create_trace(
+            id=str(time.time()),  # Using timestamp as ID
+            name="InvoiceFilterPrompt",
+            session_id="user123"
+        )
+        
+        # Create span for the LLM call
+        span = langfuse_service.create_span(
+            trace=trace,
+            name="LLM call",
+            input=query
+        )
+
+        # Prepare messages for the API call
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": f"Użytkownik wpisał: \"{query}\""}
+        ]
+
+        # Make the API call
         response = client.chat.completions.create(
             model="gpt-4o",
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": f"Użytkownik wpisał: \"{query}\""}
-            ],
+            messages=messages,
             temperature=0.3
+        )
+
+        # Finalize span with all the details
+        langfuse_service.finalize_span(
+            span=span,
+            name="LLM call",
+            input=messages,
+            output=response
         )
 
         result_text = response.choices[0].message.content.strip()
 
-        # Usuń znaczniki ```json i ```
+        # Remove JSON markers
         if result_text.startswith("```json"):
-            result_text = result_text[7:]  # usuwa ```json\n
+            result_text = result_text[7:]
         if result_text.endswith("```"):
-            result_text = result_text[:-3]  # usuwa \n```
+            result_text = result_text[:-3]
 
-        # Przekształć tekst do słownika
         try:
             result_json = json.loads(result_text)
             
-            # Sprawdź, czy wynik zawiera specjalne instrukcje sortowania
             if "sortBy" in result_json:
-                # Dodaj informację dla frontendu, że wymagane jest sortowanie
                 print(f"✅ Wykryto żądanie sortowania: {result_json['sortBy']}")
             
+            # Return only the business logic response without metrics
             return jsonify(result_json)
+            
         except json.JSONDecodeError as e:
             print("❌ Błąd dekodowania JSON:", e)
             print("📦 Treść:", result_text)
