@@ -1,79 +1,172 @@
+
 # 🧠 AInvoicer
 
-**AInvoicer** is a fullstack SAP-based invoice processing application that combines traditional finance logic with advanced AI capabilities. It serves as a comprehensive demo project for integrating ABAP RAP, SAPUI5, OData v4, and AI microservices within SAP BTP Cloud Foundry.
+**AInvoicer** is a fullstack SAP-based invoice processing application that merges traditional finance logic with modern AI capabilities. This demo project showcases the integration of ABAP RAP, SAPUI5, OData v4, and AI microservices deployed in SAP BTP Cloud Foundry.
 
 ---
 
 ## 💡 Overview
 
-This project showcases how to build and deploy a modular invoice processing system that:
+The application enables:
 
-- Connects frontend (SAPUI5) with backend (ABAP RAP + OData v4)
-- Processes and analyzes financial documents from `ZFI_ACDOCA`
-- Supports AI-based PDF invoice scanning (OCR) and prediction
-- Enables smart filtering using natural language queries (NLP)
-- Deploys AI services (Python + Node.js) to SAP BTP Cloud Foundry
+- Connecting SAPUI5 frontend with ABAP RAP and OData v4 backend
+- Processing financial data from the `ZFI_ACDOCA` model
+- Scanning and analyzing invoices with AI (OCR + NLP)
+- Smart filtering using natural language queries
+- Tracking AI queries and prompts with Langfuse
 
 ---
 
 ## 🚀 Key Features
 
-- 🔍 **Natural Language Table Filtering**  
-  Use AI (Python + OpenAI API SDK) to translate user input into technical OData filters. Example: "Show documents over 5000 EUR from 2024".
+- 🔍 **Natural Language Filtering (Langfuse-tracked)**  
+  Using OpenAI and Langfuse, user queries in natural language are translated into OData filters. Example: “Show documents over 5000 EUR from 2024”.
 
-- 📄 **AI-Powered Invoice Scanning**  
-  Upload invoice PDFs and use OpenAI API (Node.js) to extract structured data like amounts, dates, and accounts.
+- 📄 **OCR Invoice Scanner**  
+  Node.js microservice + OpenAI analyzes uploaded invoices (PDF/JPG/PNG) and extracts structured data matching the `ZFI_ACDOCA` table.
 
-- 📊 **Dynamic Table UI (sap.ui.table)**  
-  SAPUI5 Table with:  
+- 📊 **Dynamic Table (sap.ui.table)**  
+  With features such as:  
   → OData v4 binding  
-  → Sort, filter, paginate  
-  → Dynamic row limiting via model slicing  
-  → Highlight active filters in human-readable format
+  → Sorting, filtering, pagination  
+  → `limit` support using temporary JSON models  
+  → Human-readable filter descriptions
 
-- 🤖 **Value fields predictions with OpenAI**  
-  Run inference logic to estimate invoice fields based on past data.
+- 🤖 **Field Value Prediction**  
+  Python microservice + OpenAI predicts invoice fields based on historical data.
 
-- 📦 **Fullstack Integration**  
-  ABAP RAP → OData v4 → SAPUI5 ↔ Python/Node microservices over HTTP.
+- 🧠 **Langfuse Observability**  
+  Each AI interaction (prompt, response, model, tokens) is tracked with Langfuse:  
+  → `trace` for the user query  
+  → `span` for each prompt run  
+  → full communication log with metadata (model, tokens, temperature)
 
 ---
 
 ## 🛠️ Technologies Used
 
-| Layer        | Stack                                                     |
-|--------------|-----------------------------------------------------------|
-| Backend      | ABAP RAP (ZFI_ACDOCA table, OData v4 service)             |
-| Frontend     | SAPUI5 (Freestyle)                                        |
-| AI Services  | Python (Flask), Node.js (Express), OpenAI SDK             |
-| Integration  | OData v4 (SAPUI5 ↔ ABAP), REST (SAPUI5 ↔ AI services)         |
-| Hosting      | SAP BTP (ABAP Env + Cloud Foundry for AI)                 |
-| Database     | SAP HANA Cloud (optional layer for cache/AI training)     |
+| Layer         | Technology                                                    |
+|---------------|---------------------------------------------------------------|
+| Backend       | ABAP RAP (`ZFI_ACDOCA` table, OData v4 service)               |
+| Frontend      | SAPUI5 (Freestyle, sap.ui.table, mdc.FilterBar)               |
+| AI Services   | Python (Flask), Node.js (Express), OpenAI SDK                 |
+| Integration   | OData v4 (SAPUI5 ↔ ABAP), REST (SAPUI5 ↔ AI)                  |
+| AI Monitoring | Langfuse (tracking prompts, results, tokens, models)          |
+| Hosting       | SAP BTP (ABAP Env + Cloud Foundry for AI microservices)       |
+| Database      | SAP HANA Cloud (optional – cache or AI training layer)        |
 
 ---
 
 ## 📚 Additional Topics Covered
 
-- 🧾 **Custom ACDOCA-based Model** (`ZFI_ACDOCA`) for invoice simulations
-- 🧠 **Prompt engineering** for accurate NLP-to-filter conversion
-- 🧮 **Model slicing** in UI5 to simulate `$top` behavior
-- 🗃️ **Temporary JSON models** for row limiting in UI5
-- 🧪 **Postman testing** for endpoint validation
-- 🌐 **Cross-technology orchestration** on SAP BTP
-- 📜 **Audit trail of queries and AI interactions** in conversational UI
+- 🧾 Custom ACDOCA-based model (`ZFI_ACDOCA`) for invoice simulation
+- 🧠 Prompt engineering with predefined rules and examples
+- 🧮 `$top` simulation in UI5 via model slicing
+- 🧪 Postman endpoint testing
+- 🌐 Cross-tech orchestration of SAP ↔ AI workflows
+- 📜 Conversational AI interaction history in the UI
 
 ---
 
 ## 📦 Deployment
 
-- Python and Node.js AI microservices deployed to SAP BTP Cloud Foundry
-- ABAP logic runs on SAP BTP ABAP Environment
-- Frontend (SAPUI5) deployed via BSP application or standalone UI5 app
+- AI microservices (Python & Node.js) deployed on SAP BTP Cloud Foundry
+- ABAP backend logic (RAP + OData v4) runs on SAP BTP ABAP Environment
+- SAPUI5 frontend as a BSP app or standalone deployment
 
 ---
 
-## 🧠 Future Enhancements
+## 📈 Future Enhancements
 
-- 🔐 Authorization and business roles (e.g. finance analyst, manager)
-- 📈 Trend analysis with charts (VizFrame integration)
-- 🔄 Training custom AI model based on historical invoice data
+- 🔐 Authorization and role-based access (e.g., finance analyst, manager)
+- 📊 Charts and visualizations (VizFrame integration)
+- 🧠 Custom AI model training using historical invoice data
+- 📉 Prompt quality metrics and dashboards in Langfuse
+
+
+---
+
+
+# 🧠 AInvoicer
+
+**AInvoicer** to pełnostackowa aplikacja SAP do przetwarzania faktur, łącząca klasyczną logikę finansową z nowoczesnymi możliwościami sztucznej inteligencji. Projekt demonstracyjny pokazuje integrację technologii takich jak ABAP RAP, SAPUI5, OData v4 oraz mikrousług AI na platformie SAP BTP Cloud Foundry.
+
+---
+
+## 💡 Overview
+
+Aplikacja umożliwia:
+
+- Łączenie SAPUI5 z ABAP RAP i OData v4
+- Przetwarzanie danych finansowych z modelu `ZFI_ACDOCA`
+- Skanowanie i analizę faktur z użyciem AI (OCR + NLP)
+- Inteligentne filtrowanie danych z użyciem języka naturalnego
+- Monitorowanie zapytań i promptów z wykorzystaniem Langfuse
+
+---
+
+## 🚀 Key Features
+
+- 🔍 **Natural Language Filtering (Langfuse-tracked)**  
+  Dzięki OpenAI i Langfuse, zapytania użytkownika w języku naturalnym są przekształcane w filtry OData. Przykład: „Pokaż dokumenty powyżej 5000 EUR z 2024”.
+
+- 📄 **OCR Invoice Scanner**  
+  Mikrousługa Node.js + OpenAI analizuje przesłane faktury (PDF/JPG/PNG) i wyodrębnia dane zgodne ze strukturą `ZFI_ACDOCA`.
+
+- 📊 **Dynamiczna Tabela (sap.ui.table)**  
+  Z funkcjami:  
+  → OData v4 binding  
+  → Sortowanie, filtrowanie, paginacja  
+  → Obsługa `limit` z wykorzystaniem modelu tymczasowego  
+  → Opis aktywnych filtrów w języku naturalnym
+
+- 🤖 **Predykcja wartości pól faktury**  
+  Mikrousługa Python + OpenAI przewiduje pola faktury na podstawie danych historycznych.
+
+- 🧠 **Langfuse Observability**  
+  Każda interakcja z AI (zapytanie, odpowiedź, model, tokeny) jest śledzona w Langfuse:  
+  → `trace` dla zapytania użytkownika  
+  → `span` dla konkretnego promptu  
+  → pełny zapis komunikacji + metadanych (model, tokeny, temperatura)
+
+---
+
+## 🛠️ Technologies Used
+
+| Warstwa       | Technologia                                                  |
+|---------------|--------------------------------------------------------------|
+| Backend       | ABAP RAP (tabela `ZFI_ACDOCA`, serwis OData v4)              |
+| Frontend      | SAPUI5 (Freestyle, sap.ui.table, mdc.FilterBar)              |
+| AI Services   | Python (Flask), Node.js (Express), OpenAI SDK                |
+| Integracja    | OData v4 (SAPUI5 ↔ ABAP), REST (SAPUI5 ↔ AI)                 |
+| Monitoring AI | Langfuse (śledzenie promptów, wyników, tokenów, modeli)      |
+| Hosting       | SAP BTP (ABAP Env + Cloud Foundry dla AI)                    |
+| Baza danych   | SAP HANA Cloud (opcjonalnie – cache lub baza uczenia AI)     |
+
+---
+
+## 📚 Additional Topics Covered
+
+- 🧾 Własny model danych ACDOCA (`ZFI_ACDOCA`) dla symulacji dokumentów
+- 🧠 Prompt engineering z predefiniowanymi regułami i przykładami
+- 🧮 Symulacja `$top` w UI5 przez model slicing
+- 🧪 Testowanie endpointów z Postmanem
+- 🌐 Orkiestracja SAP ↔ AI w wielu językach
+- 📜 Historia interakcji z AI dostępna z poziomu aplikacji
+
+---
+
+## 📦 Deployment
+
+- Mikrousługi AI (Python i Node.js) hostowane w SAP BTP Cloud Foundry
+- Backend ABAP (RAP + OData v4) w SAP BTP ABAP Environment
+- Frontend SAPUI5 jako aplikacja BSP lub standalone
+
+---
+
+## 📈 Future Enhancements
+
+- 🔐 Autoryzacja i role użytkowników (np. analityk finansowy, manager)
+- 📊 Integracja wykresów z VizFrame (trend, porównania)
+- 🧠 Trening własnego modelu AI na danych historycznych
+- 📉 Statystyki i metryki jakości promptów w Langfuse Dashboard
