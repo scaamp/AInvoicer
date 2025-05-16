@@ -472,6 +472,34 @@ sap.ui.define([
         onAddInvoice() {
             var oView = this.getView();
 
+            // Create a local JSON model first (for the dialog)
+            var oDialogModel = new JSONModel({
+                CompanyCode: "",
+                FiscalYear: "",
+                DocumentNo: "",
+                LineItem: "",
+                // PostingDate: null,
+                // DocumentDate: null,
+                // EntryDate: null,
+                DocumentType: "",
+                Reference: "",
+                DebitCredit: "D", // Default value
+                Account: "",
+                Vendor: "",
+                Customer: "",
+                CostCenter: "",
+                ProfitCenter: "",
+                Segment: "",
+                CurrencyCode: "",
+                AmountDocument: "0.00",
+                AmountLocal: "0.00",
+                PaymentTerms: "",
+                PaymentMethod: "",
+                // DueDate: null,
+                ClearingDoc: "",
+                // ClearingDate: null
+            });
+
             // Otwarcie dialogu
             if (!this._oAddDialog) {
                 Fragment.load({
@@ -481,12 +509,15 @@ sap.ui.define([
                 }).then(function (oDialog) {
                     this._oAddDialog = oDialog;
                     oView.addDependent(this._oAddDialog);
+                    this._oAddDialog.setModel(oDialogModel);
                     this._oAddDialog.open();
                 }.bind(this));
             } else {
                 this._oAddDialog.open();
             }
         },
+
+
 
         onCancelDialog: function () {
             this._oAddDialog.close();
@@ -511,7 +542,7 @@ sap.ui.define([
                     BusyIndicator.hide();
 
                     // Pokaż informację o sukcesie
-                    MessageToast.show(oResult.message);
+                    // MessageToast.show(oResult.message);
 
                     // Zamknij dialog
                     this.byId("addInvoiceDialog").close();
@@ -525,7 +556,7 @@ sap.ui.define([
                     BusyIndicator.hide();
 
                     // Pokaż informację o błędzie
-                    MessageBox.error(oError.message);
+                    // MessageBox.error(oError.message);
                 });
         },
 
@@ -598,15 +629,17 @@ sap.ui.define([
                 );
 
                 // 7. Wykonaj operację aktywacji z konkretnym groupId i parameterami
-                // try {
-                await oActivationBinding.execute("$auto", undefined, {
-                    "If-Match": sEtag
-                });
-                // } 
-                // catch (oError) {
-                //     console.error("Błąd podczas aktywacji:", oError);
-                //     throw oError;
-                // }
+                try {
+                    await oActivationBinding.execute("$auto", undefined, {
+                        "If-Match": sEtag
+                    });
+
+                    return "Success";
+                }
+                catch (oError) {
+                    console.error("Błąd podczas aktywacji:", oError);
+                    throw oError;
+                }
             } catch (error) {
                 console.error("Błąd podczas tworzenia lub aktywacji encji:", error);
                 throw error;
@@ -632,8 +665,8 @@ sap.ui.define([
                 delete oCleanData[sField];
             });
 
-            // Konwertuj daty z formatu string na obiekt Date dla OData
-            const aDateFields = ["PostingDate", "DocumentDate", "EntryDate", "DueDate", "ClearingDate"];
+            // // Konwertuj daty z formatu string na obiekt Date dla OData
+            // const aDateFields = ["PostingDate", "DocumentDate", "EntryDate", "DueDate", "ClearingDate"];
 
             // aDateFields.forEach(function (sField) {
             //     if (oCleanData[sField]) {
@@ -743,16 +776,17 @@ sap.ui.define([
             this._readFile(oFile)
                 .then(function (fileData) {
                     oFileModel.setProperty("/status", "Plik wczytany, przygotowanie do wysłania...");
-                    return that._sendToNodeJs(fileData, oFile.type);
+                    return that._sendToNodeJs(fileData, oFile.type); //odkom
                     // return that._sendToOpenAI(fileData, oFile.type);
+
+                    // oParsed = that._getSimulatedAIResponse();
+
                 })
                 .then(function (response) {
-                    // var rawContent = response.choices[0].message.content;
-
                     // Usuń otoczkę ```json i ``` z początku i końca
-                    var cleaned = response.replace(/^```json\s*/, "").replace(/```$/, "");
+                    var cleaned = response.replace(/^```json\s*/, "").replace(/```$/, ""); //odkom
                     try {
-                        oParsed = JSON.parse(cleaned);
+                        oParsed = JSON.parse(cleaned); //odkom
 
                         // (1) Poprawka na polskie przecinki w liczbach
                         oParsed.AmountDocument = oParsed.AmountDocument.replace(",", ".");
@@ -789,35 +823,6 @@ sap.ui.define([
          * @returns {Object} Dane z odpowiedzi API
          */
         _getSimulatedAIResponse: function () {
-            // return {
-            //     FiscalYear: "2024",
-            //     DocumentNo: "51952/12/2024",
-            //     LineItem: "",
-            //     AmountDocument: "1230,00",
-            //     AmountLocal: "",
-            //     // ChangedAt: "",
-            //     // ChangedBy: "",
-            //     ClearingDate: "",
-            //     ClearingDoc: "",
-            //     CompanyCode: "",
-            //     CostCenter: "",
-            //     // CreatedAt: "",
-            //     // CreatedBy: "",
-            //     CurrencyCode: "PLN",
-            //     Customer: "ABC INFO Andrzej Kowalski",
-            //     DebitCredit: "",
-            //     DocumentDate: "13-12-2024",
-            //     DocumentType: "",
-            //     DueDate: "",
-            //     EntryDate: "",
-            //     PaymentMethod: "przelew",
-            //     PaymentTerms: "14 dni",
-            //     PostingDate: "13-12-2024",
-            //     ProfitCenter: "",
-            //     Reference: "",
-            //     Segment: "",
-            //     Vendor: "Usługi Informatyczne Jan Nowak"
-            // };
             return {
                 "FiscalYear": "2024",
                 "DocumentNo": "1111",
@@ -859,40 +864,40 @@ sap.ui.define([
                 oDialogJSONModel.setProperty("/AmountDocument", oParsed.AmountDocument || "0.00");
                 oDialogJSONModel.setProperty("/AmountLocal", oParsed.AmountLocal || "0.00");
 
-                if (oParsed.PostingDate) {
-                    try {
-                        var oPostingDate = oDateFormat.parse(oParsed.PostingDate);
-                        oDialogJSONModel.setProperty("/PostingDate", oPostingDate);
-                    } catch (e) { }
-                }
+                // if (oParsed.PostingDate) {
+                //     try {
+                //         var oPostingDate = oDateFormat.parse(oParsed.PostingDate);
+                //         oDialogJSONModel.setProperty("/PostingDate", oPostingDate);
+                //     } catch (e) { }
+                // }
 
-                if (oParsed.DocumentDate) {
-                    try {
-                        var oDocumentDate = oDateFormat.parse(oParsed.DocumentDate);
-                        oDialogJSONModel.setProperty("/DocumentDate", oDocumentDate);
-                    } catch (e) { }
-                }
+                // if (oParsed.DocumentDate) {
+                //     try {
+                //         var oDocumentDate = oDateFormat.parse(oParsed.DocumentDate);
+                //         oDialogJSONModel.setProperty("/DocumentDate", oDocumentDate);
+                //     } catch (e) { }
+                // }
 
-                if (oParsed.EntryDate) {
-                    try {
-                        var oEntryDate = oDateFormat.parse(oParsed.EntryDate);
-                        oDialogJSONModel.setProperty("/EntryDate", oEntryDate);
-                    } catch (e) { }
-                }
+                // if (oParsed.EntryDate) {
+                //     try {
+                //         var oEntryDate = oDateFormat.parse(oParsed.EntryDate);
+                //         oDialogJSONModel.setProperty("/EntryDate", oEntryDate);
+                //     } catch (e) { }
+                // }
 
-                if (oParsed.DueDate) {
-                    try {
-                        var oDueDate = oDateFormat.parse(oParsed.DueDate);
-                        oDialogJSONModel.setProperty("/DueDate", oDueDate);
-                    } catch (e) { }
-                }
+                // if (oParsed.DueDate) {
+                //     try {
+                //         var oDueDate = oDateFormat.parse(oParsed.DueDate);
+                //         oDialogJSONModel.setProperty("/DueDate", oDueDate);
+                //     } catch (e) { }
+                // }
 
-                if (oParsed.ClearingDate) {
-                    try {
-                        var oClearingDate = oDateFormat.parse(oParsed.ClearingDate);
-                        oDialogJSONModel.setProperty("/ClearingDate", oClearingDate);
-                    } catch (e) { }
-                }
+                // if (oParsed.ClearingDate) {
+                //     try {
+                //         var oClearingDate = oDateFormat.parse(oParsed.ClearingDate);
+                //         oDialogJSONModel.setProperty("/ClearingDate", oClearingDate);
+                //     } catch (e) { }
+                // }
 
                 oDialogJSONModel.setProperty("/DocumentType", oParsed.DocumentType || "");
                 oDialogJSONModel.setProperty("/Reference", oParsed.Reference || "");
@@ -923,6 +928,7 @@ sap.ui.define([
 
             // 6. Sprawdź czy kontrolki są prawidłowo powiązane z modelem
             console.log("Model został ustawiony:", oDialogJSONModel.getData());
+            this.oBusyDialog.close();
         },
 
         _readFile: function (file) {
@@ -952,6 +958,14 @@ sap.ui.define([
             var oFileModel = this.getView().getModel("file");
 
             oFileModel.setProperty("/status", "Wysyłanie do backendu...");
+
+            // Pokazanie wskaźnika zajętości
+            var oBusyDialog = new BusyDialog({
+                title: "Processing",
+                text: "Analyzing your request..."
+            });
+            this.oBusyDialog = oBusyDialog;
+            this.oBusyDialog.open();
 
             return new Promise(function (resolve, reject) {
                 // Konwertuj plik do base64 jeśli nie jest jeszcze zakodowany

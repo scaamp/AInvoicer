@@ -57,7 +57,11 @@
                         required="true"
                     />
                     <Input
-                        value="{/CompanyCode}"
+                        value="{
+        path: '/CompanyCode',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 4 }
+    }"
                         maxLength="4"
                         required="true"
                         type="Number"
@@ -68,7 +72,11 @@
                         required="true"
                     />
                     <Input
-                        value="{/FiscalYear}"
+                        value="{
+        path: '/FiscalYear',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 4 }
+    }"
                         maxLength="4"
                         required="true"
                         type="Number"
@@ -79,7 +87,11 @@
                         required="true"
                     />
                     <Input
-                        value="{/DocumentNo}"
+                        value="{
+        path: '/DocumentNo',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 10 }
+    }"
                         maxLength="10"
                         required="true"
                     />
@@ -89,46 +101,70 @@
                         required="true"
                     />
                     <Input
-                        value="{/LineItem}"
+                        value="{
+        path: '/LineItem',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 3 }
+    }"
                         maxLength="3"
                         required="true"
                         type="Number"
                     />
 
-                    <!-- Daty -->
                     <Label text="Posting Date" />
                     <DatePicker
-                        value="{/PostingDate}"
+                        value="{
+        path: '/PostingDate',
+        type: 'sap.ui.model.odata.type.Date'
+    }"
                         displayFormat="yyyy-MM-dd"
                     />
 
                     <Label text="Document Date" />
                     <DatePicker
-                        value="{/DocumentDate}"
+                        value="{
+        path: '/DocumentDate',
+        type: 'sap.ui.model.odata.type.Date'
+    }"
                         displayFormat="yyyy-MM-dd"
                     />
 
                     <Label text="Entry Date" />
                     <DatePicker
-                        value="{/EntryDate}"
+                        value="{
+        path: '/EntryDate',
+        type: 'sap.ui.model.odata.type.Date'
+    }"
                         displayFormat="yyyy-MM-dd"
                     />
 
-                    <!-- Informacje dokumentu -->
                     <Label text="Document Type" />
                     <Input
-                        value="{/DocumentType}"
+                        value="{
+        path: '/DocumentType',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 2 }
+    }"
                         maxLength="2"
                     />
 
                     <Label text="Reference Document" />
                     <Input
-                        value="{/Reference}"
+                        value="{
+        path: '/Reference',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 16 }
+    }"
                         maxLength="16"
                     />
 
                     <Label text="Debit/Credit Indicator" />
-                    <Select selectedKey="{/DebitCredit}">
+                    <Select
+                        selectedKey="{
+        path: '/DebitCredit',
+        type: 'sap.ui.model.odata.type.String'
+    }"
+                    >
                         <items>
                             <core:Item
                                 key="D"
@@ -141,91 +177,138 @@
                         </items>
                     </Select>
 
-                    <!-- Konta i jednostki organizacyjne -->
                     <Label text="G/L Account" />
                     <Input
-                        value="{/Account}"
+                        value="{
+        path: '/Account',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 10 }
+    }"
                         maxLength="10"
                     />
 
                     <Label text="Vendor Number" />
                     <Input
-                        value="{/Vendor}"
+                        value="{
+        path: '/Vendor',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 10 }
+    }"
                         maxLength="10"
                     />
 
                     <Label text="Customer Number" />
                     <Input
-                        value="{/Customer}"
+                        value="{
+        path: '/Customer',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 10 }
+    }"
                         maxLength="10"
                     />
 
                     <Label text="Cost Center" />
                     <Input
-                        value="{/CostCenter}"
+                        value="{
+        path: '/CostCenter',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 10 }
+    }"
                         maxLength="10"
                     />
 
                     <Label text="Profit Center" />
                     <Input
-                        value="{/ProfitCenter}"
+                        value="{
+        path: '/ProfitCenter',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 10 }
+    }"
                         maxLength="10"
                     />
 
                     <Label text="Segment" />
                     <Input
-                        value="{/Segment}"
+                        value="{
+        path: '/Segment',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 10 }
+    }"
                         maxLength="10"
                     />
 
-                    <!-- Kwoty i waluta -->
                     <Label text="Currency" />
                     <Input
-                        value="{/CurrencyCode}"
+                        value="{
+        path: '/CurrencyCode',
+        type: 'sap.ui.model.odata.type.Currency'
+    }"
                         maxLength="5"
                     />
 
                     <Label text="Amount in Document Currency" />
                     <Input
-                        value="{/AmountDocument}"
+                        value="{
+        path: '/AmountDocument',
+        type: 'sap.ui.model.odata.type.Decimal'
+    }"
                         type="Number"
                     />
 
                     <Label text="Amount in Local Currency" />
                     <Input
-                        value="{/AmountLocal}"
+                        value="{
+        path: '/AmountLocal',
+        type: 'sap.ui.model.odata.type.Decimal'
+    }"
                         type="Number"
                     />
 
-                    <!-- Płatności -->
                     <Label text="Payment Terms" />
                     <Input
-                        value="{/PaymentTerms}"
+                        value="{
+        path: '/PaymentTerms',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 4 }
+    }"
                         maxLength="4"
                     />
 
                     <Label text="Payment Method" />
                     <Input
-                        value="{/PaymentMethod}"
+                        value="{
+        path: '/PaymentMethod',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 1 }
+    }"
                         maxLength="1"
                     />
 
                     <Label text="Due Date" />
                     <DatePicker
-                        value="{/DueDate}"
+                        value="{
+        path: '/DueDate',
+        type: 'sap.ui.model.odata.type.Date'
+    }"
                         displayFormat="yyyy-MM-dd"
                     />
 
-                    <!-- Rozliczenie -->
                     <Label text="Clearing Document" />
                     <Input
-                        value="{/ClearingDoc}"
+                        value="{
+        path: '/ClearingDoc',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 10 }
+    }"
                         maxLength="10"
                     />
 
                     <Label text="Clearing Date" />
                     <DatePicker
-                        value="{/ClearingDate}"
+                        value="{
+        path: '/ClearingDate',
+        type: 'sap.ui.model.odata.type.Date'
+    }"
                         displayFormat="yyyy-MM-dd"
                     />
                 </f:content>
@@ -234,7 +317,7 @@
 
         <beginButton>
             <Button
-                text="Zapisz"
+                text="Save"
                 type="Emphasized"
                 press="onSaveDocument"
             />

@@ -310,6 +310,28 @@
                         </table:template>
                     </table:Column>
                     <table:Column
+                        sortProperty="CurrencyCode"
+                        width="9rem"
+                    >
+                        <table:label>
+                            <Text text="Currency" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{CurrencyCode}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
+                        sortProperty="AmountDocument"
+                        width="16rem"
+                    >
+                        <table:label>
+                            <Text text="Amount in Document Currency" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{AmountDocument}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
                         sortProperty="Reference"
                         width="13rem"
                     >
@@ -398,28 +420,7 @@
                         </table:template>
                     </table:Column>
                     <table:Column
-                        sortProperty="CurrencyCode"
-                        width="9rem"
-                    >
-                        <table:label>
-                            <Text text="Currency" />
-                        </table:label>
-                        <table:template>
-                            <Text text="{CurrencyCode}" />
-                        </table:template>
-                    </table:Column>
-                    <table:Column
-                        sortProperty="AmountDocument"
-                        width="16rem"
-                    >
-                        <table:label>
-                            <Text text="Amount in Document Currency" />
-                        </table:label>
-                        <table:template>
-                            <Text text="{AmountDocument}" />
-                        </table:template>
-                    </table:Column>
-                    <table:Column
+                        visible="false"
                         sortProperty="AmountLocal"
                         width="15rem"
                     >
