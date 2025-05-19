@@ -48,6 +48,7 @@ class LangfuseService:
             },
             input=input,
             output=output,
+            # output=str(output.choices[0].message.content),
             usage={
                 "prompt_tokens": output.usage.prompt_tokens if output.usage else None,
                 "completion_tokens": output.usage.completion_tokens if output.usage else None,
@@ -69,3 +70,20 @@ class LangfuseService:
 
     def shutdown(self) -> None:
         self.langfuse.shutdown() 
+
+    def get_system_prompt(self, prompt_name: str) -> str:
+        """Fetch a prompt from Langfuse by its name."""
+        try:
+            print(f"Attempting to fetch prompt '{prompt_name}' from Langfuse...")
+            prompt = self.langfuse.get_prompt(prompt_name)
+            if not prompt:
+                print(f"Prompt '{prompt_name}' not found in Langfuse")
+                return None
+            print(f"Successfully fetched prompt '{prompt_name}'")
+            return prompt.prompt
+        except Exception as e:
+            print(f"Error fetching prompt from Langfuse: {str(e)}")
+            print(f"Error type: {type(e)}")
+            import traceback
+            print(f"Traceback: {traceback.format_exc()}")
+            return None 
