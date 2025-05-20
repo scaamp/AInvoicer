@@ -187,7 +187,8 @@
 					path: '/ZC_FI_ACDOCA',
 					parameters: {operationMode: 'Server'}
 				}"
-                selectionMode="None"
+                selectionMode="Single"
+                rowSelectionChange="onSelectionChange"
                 width="100%"
                 threshold="15"
                 scrollThreshold="50"

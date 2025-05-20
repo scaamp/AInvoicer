@@ -1171,5 +1171,59 @@ sap.ui.define([
 
             return new Blob(byteArrays, { type: mimeType });
         },
+
+        // Śledź aktualnie wybrany wiersz
+        onSelectionChange: function (oEvent) {
+            this._selectedContext = oEvent.getParameter("rowContext");
+        },
+
+        /**
+         * Handles the deletion of a record from the table and OData service
+         * @param {sap.ui.base.Event} oEvent - The event object
+         */
+        onDeleteInvoice: function () {
+            // Sprawdź czy jest wybrany wiersz
+            if (!this._selectedContext) {
+                MessageBox.error("No record selected for deletion");
+                return;
+            }
+
+            var oData = this._selectedContext.getObject();
+
+            MessageBox.confirm("Are you sure you want to delete this record?", {
+                title: "Confirm Deletion",
+                onClose: function (oAction) {
+                    if (oAction === MessageBox.Action.OK) {
+                        BusyIndicator.show();
+
+                        var oModel = this.getView().getModel();
+
+                        // Zbuduj klucz entity – np. /ZC_FI_ACDOCA(CompanyCode='1000',FiscalYear='2024',...)
+                        // var sPath = oModel.createKey("/ZC_FI_ACDOCA", {
+                        //     CompanyCode: oData.CompanyCode,
+                        //     FiscalYear: oData.FiscalYear,
+                        //     DocumentNo: oData.DocumentNo,
+                        //     LineItem: oData.LineItem,
+                        //     IsActiveEntity: true
+                        // });
+
+                        var oBinding = oModel.bindContext(sPath, null, {
+                            $$groupId: "deleteGroup"
+                        });
+
+                        oBinding.delete("$auto")
+                            .then(() => oModel.submitBatch("deleteGroup"))
+                            .then(() => {
+                                this._refreshInvoiceList();
+                                MessageToast.show("Record deleted successfully");
+                            })
+                            .catch((oError) => {
+                                MessageBox.error("Error deleting record: " + oError.message);
+                            })
+                            .finally(() => BusyIndicator.hide());
+                    }
+                }.bind(this)
+            });
+        }
     });
 })
