@@ -163,56 +163,56 @@
                 </EntitySet>
             </EntityContainer>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/CompanyCode">
-                <Annotation Term="SAP__common.Label" String="CompanyCode"/>
+                <Annotation Term="SAP__common.Label" String="Company Code"/>
                 <Annotation Term="SAP__core.Immutable"/>
                 <Annotation Term="SAP__common.IsDigitSequence"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/FiscalYear">
-                <Annotation Term="SAP__common.Label" String="FiscalYear"/>
+                <Annotation Term="SAP__common.Label" String="Fiscal Year"/>
                 <Annotation Term="SAP__core.Immutable"/>
                 <Annotation Term="SAP__common.IsDigitSequence"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/DocumentNo">
-                <Annotation Term="SAP__common.Label" String="DocumentNo"/>
+                <Annotation Term="SAP__common.Label" String="Document Number"/>
                 <Annotation Term="SAP__core.Immutable"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/LineItem">
-                <Annotation Term="SAP__common.Label" String="LineItem"/>
+                <Annotation Term="SAP__common.Label" String="Line Item"/>
                 <Annotation Term="SAP__core.Immutable"/>
                 <Annotation Term="SAP__common.IsDigitSequence"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/PostingDate">
-                <Annotation Term="SAP__common.Label" String="PostingDate"/>
+                <Annotation Term="SAP__common.Label" String="Posting Date"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/DocumentDate">
-                <Annotation Term="SAP__common.Label" String="DocumentDate"/>
+                <Annotation Term="SAP__common.Label" String="Document Date"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/EntryDate">
-                <Annotation Term="SAP__common.Label" String="EntryDate"/>
+                <Annotation Term="SAP__common.Label" String="Entry Date"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/DocumentType">
-                <Annotation Term="SAP__common.Label" String="DocumentType"/>
+                <Annotation Term="SAP__common.Label" String="Document Type"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/Reference">
-                <Annotation Term="SAP__common.Label" String="Reference"/>
+                <Annotation Term="SAP__common.Label" String="Reference Document"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/DebitCredit">
-                <Annotation Term="SAP__common.Label" String="DebitCredit"/>
+                <Annotation Term="SAP__common.Label" String="Debit/Credit Indicator"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/Account">
-                <Annotation Term="SAP__common.Label" String="Account"/>
+                <Annotation Term="SAP__common.Label" String="G/L Account"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/Vendor">
-                <Annotation Term="SAP__common.Label" String="Vendor"/>
+                <Annotation Term="SAP__common.Label" String="Vendor Number"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/Customer">
-                <Annotation Term="SAP__common.Label" String="Customer"/>
+                <Annotation Term="SAP__common.Label" String="Customer Number"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/CostCenter">
-                <Annotation Term="SAP__common.Label" String="CostCenter"/>
+                <Annotation Term="SAP__common.Label" String="Cost Center"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/ProfitCenter">
-                <Annotation Term="SAP__common.Label" String="ProfitCenter"/>
+                <Annotation Term="SAP__common.Label" String="Profit Center"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/Segment">
                 <Annotation Term="SAP__common.Label" String="Segment"/>
@@ -227,32 +227,33 @@
                 </Annotation>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/AmountDocument">
-                <Annotation Term="SAP__common.Label" String="AmountDocument"/>
+                <Annotation Term="SAP__common.Label" String="Amount in Document Currency"/>
                 <Annotation Term="SAP__measures.ISOCurrency" Path="CurrencyCode"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/AmountLocal">
-                <Annotation Term="SAP__common.Label" String="AmountLocal"/>
+                <Annotation Term="SAP__common.Label" String="Amount in Local Currency"/>
                 <Annotation Term="SAP__measures.ISOCurrency" Path="CurrencyCode"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/PaymentTerms">
-                <Annotation Term="SAP__common.Label" String="PaymentTerms"/>
+                <Annotation Term="SAP__common.Label" String="Payment Terms"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/PaymentMethod">
-                <Annotation Term="SAP__common.Label" String="PaymentMethod"/>
+                <Annotation Term="SAP__common.Label" String="Payment Method"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/DueDate">
-                <Annotation Term="SAP__common.Label" String="DueDate"/>
+                <Annotation Term="SAP__common.Label" String="Due Date"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/ClearingDoc">
-                <Annotation Term="SAP__common.Label" String="ClearingDoc"/>
+                <Annotation Term="SAP__common.Label" String="Clearing Document"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/ClearingDate">
-                <Annotation Term="SAP__common.Label" String="ClearingDate"/>
+                <Annotation Term="SAP__common.Label" String="Clearing Date"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/CreatedBy">
+                <Annotation Term="SAP__common.Label" String="Created By"/>
                 <Annotation Term="SAP__core.Computed"/>
                 <Annotation Term="SAP__common.IsUpperCase"/>
-                <Annotation Term="SAP__common.Label" String="Created By"/>
+                <Annotation Term="SAP__common.Heading" String="Created By"/>
                 <Annotation Term="SAP__common.QuickInfo" String="Created By User"/>
                 <Annotation Term="SAP__common.DocumentationRef" String="urn:sap-com:documentation:key?=type=DE&amp;id=ABP_CREATION_USER"/>
             </Annotations>
@@ -266,15 +267,6 @@
                     <Record>
                         <PropertyValue Property="Name" String="ZFI_ACDOCA"/>
                     </Record>
-                </Annotation>
-                <Annotation Term="SAP__UI.Facets">
-                    <Collection>
-                        <Record Type="SAP__UI.ReferenceFacet">
-                            <PropertyValue Property="Label" String="General Information"/>
-                            <PropertyValue Property="ID" String="GeneralInfo"/>
-                            <PropertyValue Property="Target" AnnotationPath="@SAP__UI.Identification"/>
-                        </Record>
-                    </Collection>
                 </Annotation>
                 <Annotation Term="SAP__UI.HeaderInfo">
                     <Annotation Term="SAP__core.Messages">
@@ -302,63 +294,63 @@
                 <Annotation Term="SAP__UI.Identification">
                     <Collection>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="CompanyCode"/>
+                            <PropertyValue Property="Label" String="Company Code"/>
                             <PropertyValue Property="Value" Path="CompanyCode"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="FiscalYear"/>
+                            <PropertyValue Property="Label" String="Fiscal Year"/>
                             <PropertyValue Property="Value" Path="FiscalYear"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="DocumentNo"/>
+                            <PropertyValue Property="Label" String="Document Number"/>
                             <PropertyValue Property="Value" Path="DocumentNo"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="LineItem"/>
+                            <PropertyValue Property="Label" String="Line Item"/>
                             <PropertyValue Property="Value" Path="LineItem"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="PostingDate"/>
+                            <PropertyValue Property="Label" String="Posting Date"/>
                             <PropertyValue Property="Value" Path="PostingDate"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="DocumentDate"/>
+                            <PropertyValue Property="Label" String="Document Date"/>
                             <PropertyValue Property="Value" Path="DocumentDate"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="EntryDate"/>
+                            <PropertyValue Property="Label" String="Entry Date"/>
                             <PropertyValue Property="Value" Path="EntryDate"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="DocumentType"/>
+                            <PropertyValue Property="Label" String="Document Type"/>
                             <PropertyValue Property="Value" Path="DocumentType"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="Reference"/>
+                            <PropertyValue Property="Label" String="Reference Document"/>
                             <PropertyValue Property="Value" Path="Reference"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="DebitCredit"/>
+                            <PropertyValue Property="Label" String="Debit/Credit Indicator"/>
                             <PropertyValue Property="Value" Path="DebitCredit"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="Account"/>
+                            <PropertyValue Property="Label" String="G/L Account"/>
                             <PropertyValue Property="Value" Path="Account"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="Vendor"/>
+                            <PropertyValue Property="Label" String="Vendor Number"/>
                             <PropertyValue Property="Value" Path="Vendor"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="Customer"/>
+                            <PropertyValue Property="Label" String="Customer Number"/>
                             <PropertyValue Property="Value" Path="Customer"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="CostCenter"/>
+                            <PropertyValue Property="Label" String="Cost Center"/>
                             <PropertyValue Property="Value" Path="CostCenter"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="ProfitCenter"/>
+                            <PropertyValue Property="Label" String="Profit Center"/>
                             <PropertyValue Property="Value" Path="ProfitCenter"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
@@ -366,43 +358,47 @@
                             <PropertyValue Property="Value" Path="Segment"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="AmountDocument"/>
+                            <PropertyValue Property="Label" String="Amount in Document Currency"/>
                             <PropertyValue Property="Value" Path="AmountDocument"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="AmountLocal"/>
+                            <PropertyValue Property="Label" String="Amount in Local Currency"/>
                             <PropertyValue Property="Value" Path="AmountLocal"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="PaymentTerms"/>
+                            <PropertyValue Property="Label" String="Payment Terms"/>
                             <PropertyValue Property="Value" Path="PaymentTerms"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="PaymentMethod"/>
+                            <PropertyValue Property="Label" String="Payment Method"/>
                             <PropertyValue Property="Value" Path="PaymentMethod"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="DueDate"/>
+                            <PropertyValue Property="Label" String="Due Date"/>
                             <PropertyValue Property="Value" Path="DueDate"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="ClearingDoc"/>
+                            <PropertyValue Property="Label" String="Clearing Document"/>
                             <PropertyValue Property="Value" Path="ClearingDoc"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="ClearingDate"/>
+                            <PropertyValue Property="Label" String="Clearing Date"/>
                             <PropertyValue Property="Value" Path="ClearingDate"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
+                            <PropertyValue Property="Label" String="Created By"/>
                             <PropertyValue Property="Value" Path="CreatedBy"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
+                            <PropertyValue Property="Label" String="Created At"/>
                             <PropertyValue Property="Value" Path="CreatedAt"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
+                            <PropertyValue Property="Label" String="Changed By"/>
                             <PropertyValue Property="Value" Path="ChangedBy"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
+                            <PropertyValue Property="Label" String="Changed At"/>
                             <PropertyValue Property="Value" Path="ChangedAt"/>
                         </Record>
                     </Collection>
@@ -410,63 +406,63 @@
                 <Annotation Term="SAP__UI.LineItem">
                     <Collection>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="CompanyCode"/>
+                            <PropertyValue Property="Label" String="Company Code"/>
                             <PropertyValue Property="Value" Path="CompanyCode"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="FiscalYear"/>
+                            <PropertyValue Property="Label" String="Fiscal Year"/>
                             <PropertyValue Property="Value" Path="FiscalYear"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="DocumentNo"/>
+                            <PropertyValue Property="Label" String="Document Number"/>
                             <PropertyValue Property="Value" Path="DocumentNo"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="LineItem"/>
+                            <PropertyValue Property="Label" String="Line Item"/>
                             <PropertyValue Property="Value" Path="LineItem"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="PostingDate"/>
+                            <PropertyValue Property="Label" String="Posting Date"/>
                             <PropertyValue Property="Value" Path="PostingDate"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="DocumentDate"/>
+                            <PropertyValue Property="Label" String="Document Date"/>
                             <PropertyValue Property="Value" Path="DocumentDate"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="EntryDate"/>
+                            <PropertyValue Property="Label" String="Entry Date"/>
                             <PropertyValue Property="Value" Path="EntryDate"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="DocumentType"/>
+                            <PropertyValue Property="Label" String="Document Type"/>
                             <PropertyValue Property="Value" Path="DocumentType"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="Reference"/>
+                            <PropertyValue Property="Label" String="Reference Document"/>
                             <PropertyValue Property="Value" Path="Reference"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="DebitCredit"/>
+                            <PropertyValue Property="Label" String="Debit/Credit Indicator"/>
                             <PropertyValue Property="Value" Path="DebitCredit"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="Account"/>
+                            <PropertyValue Property="Label" String="G/L Account"/>
                             <PropertyValue Property="Value" Path="Account"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="Vendor"/>
+                            <PropertyValue Property="Label" String="Vendor Number"/>
                             <PropertyValue Property="Value" Path="Vendor"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="Customer"/>
+                            <PropertyValue Property="Label" String="Customer Number"/>
                             <PropertyValue Property="Value" Path="Customer"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="CostCenter"/>
+                            <PropertyValue Property="Label" String="Cost Center"/>
                             <PropertyValue Property="Value" Path="CostCenter"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="ProfitCenter"/>
+                            <PropertyValue Property="Label" String="Profit Center"/>
                             <PropertyValue Property="Value" Path="ProfitCenter"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
@@ -474,43 +470,47 @@
                             <PropertyValue Property="Value" Path="Segment"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="AmountDocument"/>
+                            <PropertyValue Property="Label" String="Amount in Document Currency"/>
                             <PropertyValue Property="Value" Path="AmountDocument"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="AmountLocal"/>
+                            <PropertyValue Property="Label" String="Amount in Local Currency"/>
                             <PropertyValue Property="Value" Path="AmountLocal"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="PaymentTerms"/>
+                            <PropertyValue Property="Label" String="Payment Terms"/>
                             <PropertyValue Property="Value" Path="PaymentTerms"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="PaymentMethod"/>
+                            <PropertyValue Property="Label" String="Payment Method"/>
                             <PropertyValue Property="Value" Path="PaymentMethod"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="DueDate"/>
+                            <PropertyValue Property="Label" String="Due Date"/>
                             <PropertyValue Property="Value" Path="DueDate"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="ClearingDoc"/>
+                            <PropertyValue Property="Label" String="Clearing Document"/>
                             <PropertyValue Property="Value" Path="ClearingDoc"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
-                            <PropertyValue Property="Label" String="ClearingDate"/>
+                            <PropertyValue Property="Label" String="Clearing Date"/>
                             <PropertyValue Property="Value" Path="ClearingDate"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
+                            <PropertyValue Property="Label" String="Created By"/>
                             <PropertyValue Property="Value" Path="CreatedBy"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
+                            <PropertyValue Property="Label" String="Created At"/>
                             <PropertyValue Property="Value" Path="CreatedAt"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
+                            <PropertyValue Property="Label" String="Changed By"/>
                             <PropertyValue Property="Value" Path="ChangedBy"/>
                         </Record>
                         <Record Type="SAP__UI.DataField">
+                            <PropertyValue Property="Label" String="Changed At"/>
                             <PropertyValue Property="Value" Path="ChangedAt"/>
                         </Record>
                     </Collection>
@@ -549,21 +549,24 @@
                 <Annotation Term="SAP__common.Messages" Path="SAP__Messages"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/CreatedAt">
+                <Annotation Term="SAP__common.Label" String="Created At"/>
                 <Annotation Term="SAP__core.Computed"/>
-                <Annotation Term="SAP__common.Label" String="Created On"/>
+                <Annotation Term="SAP__common.Heading" String="Created On"/>
                 <Annotation Term="SAP__common.QuickInfo" String="Creation Date Time"/>
                 <Annotation Term="SAP__common.DocumentationRef" String="urn:sap-com:documentation:key?=type=DE&amp;id=ABP_CREATION_TSTMPL"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/ChangedBy">
+                <Annotation Term="SAP__common.Label" String="Changed By"/>
                 <Annotation Term="SAP__core.Computed"/>
                 <Annotation Term="SAP__common.IsUpperCase"/>
-                <Annotation Term="SAP__common.Label" String="Changed By"/>
+                <Annotation Term="SAP__common.Heading" String="Changed By"/>
                 <Annotation Term="SAP__common.QuickInfo" String="Last Changed By User"/>
                 <Annotation Term="SAP__common.DocumentationRef" String="urn:sap-com:documentation:key?=type=DE&amp;id=ABP_LASTCHANGE_USER"/>
             </Annotations>
             <Annotations Target="SAP__self.ZC_FI_ACDOCAType/ChangedAt">
+                <Annotation Term="SAP__common.Label" String="Changed At"/>
                 <Annotation Term="SAP__core.Computed"/>
-                <Annotation Term="SAP__common.Label" String="Changed On"/>
+                <Annotation Term="SAP__common.Heading" String="Changed On"/>
                 <Annotation Term="SAP__common.QuickInfo" String="Last Change Date Time"/>
                 <Annotation Term="SAP__common.DocumentationRef" String="urn:sap-com:documentation:key?=type=DE&amp;id=ABP_LASTCHANGE_TSTMPL"/>
             </Annotations>

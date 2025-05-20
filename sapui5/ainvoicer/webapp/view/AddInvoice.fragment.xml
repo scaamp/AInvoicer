@@ -1,0 +1,332 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:u="sap.ui.unified"
+    xmlns:l="sap.ui.layout"
+    xmlns:f="sap.ui.layout.form"
+>
+    <Dialog
+        id="addInvoiceDialog"
+        title="Dodaj fakturę"
+        draggable="true"
+        resizable="true"
+        contentWidth="700px"
+    >
+        <VBox class="sapUiSmallMargin">
+            <f:SimpleForm
+                id="invoiceForm"
+                layout="ResponsiveGridLayout"
+                editable="true"
+                labelSpanL="3"
+                labelSpanM="3"
+                emptySpanL="4"
+                emptySpanM="4"
+                columnsL="1"
+                columnsM="1"
+            >
+                <f:toolbar>
+                    <Toolbar id="TB1">
+                        <Title
+                            id="Title1"
+                            text="Scanner"
+                        />
+                        <ToolbarSpacer />
+
+                        <Button
+                            text="Analyze"
+                            press="handleAnalyzeInvoice"
+                            enabled="{/fileSelected}"
+                            class="sapUiTinyMarginEnd"
+                        />
+                        <u:FileUploader
+                            id="fileUploader"
+                            name="invoiceFile"
+                            uploadUrl="upload/"
+                            tooltip="Select invoice file (PDF or image)"
+                            uploadComplete=".handleUploadComplete"
+                            change=".handleFileChange"
+                            buttonText="Select file"
+                            fileType="pdf,jpg,jpeg,png"
+                            width="200px"
+                        />
+                    </Toolbar>
+                </f:toolbar>
+                <f:content>
+                    <Label
+                        text="Company Code"
+                        required="true"
+                    />
+                    <Input
+                        value="{
+        path: '/CompanyCode',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 4 }
+    }"
+                        maxLength="4"
+                        required="true"
+                        type="Number"
+                    />
+
+                    <Label
+                        text="Fiscal Year"
+                        required="true"
+                    />
+                    <Input
+                        value="{
+        path: '/FiscalYear',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 4 }
+    }"
+                        maxLength="4"
+                        required="true"
+                        type="Number"
+                    />
+
+                    <Label
+                        text="Document Number"
+                        required="true"
+                    />
+                    <Input
+                        value="{
+        path: '/DocumentNo',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 10 }
+    }"
+                        maxLength="10"
+                        required="true"
+                    />
+
+                    <Label
+                        text="Line Item"
+                        required="true"
+                    />
+                    <Input
+                        value="{
+        path: '/LineItem',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 3 }
+    }"
+                        maxLength="3"
+                        required="true"
+                        type="Number"
+                    />
+
+                    <Label text="Posting Date" />
+                    <DatePicker
+                        value="{
+        path: '/PostingDate',
+        type: 'sap.ui.model.odata.type.Date'
+    }"
+                        displayFormat="yyyy-MM-dd"
+                    />
+
+                    <Label text="Document Date" />
+                    <DatePicker
+                        value="{
+        path: '/DocumentDate',
+        type: 'sap.ui.model.odata.type.Date'
+    }"
+                        displayFormat="yyyy-MM-dd"
+                    />
+
+                    <Label text="Entry Date" />
+                    <DatePicker
+                        value="{
+        path: '/EntryDate',
+        type: 'sap.ui.model.odata.type.Date'
+    }"
+                        displayFormat="yyyy-MM-dd"
+                    />
+
+                    <Label text="Document Type" />
+                    <Input
+                        value="{
+        path: '/DocumentType',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 2 }
+    }"
+                        maxLength="2"
+                    />
+
+                    <Label text="Reference Document" />
+                    <Input
+                        value="{
+        path: '/Reference',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 16 }
+    }"
+                        maxLength="16"
+                    />
+
+                    <Label text="Debit/Credit Indicator" />
+                    <Select
+                        selectedKey="{
+        path: '/DebitCredit',
+        type: 'sap.ui.model.odata.type.String'
+    }"
+                    >
+                        <items>
+                            <core:Item
+                                key="D"
+                                text="Debit"
+                            />
+                            <core:Item
+                                key="C"
+                                text="Credit"
+                            />
+                        </items>
+                    </Select>
+
+                    <Label text="G/L Account" />
+                    <Input
+                        value="{
+        path: '/Account',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 10 }
+    }"
+                        maxLength="10"
+                    />
+
+                    <Label text="Vendor Number" />
+                    <Input
+                        value="{
+        path: '/Vendor',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 10 }
+    }"
+                        maxLength="10"
+                    />
+
+                    <Label text="Customer Number" />
+                    <Input
+                        value="{
+        path: '/Customer',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 10 }
+    }"
+                        maxLength="10"
+                    />
+
+                    <Label text="Cost Center" />
+                    <Input
+                        value="{
+        path: '/CostCenter',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 10 }
+    }"
+                        maxLength="10"
+                    />
+
+                    <Label text="Profit Center" />
+                    <Input
+                        value="{
+        path: '/ProfitCenter',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 10 }
+    }"
+                        maxLength="10"
+                    />
+
+                    <Label text="Segment" />
+                    <Input
+                        value="{
+        path: '/Segment',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 10 }
+    }"
+                        maxLength="10"
+                    />
+
+                    <Label text="Currency" />
+                    <Input
+                        value="{
+        path: '/CurrencyCode',
+        type: 'sap.ui.model.odata.type.Currency'
+    }"
+                        maxLength="5"
+                    />
+
+                    <Label text="Amount in Document Currency" />
+                    <Input
+                        value="{
+        path: '/AmountDocument',
+        type: 'sap.ui.model.odata.type.Decimal'
+    }"
+                        type="Number"
+                    />
+
+                    <Label text="Amount in Local Currency" />
+                    <Input
+                        value="{
+        path: '/AmountLocal',
+        type: 'sap.ui.model.odata.type.Decimal'
+    }"
+                        type="Number"
+                    />
+
+                    <Label text="Payment Terms" />
+                    <Input
+                        value="{
+        path: '/PaymentTerms',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 4 }
+    }"
+                        maxLength="4"
+                    />
+
+                    <Label text="Payment Method" />
+                    <Input
+                        value="{
+        path: '/PaymentMethod',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 1 }
+    }"
+                        maxLength="1"
+                    />
+
+                    <Label text="Due Date" />
+                    <DatePicker
+                        value="{
+        path: '/DueDate',
+        type: 'sap.ui.model.odata.type.Date'
+    }"
+                        displayFormat="yyyy-MM-dd"
+                    />
+
+                    <Label text="Clearing Document" />
+                    <Input
+                        value="{
+        path: '/ClearingDoc',
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 10 }
+    }"
+                        maxLength="10"
+                    />
+
+                    <Label text="Clearing Date" />
+                    <DatePicker
+                        value="{
+        path: '/ClearingDate',
+        type: 'sap.ui.model.odata.type.Date'
+    }"
+                        displayFormat="yyyy-MM-dd"
+                    />
+                </f:content>
+            </f:SimpleForm>
+        </VBox>
+
+        <beginButton>
+            <Button
+                text="Save"
+                type="Emphasized"
+                press="onSaveDocument"
+            />
+        </beginButton>
+        <endButton>
+            <Button
+                text="Cancel"
+                press="onCancelDialog"
+            />
+        </endButton>
+    </Dialog>
+</core:FragmentDefinition>

@@ -1,0 +1,67 @@
+/* Enter your custom styles here *//* Styl dla panelu AI Assistant */
+.aiAssistantPanel {
+    margin: 0.5rem 0;
+    transition: height 0.3s ease-in-out;
+}
+
+/* Style dla elementów historii czatu */
+.userQuery {
+    color: #333333;
+    font-weight: bold;
+}
+
+.assistantResponse {
+    color: #0070B1;
+}
+
+/* Stylizacja dla responsywności */
+@media (max-width: 700px) {
+    .miniContextSelector {
+        max-width: 6rem;
+    }
+    
+    .miniAiCommand {
+        max-width: 12rem;
+    }
+}
+
+/* Styl dla panelu z historią */
+.historyPanel {
+    max-height: 300px;
+    overflow-y: auto;
+    border-top: 1px solid #e5e5e5;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+}
+
+/* Zaznaczenie aktywnego kontekstu */
+.activeContext {
+    background-color: #f0f0f0;
+}
+
+/* Stylizacja dla wiadomości czatu */
+.chatMessage {
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.userChatMessage {
+    background-color: #f0f0f0;
+    margin-left: 2rem;
+}
+
+.assistantChatMessage {
+    background-color: #e8f2fe;
+    margin-right: 2rem;
+}
+
+/* Styl dla wygenerowanego SQL */
+.generatedSql {
+    font-family: monospace;
+    background-color: #f9f9f9;
+    padding: 0.5rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 0.25rem;
+    white-space: pre-wrap;
+}

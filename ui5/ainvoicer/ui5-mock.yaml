@@ -9,7 +9,7 @@ server:
     - name: fiori-tools-proxy
       afterMiddleware: compression
       configuration:
-        ignoreCertError: false # If set to true, certificate errors will be ignored. E.g. self-signed certificates will be accepted
+        ignoreCertError: false
         ui5:
           path:
             - /resources
@@ -19,6 +19,10 @@ server:
           - path: /sap
             url: https://685bd85e-501d-43dd-b091-aa6811254f67.abap.us10.hana.ondemand.com
             destination: abap-cloud-dev-1ebf3ff5trial-dev
+          - url: https://11b69711-9bcb-491b-b504-a9ba7e4b7e97.abap.us10.hana.ondemand.com/
+            authenticationType: OAuth2UserTokenExchange
+            destination: abap-cloud-abap-1ebf3ff5trial-dev
+            path: /sap/opu/odata4/sap/zui_fi_acdoca_o4/srvd/sap/zui_fi_acdoca_o4/0001/
     - name: fiori-tools-appreload
       afterMiddleware: compression
       configuration:

@@ -1,0 +1,526 @@
+<mvc:View
+    controllerName="ainvoicer.controller.Main"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:html="http://www.w3.org/1999/xhtml"
+    xmlns:f="sap.f"
+    xmlns:core="sap.ui.core"
+    height="100%"
+    xmlns:u="sap.ui.unified"
+    xmlns:fb="sap.ui.comp.filterbar"
+    xmlns:table="sap.ui.table"
+>
+    <Page title="Invoices">
+        <content>
+            <Panel
+                id="aiCommandPanel"
+                expandable="true"
+                expanded="false"
+                headerText="AI Assistant"
+            >
+                <headerToolbar>
+                    <Toolbar>
+                        <Title text="AI Assistant" />
+                        <ToolbarSpacer />
+                        <Button
+                            icon="sap-icon://history"
+                            tooltip="Show History"
+                            press="onToggleHistory"
+                        />
+                    </Toolbar>
+                </headerToolbar>
+
+                <FlexBox
+                    direction="Column"
+                    width="100%"
+                >
+                    <!-- Wybór kontekstu zapytania -->
+                    <ComboBox
+                        id="contextSelector"
+                        placeholder="Select Context"
+                        width="100%"
+                        change="onContextChange"
+                    >
+                        <layoutData>
+                            <FlexItemData
+                                minWidth="25rem"
+                                maxWidth="30rem"
+                                growFactor="1"
+                                shrinkFactor="1"
+                            />
+                        </layoutData>
+                        <items>
+                            <core:Item
+                                key="search"
+                                text="Data Search"
+                            />
+                            <core:Item
+                                key="analyze"
+                                text="Data Analysis"
+                            />
+                            <core:Item
+                                key="help"
+                                text="Help Documentation"
+                            />
+                        </items>
+                    </ComboBox>
+
+                    <!-- Główny input do wprowadzania poleceń -->
+                    <FlexBox
+                        alignItems="Center"
+                        width="100%"
+                        class="sapUiTinyMarginTop"
+                    >
+                        <SearchField
+                            id="aiCommandInput"
+                            width="100%"
+                            placeholder="Type your query in natural language (e.g., 'show invoices over 5000 zł')"
+                            search="onAiCommandExecute"
+                        >
+                            <layoutData>
+                                <FlexItemData
+                                    minWidth="25rem"
+                                    maxWidth="30rem"
+                                    growFactor="1"
+                                    shrinkFactor="1"
+                                />
+                            </layoutData>
+                        </SearchField>
+
+                        <Button
+                            icon="sap-icon://microphone"
+                            tooltip="Voice Input"
+                            press="onVoiceInput"
+                            class="sapUiTinyMarginBegin"
+                        />
+                    </FlexBox>
+
+                    <!-- Historia zapytań i odpowiedzi -->
+                    <VBox
+                        id="aiCommandHistory"
+                        visible="false"
+                        class="sapUiSmallMarginTop"
+                        width="100%"
+                    >
+                        <List
+                            id="commandHistoryList"
+                            showSeparators="All"
+                            inset="false"
+                            width="100%"
+                        />
+                    </VBox>
+                </FlexBox>
+            </Panel>
+
+            <Panel
+                id="filterPanel"
+                headerText="Filters"
+                expandable="true"
+                expanded="false"
+                expandAnimation="true"
+            >
+                <fb:FilterBar
+                    id="filterbar"
+                    persistencyKey="myPersKey"
+                    useToolbar="false"
+                    search=".onSearch"
+                    filterChange=".onFilterChange"
+                    afterVariantLoad=".onAfterVariantLoad"
+                    clear="onClear"
+                    showClearOnFB="true"
+                >
+                    <fb:filterGroupItems>
+                        <fb:FilterGroupItem
+                            name="CompanyCode"
+                            label="Company Code"
+                            groupName="Group1"
+                            visibleInFilterBar="true"
+                        >
+                            <fb:control>
+                                <MultiComboBox
+                                    id="CompanyCodeFilter"
+                                    name="CompanyCode"
+                                    selectionChange=".onSelectionChange"
+                                    items="{
+												path: '/ZC_FI_ACDOCA',
+												templateShareable: true
+											}"
+                                >
+                                    <core:Item
+                                        key="{CompanyCode}"
+                                        text="{CompanyCode}"
+                                    />
+                                </MultiComboBox>
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                        <fb:FilterGroupItem
+                            name="FiscalYear"
+                            label="Fiscal Year"
+                            groupName="Group1"
+                            visibleInFilterBar="true"
+                        >
+                            <fb:control>
+                                <MultiComboBox
+                                    id="FiscalYearFilter"
+                                    name="FiscalYear"
+                                    selectionChange=".onSelectionChange"
+                                    items="{
+												path: '/ZC_FI_ACDOCA',
+												templateShareable: true
+											}"
+                                >
+                                    <core:Item
+                                        key="{FiscalYear}"
+                                        text="{FiscalYear}"
+                                    />
+                                </MultiComboBox>
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                    </fb:filterGroupItems>
+                </fb:FilterBar>
+            </Panel>
+
+            <!-- <FlexBox direction="Column" height="100%" fitContainer="true"> -->
+            <table:Table
+                id="invoiceTable"
+                rows="{
+					path: '/ZC_FI_ACDOCA',
+					parameters: {operationMode: 'Server'}
+				}"
+                selectionMode="None"
+                width="100%"
+                threshold="15"
+                scrollThreshold="50"
+                enableBusyIndicator="true"
+                visibleRowCount="20"
+            >
+                <table:toolbar>
+                    <Toolbar>
+                        <ToolbarSpacer />
+                        <Button
+                            text="Add"
+                            icon="sap-icon://add"
+                            type="Emphasized"
+                            press="onAddInvoice"
+                        />
+                        <Button
+                            text="Delete"
+                            icon="sap-icon://delete"
+                            type="Transparent"
+                            press="onDeleteInvoice"
+                        />
+                        <Button
+                            text="Copy"
+                            icon="sap-icon://copy"
+                            type="Transparent"
+                            press="onCopyInvoice"
+                        />
+                    </Toolbar>
+                </table:toolbar>
+                <!-- <table:noData>
+                    <BusyIndicator class="sapUiMediumMargin" />
+                </table:noData> -->
+                <table:columns>
+                    <table:Column
+                        sortProperty="CompanyCode"
+                        width="10rem"
+                    >
+                        <table:label>
+                            <Text text="Company Code" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{CompanyCode}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
+                        sortProperty="FiscalYear"
+                        width="9rem"
+                    >
+                        <table:label>
+                            <Text text="Fiscal Year" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{FiscalYear}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
+                        sortProperty="DocumentNo"
+                        width="11rem"
+                    >
+                        <table:label>
+                            <Text text="Document Number" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{DocumentNo}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
+                        sortProperty="LineItem"
+                        width="8rem"
+                    >
+                        <table:label>
+                            <Text text="Line Item" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{LineItem}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
+                        sortProperty="PostingDate"
+                        width="11rem"
+                    >
+                        <table:label>
+                            <Text text="Posting Date" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{PostingDate}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
+                        sortProperty="DocumentDate"
+                        width="11rem"
+                    >
+                        <table:label>
+                            <Text text="Document Date" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{DocumentDate}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
+                        sortProperty="EntryDate"
+                        width="11rem"
+                    >
+                        <table:label>
+                            <Text text="Entry Date" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{EntryDate}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
+                        sortProperty="DocumentType"
+                        width="11rem"
+                    >
+                        <table:label>
+                            <Text text="Document Type" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{DocumentType}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
+                        sortProperty="CurrencyCode"
+                        width="9rem"
+                    >
+                        <table:label>
+                            <Text text="Currency" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{CurrencyCode}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
+                        sortProperty="AmountDocument"
+                        width="16rem"
+                    >
+                        <table:label>
+                            <Text text="Amount in Document Currency" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{AmountDocument}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
+                        sortProperty="Reference"
+                        width="13rem"
+                    >
+                        <table:label>
+                            <Text text="Reference Document" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{Reference}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
+                        sortProperty="DebitCredit"
+                        width="11rem"
+                    >
+                        <table:label>
+                            <Text text="Debit/Credit Indicator" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{DebitCredit}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
+                        sortProperty="Account"
+                        width="10rem"
+                    >
+                        <table:label>
+                            <Text text="G/L Account" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{Account}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
+                        sortProperty="Vendor"
+                        width="12rem"
+                    >
+                        <table:label>
+                            <Text text="Vendor Number" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{Vendor}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
+                        sortProperty="Customer"
+                        width="12rem"
+                    >
+                        <table:label>
+                            <Text text="Customer Number" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{Customer}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
+                        sortProperty="CostCenter"
+                        width="11rem"
+                    >
+                        <table:label>
+                            <Text text="Cost Center" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{CostCenter}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
+                        sortProperty="ProfitCenter"
+                        width="11rem"
+                    >
+                        <table:label>
+                            <Text text="Profit Center" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{ProfitCenter}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
+                        sortProperty="Segment"
+                        width="8rem"
+                    >
+                        <table:label>
+                            <Text text="Segment" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{Segment}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
+                        visible="false"
+                        sortProperty="AmountLocal"
+                        width="15rem"
+                    >
+                        <table:label>
+                            <Text text="Amount in Local Currency" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{AmountLocal}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
+                        sortProperty="PaymentTerms"
+                        width="11rem"
+                    >
+                        <table:label>
+                            <Text text="Payment Terms" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{PaymentTerms}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
+                        sortProperty="PaymentMethod"
+                        width="13rem"
+                    >
+                        <table:label>
+                            <Text text="Payment Method" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{PaymentMethod}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
+                        sortProperty="DueDate"
+                        width="10rem"
+                    >
+                        <table:label>
+                            <Text text="Due Date" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{DueDate}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
+                        sortProperty="ClearingDoc"
+                        width="14rem"
+                    >
+                        <table:label>
+                            <Text text="Clearing Document" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{ClearingDoc}" />
+                        </table:template>
+                    </table:Column>
+                    <table:Column
+                        sortProperty="ClearingDate"
+                        width="12rem"
+                    >
+                        <table:label>
+                            <Text text="Clearing Date" />
+                        </table:label>
+                        <table:template>
+                            <Text text="{ClearingDate}" />
+                        </table:template>
+                    </table:Column>
+                </table:columns>
+            </table:Table>
+            <!-- </FlexBox> -->
+        </content>
+
+        <!-- Dialog do wyświetlania szczegółowej konwersacji -->
+        <dependents>
+            <Dialog
+                id="aiChatDialog"
+                title="AI Assistant Chat"
+                resizable="true"
+                draggable="true"
+                contentWidth="40rem"
+            >
+                <content>
+                    <ScrollContainer
+                        height="24rem"
+                        width="100%"
+                        vertical="true"
+                        horizontal="false"
+                    >
+                        <List
+                            id="chatDialogList"
+                            showSeparators="None"
+                            noDataText="No conversation history"
+                        />
+                    </ScrollContainer>
+                </content>
+                <buttons>
+                    <Button
+                        text="Close"
+                        press="onCloseChatDialog"
+                    />
+                </buttons>
+            </Dialog>
+        </dependents>
+    </Page>
+</mvc:View>
