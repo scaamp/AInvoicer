@@ -1197,22 +1197,16 @@ sap.ui.define([
                         BusyIndicator.show();
 
                         var oModel = this.getView().getModel();
+                        
+                        // Tworzenie klucza encji dla OData v4
+                        var sPath = "/ZC_FI_ACDOCA(CompanyCode='" + oData.CompanyCode + 
+                                  "',FiscalYear='" + oData.FiscalYear + 
+                                  "',DocumentNo='" + oData.DocumentNo + 
+                                  "',LineItem='" + oData.LineItem + 
+                                  "',IsActiveEntity=true)";
 
-                        // Zbuduj klucz entity – np. /ZC_FI_ACDOCA(CompanyCode='1000',FiscalYear='2024',...)
-                        // var sPath = oModel.createKey("/ZC_FI_ACDOCA", {
-                        //     CompanyCode: oData.CompanyCode,
-                        //     FiscalYear: oData.FiscalYear,
-                        //     DocumentNo: oData.DocumentNo,
-                        //     LineItem: oData.LineItem,
-                        //     IsActiveEntity: true
-                        // });
-
-                        var oBinding = oModel.bindContext(sPath, null, {
-                            $$groupId: "deleteGroup"
-                        });
-
-                        oBinding.delete("$auto")
-                            .then(() => oModel.submitBatch("deleteGroup"))
+                        // Bezpośrednie usunięcie encji w OData v4
+                        oModel.delete(sPath)
                             .then(() => {
                                 this._refreshInvoiceList();
                                 MessageToast.show("Record deleted successfully");
