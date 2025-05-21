@@ -215,6 +215,7 @@
                             icon="sap-icon://copy"
                             type="Transparent"
                             press="onCopyInvoice"
+                            binding="SAP__self.copy"
                         />
                     </Toolbar>
                 </table:toolbar>
