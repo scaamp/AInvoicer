@@ -35,12 +35,17 @@ The application enables:
 - 🤖 **Field Value Prediction**  
   Python microservice + OpenAI predicts invoice fields based on historical data.
 
+- 🗣️ **Voice Playback with OpenAI GPT-4o TTS (Text-to-Speech)**  
+The application allows users to convert any text (e.g., AI-generated responses) into natural-sounding voice using OpenAI's gpt-4o-mini-tts model.  
+→ Flask-based Python microservice generates audio/mpeg  
+→ SAPUI5 frontend fetches and plays the audio dynamically via HTML5 <audio> API  
+→ Voices (e.g., shimmer) and speed are customizable  
+
 - 🧠 **Langfuse Observability**  
   Each AI interaction (prompt, response, model, tokens) is tracked with Langfuse:  
   → `trace` for the user query  
   → `span` for each prompt run  
   → full communication log with metadata (model, tokens, temperature)
-
 ---
 
 ## 🛠️ Technologies Used
@@ -122,6 +127,12 @@ Aplikacja umożliwia:
 
 - 🤖 **Predykcja wartości pól faktury**  
   Mikrousługa Python + OpenAI przewiduje pola faktury na podstawie danych historycznych.
+  
+- **🗣️ Odtwarzanie Głosu z OpenAI GPT-4o TTS(Text-to-Speech)**  
+Aplikacja umożliwia konwersję dowolnego tekstu (np. odpowiedzi AI) na głos o naturalnym brzmieniu dzięki modelowi gpt-4o-mini-tts.  
+→ Mikrousługa w Pythonie (Flask) generuje audio/mpeg  
+→ Frontend SAPUI5 pobiera i odtwarza dźwięk dynamicznie z użyciem <audio> w HTML5  
+→ Możliwość konfiguracji głosu (shimmer) i prędkości mowy  
 
 - 🧠 **Langfuse Observability**  
   Każda interakcja z AI (zapytanie, odpowiedź, model, tokeny) jest śledzona w Langfuse:  
