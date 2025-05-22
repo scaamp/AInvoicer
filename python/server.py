@@ -22,6 +22,7 @@ hana_service = 'hana'
 hana = env.get_service(label=hana_service)
 
 port = int(os.environ.get('PORT', 4000))
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 @app.route('/')
 def hello():
@@ -48,6 +49,32 @@ def hello():
         return f"Error connecting to HANA database: {str(e)}", 500
         
 
+
+@app.route('/speech', methods=['POST'])
+def generate_speech():
+    try:
+        data = request.get_json()
+        text = data.get('text')
+        instructions = data.get('instructions', '')
+
+        if not text:
+            return jsonify({"error": "Missing 'text' parameter"}), 400
+
+        response = client.audio.speech.create(
+            model="gpt-4o-mini-tts",
+            voice="shimmer",
+            input=text,
+            speed=1.3,
+            instructions=instructions
+        )
+
+        audio_bytes = response.read()  # audio file as binary
+        return audio_bytes, 200, {'Content-Type': 'audio/mpeg'}
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/filter', methods=['POST'])
 def filter_data():
     try:
@@ -58,8 +85,6 @@ def filter_data():
         query = data.get("queryText")
         if not query:
             return jsonify({"error": "Missing 'queryText' parameter"}), 400
-
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
         # Create trace and span
         trace = langfuse_service.create_trace(

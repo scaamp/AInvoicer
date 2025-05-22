@@ -3,6 +3,6 @@ flask-cors==3.0.10
 python-dotenv==1.0.1
 cfenv==0.5.3
 hdbcli==2.24.21
-openai==1.56.1
+openai==1.81.0
 langfuse==2.60.5
 
