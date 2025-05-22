@@ -226,6 +226,7 @@ sap.ui.define([
                             that.oTable.invalidate();
                             resolve(data); // na końcu
                             that.oBusyDialog.close();
+                            that.onPlayTTS(data.description);
                         })
                 }
                 else {
@@ -1177,299 +1178,6 @@ sap.ui.define([
             this._selectedContext = oEvent.getParameter("rowContext");
         },
 
-        // onCopyInvoice: function () {
-        //     const oTable = this.byId("invoiceTable");
-        //     const oContext = oTable.getContextByIndex(oTable.getSelectedIndex());
-
-        //     if (!oContext) {
-        //         MessageBox.warning("Please select a record to copy.");
-        //         return;
-        //     }
-
-        //     BusyIndicator.show();
-
-        //     var oModel = this.getView().getModel();
-        //     var sPath = oContext.getPath();
-        //     var sEtag = oContext.getObject()["@odata.etag"];
-
-        //     // 1. Deferred binding (trzeci argument to {} lub {parameters: {}})
-        //     var oBinding = oModel.bindContext(
-        //         sPath + "/SAP__self.copy",
-        //         null,
-        //         {} // <- deferred!
-        //     );
-
-        //     // 2. Ustaw parametry akcji
-        //     // oBinding.setParameter("ResultIsActiveEntity", true);
-
-        //     // 3. Ustaw nagłówek If-Match
-        //     // oBinding.setHeader("If-Match", sEtag);
-
-        //     oBinding.execute()
-        //         .then(function (oResult) {
-        //             sap.m.MessageToast.show("Record copied successfully!");
-        //             oTable.getBinding("rows").refresh();
-        //         })
-        //         .catch(function (oError) {
-        //             sap.m.MessageBox.error("Error copying record: " + oError.message);
-        //         })
-        //         .finally(function () {
-        //             BusyIndicator.hide();
-        //         });
-        // },
-
-        // onCopyInvoice: function () {
-        //     const oTable = this.byId("invoiceTable");
-        //     const oContext = oTable.getContextByIndex(oTable.getSelectedIndex());
-
-        //     if (!oContext) {
-        //         MessageBox.warning("Please select a record to copy.");
-        //         return;
-        //     }
-
-        //     // BusyIndicator.show();
-
-        //     var oModel = this.getView().getModel();
-        //     var sPath = oContext.getPath();
-
-        //     // Create a deferred operation binding
-        //     var oOperation = oModel.bindContext(sPath + "/SAP__self.copy", null, {});
-
-        //     // Set it to deferred
-        //     // oOperation.setParameter("ResultIsActiveEntity", true);
-
-        //     // Execute the operation
-        //     oOperation.execute({
-        //         groupId: "copyGroup",
-        //         urlParameters: {
-        //             "ResultIsActiveEntity": "true"
-        //         }
-        //     })
-        //         .then(function (oResult) {
-        //             sap.m.MessageToast.show("Record copied successfully!");
-        //             oTable.getBinding("rows").refresh();
-        //         })
-        //         .catch(function (oError) {
-        //             sap.m.MessageBox.error("Error copying record: " + oError.message);
-        //         })
-        //         .finally(function () {
-        //             // BusyIndicator.hide();
-        //         });
-        // },
-
-        // onCopyInvoice: function () {
-        //     const oTable = this.byId("invoiceTable");
-        //     const oContext = oTable.getContextByIndex(oTable.getSelectedIndex());
-
-        //     if (!oContext) {
-        //         MessageBox.warning("Please select a record to copy.");
-        //         return;
-        //     }
-
-        //     BusyIndicator.show();
-
-        //     const oModel = this.getView().getModel();
-        //     const oData = oContext.getObject();
-
-        //     // Static or factory action — not bound = use full path
-        //     const oOperation = oModel.bindContext("/ZC_FI_ACDOCA.copy(...)");
-
-        //     // Ustaw parametry akcji
-        //     oOperation.setParameter("CompanyCode", oData.CompanyCode);
-        //     oOperation.setParameter("FiscalYear", oData.FiscalYear);
-        //     oOperation.setParameter("DocumentNo", oData.DocumentNo);
-        //     oOperation.setParameter("LineItem", oData.LineItem);
-        //     oOperation.setParameter("IsActiveEntity", true);
-
-        //     oOperation.execute()
-        //         .then(() => oModel.submitBatch()) // domyślnie: "$auto"
-        //         .then(() => {
-        //             MessageToast.show("Record copied successfully!");
-        //             oTable.getBinding("rows").refresh();
-        //         })
-        //         .catch((oError) => {
-        //             MessageBox.error("Error copying record: " + oError.message);
-        //         })
-        //         .finally(() => {
-        //             BusyIndicator.hide();
-        //         });
-        // },
-
-        // onCopyInvoice: function () { 
-        //     const oTable = this.byId("invoiceTable"); 
-        //     const oContext = oTable.getContextByIndex(oTable.getSelectedIndex()); 
-
-        //     if (!oContext) { 
-        //         MessageBox.warning("Please select a record to copy."); 
-        //         return; 
-        //     } 
-
-        //     BusyIndicator.show(); 
-
-        //     var oModel = this.getView().getModel(); 
-        //     var sPath = oContext.getPath();
-
-        //     // Create a deferred operation binding
-        //     var oOperation = oModel.bindContext(sPath + "/SAP__self.copy", null, {});
-
-        //     // Set it to deferred
-        //     // oOperation.setParameter("ResultIsActiveEntity", true);
-
-        //     // Execute the operation
-        //     oOperation.execute("copyGroup", {
-        //         "ResultIsActiveEntity": "true"
-        //     })
-        //     .then(function (oResult) { 
-        //         sap.m.MessageToast.show("Record copied successfully!"); 
-        //         oTable.getBinding("rows").refresh(); 
-        //     })
-        //     .catch(function (oError) { 
-        //         sap.m.MessageBox.error("Error copying record: " + oError.message); 
-        //     })
-        //     .finally(function () { 
-        //         BusyIndicator.hide(); 
-        //     }); 
-        // },
-
-        // onCopyInvoice() {
-        //     const oTable = this.byId("invoiceTable");
-        //     const oContext = oTable.getContextByIndex(oTable.getSelectedIndex());
-        //     // const sPath = oContext.getPath() + "/SAP__self.copy"; // dla bound action
-        //     const sPath = `/ZC_FI_ACDOCA(CompanyCode='7777',FiscalYear='2020',DocumentNo='0000000007',LineItem='001',IsActiveEntity=true)/SAP__self.copy`;
-        //     const oModel = this.getView().getModel();
-
-        //     const oBinding = oModel.bindContext(sPath, null, {
-        //         $$groupId: "$auto",
-        //         headers: {
-        //             "If-Match": "*"
-        //         }
-        //     });
-
-        //     oBinding.execute()
-        //         .then(() => oModel.submitBatch("$auto"))
-        //         .then(() => {
-        //             MessageToast.show("Copied successfully");
-        //         })
-        //         .catch((oError) => {
-        //             MessageBox.error("Error: " + oError.message);
-        //         });
-        // },
-        // onCopyInvoice: async function () {
-        //     const oTable = this.byId("invoiceTable");
-        //     const iSelectedIndex = oTable.getSelectedIndex();
-
-        //     if (iSelectedIndex === -1) {
-        //         MessageBox.warning("Please select an invoice to copy.");
-        //         return;
-        //     }
-
-        //     const oContext = oTable.getContextByIndex(iSelectedIndex);
-        //     const oModel = this.getView().getModel();
-        //     const sGroupId = "$auto"; // jawnie ustawiony groupId
-
-        //     // Deferred binding
-        //     const oBinding = oModel.bindContext("SAP__self.copy", null, {
-        //         $$groupId: sGroupId,
-        //         headers: {
-        //             "If-Match": "*"
-        //         }
-        //     });
-
-        //     try {
-        //         await oBinding.execute(oContext);
-        //         await oModel.submitBatch(sGroupId);
-        //         MessageToast.show("Copied successfully");
-        //     } catch (oError) {
-        //         MessageBox.error("Error: " + oError.message);
-        //     }
-        // },
-        // onCopyInvoice() {
-        //     const oTable = this.byId("invoiceTable");
-        //     const oContext = oTable.getContextByIndex(oTable.getSelectedIndex());
-        //     // Get path from selected context if available, otherwise use hardcoded path
-        //     const sEntityPath = oContext ? oContext.getPath() : `/ZC_FI_ACDOCA(CompanyCode='7777',FiscalYear='2020',DocumentNo='0000000007',LineItem='001',IsActiveEntity=true)`;
-
-        //     const oModel = this.getView().getModel();
-
-        //     // Create a deferred operation
-        //     const oOperation = oModel.bindContext(sEntityPath + "/com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.copy", null, {
-        //         $$groupId: "$auto"
-        //     });
-
-        //     // Set parameters before execution
-        //     oOperation.setParameter("$select", "HasActiveEntity,SAP__Messages");
-
-        //     // Set headers via the changeParameters method if needed
-        //     oOperation.changeParameters({
-        //         headers: {
-        //             "If-Match": "*"
-        //         }
-        //     });
-
-        //     // Execute without parameters
-        //     oOperation.execute()
-        //         .then((oData) => {
-        //             MessageToast.show("Document copied successfully");
-        //             // Refresh the table or model if needed
-        //             oModel.refresh(true);
-        //         })
-        //         .catch((oError) => {
-        //             MessageBox.error("Error copying document: " + (oError.message || "Unknown error"));
-        //             console.error(oError);
-        //         });
-        // },
-        // onCopyInvoice: async function () {
-        //     const oTable = this.byId("invoiceTable");
-        //     const oContext = oTable.getContextByIndex(oTable.getSelectedIndex());
-
-        //     if (!oContext) {
-        //         MessageBox.error("Proszę wybrać wiersz do skopiowania.");
-        //         return;
-        //     }
-
-        //     // Pobierz ścieżkę do wybranego rekordu (np. /ZC_FI_ACDOCA(...))
-        //     const sSelectedPath = oContext.getPath();
-
-        //     try {
-        //         // Pobierz główny model OData v4
-        //         const oODataModel = this.getView().getModel();
-        //         if (!oODataModel) {
-        //             return Promise.reject("Model OData v4 nie został znaleziony");
-        //         }
-
-        //         await oContext.requestObject(); // załaduj dane z backendu
-        //         const sEtag = oContext.getObject()["@odata.etag"];
-
-        //         const oOperationBinding = oODataModel.bindContext(
-        //             "com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.copy(...)",
-        //             oODataModel.createBindingContext(sSelectedPath),
-        //             {
-        //                 $$groupId: "$auto",
-        //                 headers: {
-        //                     "If-Match": sEtag // ✅ poprawne miejsce!
-        //                 }
-        //             }
-        //         );
-
-        //         await oOperationBinding.invoke("$auto", undefined, {
-        //             "If-Match": sEtag
-        //         });
-
-        //         await oODataModel.submitBatch("$auto");
-
-        //         oODataModel.refresh(true);
-
-        //         console.log("Kopiowanie zakończone sukcesem:", oResult);
-        //         return {
-        //             success: true,
-        //             result: oResult
-        //         };
-        //     } catch (oError) {
-        //         console.error("Błąd podczas kopiowania dokumentu:", oError);
-        //         throw oError;
-        //     }
-        // },
-
         onCopyInvoice: async function () {
             const oTable = this.byId("invoiceTable");
             const oContext = oTable.getContextByIndex(oTable.getSelectedIndex());
@@ -1554,6 +1262,25 @@ sap.ui.define([
                     }
                 }.bind(this)
             });
+        },
+
+        onPlayTTS: function (text) {
+            // fetch("http://127.0.0.1:4000/speech", {
+            fetch("https://python-app-grouchy-platypus-jj.cfapps.us10-001.hana.ondemand.com/speech", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ text: text })
+            })
+            .then(response => response.blob())
+            .then(blob => {
+                const audioUrl = URL.createObjectURL(blob);
+                const audio = new Audio(audioUrl);
+                audio.play();
+            })
+            .catch(err => console.error("Speech error:", err));
         }
+        
     });
 })
