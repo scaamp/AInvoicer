@@ -22,6 +22,8 @@ The application enables:
 - 🔍 **Natural Language Filtering (Langfuse-tracked)**  
   Using OpenAI and Langfuse, user queries in natural language are translated into OData filters. Example: “Show documents over 5000 EUR from 2024”.
 
+![NLP](./gif/search_documents_1.gif)
+
 - 📄 **OCR Invoice Scanner**  
   Node.js microservice + OpenAI analyzes uploaded invoices (PDF/JPG/PNG) and extracts structured data matching the `ZFI_ACDOCA` table.
 
