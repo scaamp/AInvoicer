@@ -24,8 +24,15 @@ The application enables:
 
 ![NLP](./gif/search_documents_1.gif)
 
+![NLP](./gif/search_documents_2.gif)
+
+**Voice mode**:
+![NLP](./gif/search_documents_voice.gif)
+
 - 📄 **OCR Invoice Scanner**  
   Node.js microservice + OpenAI analyzes uploaded invoices (PDF/JPG/PNG) and extracts structured data matching the `ZFI_ACDOCA` table.
+  
+![NLP](./gif/ocr_document.gif)
 
 - 📊 **Dynamic Table (sap.ui.table)**  
   With features such as:  
