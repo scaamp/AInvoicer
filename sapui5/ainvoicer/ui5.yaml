@@ -3,13 +3,15 @@
 specVersion: "3.1"
 metadata:
   name: ainvoicer
+
 type: application
+
 server:
   customMiddleware:
     - name: fiori-tools-proxy
       afterMiddleware: compression
       configuration:
-        ignoreCertError: false # If set to true, certificate errors will be ignored. E.g. self-signed certificates will be accepted
+        ignoreCertError: false
         ui5:
           path:
             - /resources
@@ -17,14 +19,17 @@ server:
           url: https://ui5.sap.com
         backend:
           - path: /sap
-            url: https://11b69711-9bcb-491b-b504-a9ba7e4b7e97.abap.us10.hana.ondemand.com
-            destination: abap-cloud-abap-1ebf3ff5trial-dev
+            url: https://56180ab9-e11c-466a-8e0f-826239d70868.abap.eu20.hana.ondemand.com
+            destination: abap
+            authenticationType: reentranceTicket
+
     - name: fiori-tools-appreload
       afterMiddleware: compression
       configuration:
         port: 35729
         path: webapp
         delay: 300
+
     - name: fiori-tools-preview
       afterMiddleware: fiori-tools-appreload
       configuration:

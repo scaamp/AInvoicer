@@ -1,2 +1,2 @@
-@EndUserText.label: 'ZC_FI_ACDOCA'
+@EndUserText.label: 'ZC_FIACDOCA'
 ... -- tutaj definicja CDS view

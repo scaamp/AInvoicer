@@ -142,7 +142,7 @@
                                     name="CompanyCode"
                                     selectionChange=".onSelectionChange"
                                     items="{
-												path: '/ZC_FI_ACDOCA',
+												path: '/ZC_FIACDOCA',
 												templateShareable: true
 											}"
                                 >
@@ -165,7 +165,7 @@
                                     name="FiscalYear"
                                     selectionChange=".onSelectionChange"
                                     items="{
-												path: '/ZC_FI_ACDOCA',
+												path: '/ZC_FIACDOCA',
 												templateShareable: true
 											}"
                                 >
@@ -184,7 +184,7 @@
             <table:Table
                 id="invoiceTable"
                 rows="{
-					path: '/ZC_FI_ACDOCA',
+					path: '/ZC_FIACDOCA',
 					parameters: {operationMode: 'Server'}
 				}"
                 selectionMode="Single"

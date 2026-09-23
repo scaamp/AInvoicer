@@ -17,7 +17,7 @@
     },
     "dataSources": {
       "mainService": {
-        "uri": "/sap/opu/odata4/sap/zui_fi_acdoca_o4/srvd/sap/zui_fi_acdoca_o4/0001/",
+        "uri": "/sap/opu/odata4/sap/zui_zainvoicer_o4/srvd/sap/zui_zainvoicer_o4/0001/",
         "type": "OData",
         "settings": {
           "annotations": [],

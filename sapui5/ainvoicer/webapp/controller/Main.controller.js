@@ -152,7 +152,7 @@ sap.ui.define([
 
                             const oODataModel = that.getOwnerComponent().getModel(); // lub inny sposób uzyskania modelu głównego
                             that.oTable.setModel(oODataModel);
-                            that.oTable.bindRows({ path: "/ZC_FI_ACDOCA" });
+                            that.oTable.bindRows({ path: "/ZC_FIACDOCA" });
 
                             // Limit – przycinamy dane na modelu view, jeśli trzeba
                             if (data.limit) {
@@ -176,9 +176,9 @@ sap.ui.define([
                                         const aLimitedData = aFullData.slice(0, iLimit);
 
                                         // Tymczasowy model
-                                        const oTempModel = new sap.ui.model.json.JSONModel({ ZC_FI_ACDOCA: aLimitedData });
+                                        const oTempModel = new sap.ui.model.json.JSONModel({ ZC_FIACDOCA: aLimitedData });
                                         that.oTable.setModel(oTempModel);
-                                        that.oTable.bindRows("/ZC_FI_ACDOCA");
+                                        that.oTable.bindRows("/ZC_FIACDOCA");
 
 
                                     });
@@ -537,7 +537,7 @@ sap.ui.define([
             // 1. Nazwę zbioru encji w OData (np. "InvoiceSet")
             // 2. ID dialogu, który zawiera dane
             // 3. Nazwę modelu JSON w dialogu (jeśli pusta, użyje domyślnego modelu)
-            this.onCreateODataEntity("/ZC_FI_ACDOCA", "addInvoiceDialog", "")
+            this.onCreateODataEntity("/ZC_FIACDOCA", "addInvoiceDialog", "")
                 .then(function (oResult) {
                     // Sukces
                     BusyIndicator.hide();
@@ -1243,7 +1243,7 @@ sap.ui.define([
                         var oModel = this.getView().getModel();
 
                         // Tworzenie klucza encji dla OData v4
-                        var sPath = "/ZC_FI_ACDOCA(CompanyCode='" + oData.CompanyCode +
+                        var sPath = "/ZC_FIACDOCA(CompanyCode='" + oData.CompanyCode +
                             "',FiscalYear='" + oData.FiscalYear +
                             "',DocumentNo='" + oData.DocumentNo +
                             "',LineItem='" + oData.LineItem +

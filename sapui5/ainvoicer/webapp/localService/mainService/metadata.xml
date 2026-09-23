@@ -51,7 +51,7 @@
     <edmx:DataServices>
         <Schema Namespace="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001" Alias="SAP__self">
             <Annotation Term="SAP__core.SchemaVersion" String="1.0.0"/>
-            <EntityType Name="ZC_FI_ACDOCAType">
+            <EntityType Name="ZC_FIACDOCAType">
                 <Key>
                     <PropertyRef Name="CompanyCode"/>
                     <PropertyRef Name="FiscalYear"/>
@@ -93,10 +93,10 @@
                 <Property Name="HasActiveEntity" Type="Edm.Boolean" Nullable="false"/>
                 <Property Name="IsActiveEntity" Type="Edm.Boolean" Nullable="false"/>
                 <Property Name="__EntityControl" Type="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.EntityControl"/>
-                <Property Name="__OperationControl" Type="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.ZC_FI_ACDOCAOperationControl"/>
+                <Property Name="__OperationControl" Type="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.ZC_FIACDOCAOperationControl"/>
                 <Property Name="SAP__Messages" Type="Collection(com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.SAP__Message)" Nullable="false"/>
                 <NavigationProperty Name="DraftAdministrativeData" Type="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.I_DraftAdministrativeDataType"/>
-                <NavigationProperty Name="SiblingEntity" Type="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.ZC_FI_ACDOCAType"/>
+                <NavigationProperty Name="SiblingEntity" Type="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.ZC_FIACDOCAType"/>
             </EntityType>
             <EntityType Name="I_DraftAdministrativeDataType">
                 <Key>
@@ -121,7 +121,7 @@
                 <Property Name="LastChangedByUserDescription" Type="Edm.String" Nullable="false" MaxLength="80"/>
                 <Property Name="InProcessByUserDescription" Type="Edm.String" Nullable="false" MaxLength="80"/>
             </EntityType>
-            <ComplexType Name="ZC_FI_ACDOCAOperationControl">
+            <ComplexType Name="ZC_FIACDOCAOperationControl">
                 <Property Name="Edit" Type="Edm.Boolean" Nullable="false"/>
             </ComplexType>
             <ComplexType Name="EntityControl">
@@ -138,118 +138,118 @@
                 <Property Name="longtextUrl" Type="Edm.String"/>
             </ComplexType>
             <Action Name="Activate" EntitySetPath="_it" IsBound="true">
-                <Parameter Name="_it" Type="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.ZC_FI_ACDOCAType" Nullable="false"/>
-                <ReturnType Type="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.ZC_FI_ACDOCAType" Nullable="false"/>
+                <Parameter Name="_it" Type="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.ZC_FIACDOCAType" Nullable="false"/>
+                <ReturnType Type="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.ZC_FIACDOCAType" Nullable="false"/>
             </Action>
             <Action Name="Prepare" IsBound="true">
-                <Parameter Name="_it" Type="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.ZC_FI_ACDOCAType" Nullable="false"/>
+                <Parameter Name="_it" Type="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.ZC_FIACDOCAType" Nullable="false"/>
             </Action>
             <Action Name="Discard" IsBound="true">
-                <Parameter Name="_it" Type="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.ZC_FI_ACDOCAType" Nullable="false"/>
+                <Parameter Name="_it" Type="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.ZC_FIACDOCAType" Nullable="false"/>
             </Action>
             <Action Name="Edit" EntitySetPath="_it" IsBound="true">
-                <Parameter Name="_it" Type="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.ZC_FI_ACDOCAType" Nullable="false"/>
+                <Parameter Name="_it" Type="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.ZC_FIACDOCAType" Nullable="false"/>
                 <Parameter Name="PreserveChanges" Type="Edm.Boolean" Nullable="false"/>
-                <ReturnType Type="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.ZC_FI_ACDOCAType" Nullable="false"/>
+                <ReturnType Type="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.ZC_FIACDOCAType" Nullable="false"/>
             </Action>
             <Action Name="Resume" IsBound="true">
-                <Parameter Name="_it" Type="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.ZC_FI_ACDOCAType" Nullable="false"/>
+                <Parameter Name="_it" Type="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.ZC_FIACDOCAType" Nullable="false"/>
             </Action>
             <EntityContainer Name="Container">
                 <EntitySet Name="I_DraftAdministrativeData" EntityType="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.I_DraftAdministrativeDataType"/>
-                <EntitySet Name="ZC_FI_ACDOCA" EntityType="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.ZC_FI_ACDOCAType">
+                <EntitySet Name="ZC_FIACDOCA" EntityType="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.ZC_FIACDOCAType">
                     <NavigationPropertyBinding Path="DraftAdministrativeData" Target="I_DraftAdministrativeData"/>
-                    <NavigationPropertyBinding Path="SiblingEntity" Target="ZC_FI_ACDOCA"/>
+                    <NavigationPropertyBinding Path="SiblingEntity" Target="ZC_FIACDOCA"/>
                 </EntitySet>
             </EntityContainer>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/CompanyCode">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/CompanyCode">
                 <Annotation Term="SAP__common.Label" String="Company Code"/>
                 <Annotation Term="SAP__core.Immutable"/>
                 <Annotation Term="SAP__common.IsDigitSequence"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/FiscalYear">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/FiscalYear">
                 <Annotation Term="SAP__common.Label" String="Fiscal Year"/>
                 <Annotation Term="SAP__core.Immutable"/>
                 <Annotation Term="SAP__common.IsDigitSequence"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/DocumentNo">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/DocumentNo">
                 <Annotation Term="SAP__common.Label" String="Document Number"/>
                 <Annotation Term="SAP__core.Immutable"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/LineItem">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/LineItem">
                 <Annotation Term="SAP__common.Label" String="Line Item"/>
                 <Annotation Term="SAP__core.Immutable"/>
                 <Annotation Term="SAP__common.IsDigitSequence"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/PostingDate">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/PostingDate">
                 <Annotation Term="SAP__common.Label" String="Posting Date"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/DocumentDate">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/DocumentDate">
                 <Annotation Term="SAP__common.Label" String="Document Date"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/EntryDate">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/EntryDate">
                 <Annotation Term="SAP__common.Label" String="Entry Date"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/DocumentType">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/DocumentType">
                 <Annotation Term="SAP__common.Label" String="Document Type"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/Reference">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/Reference">
                 <Annotation Term="SAP__common.Label" String="Reference Document"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/DebitCredit">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/DebitCredit">
                 <Annotation Term="SAP__common.Label" String="Debit/Credit Indicator"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/Account">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/Account">
                 <Annotation Term="SAP__common.Label" String="G/L Account"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/Vendor">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/Vendor">
                 <Annotation Term="SAP__common.Label" String="Vendor Number"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/Customer">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/Customer">
                 <Annotation Term="SAP__common.Label" String="Customer Number"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/CostCenter">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/CostCenter">
                 <Annotation Term="SAP__common.Label" String="Cost Center"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/ProfitCenter">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/ProfitCenter">
                 <Annotation Term="SAP__common.Label" String="Profit Center"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/Segment">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/Segment">
                 <Annotation Term="SAP__common.Label" String="Segment"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/CurrencyCode">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/CurrencyCode">
                 <Annotation Term="SAP__common.IsCurrency"/>
                 <Annotation Term="SAP__common.ValueListForValidation" String=""/>
                 <Annotation Term="SAP__common.ValueListReferences">
                     <Collection>
-                        <String>../../../../srvd_f4/sap/i_currencystdvh/0001;ps='srvd-zui_fi_acdoca_o4-0001';va='com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.et-zc_fi_acdoca.currencycode'/$metadata</String>
+                        <String>../../../../srvd_f4/sap/i_currencystdvh/0001;ps='srvd-zui_fi_acdoca_o4-0001';va='com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.et-ZC_FIACDOCA.currencycode'/$metadata</String>
                     </Collection>
                 </Annotation>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/AmountDocument">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/AmountDocument">
                 <Annotation Term="SAP__common.Label" String="Amount in Document Currency"/>
                 <Annotation Term="SAP__measures.ISOCurrency" Path="CurrencyCode"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/AmountLocal">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/AmountLocal">
                 <Annotation Term="SAP__common.Label" String="Amount in Local Currency"/>
                 <Annotation Term="SAP__measures.ISOCurrency" Path="CurrencyCode"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/PaymentTerms">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/PaymentTerms">
                 <Annotation Term="SAP__common.Label" String="Payment Terms"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/PaymentMethod">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/PaymentMethod">
                 <Annotation Term="SAP__common.Label" String="Payment Method"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/DueDate">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/DueDate">
                 <Annotation Term="SAP__common.Label" String="Due Date"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/ClearingDoc">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/ClearingDoc">
                 <Annotation Term="SAP__common.Label" String="Clearing Document"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/ClearingDate">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/ClearingDate">
                 <Annotation Term="SAP__common.Label" String="Clearing Date"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/CreatedBy">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/CreatedBy">
                 <Annotation Term="SAP__common.Label" String="Created By"/>
                 <Annotation Term="SAP__core.Computed"/>
                 <Annotation Term="SAP__common.IsUpperCase"/>
@@ -257,7 +257,7 @@
                 <Annotation Term="SAP__common.QuickInfo" String="Created By User"/>
                 <Annotation Term="SAP__common.DocumentationRef" String="urn:sap-com:documentation:key?=type=DE&amp;id=ABP_CREATION_USER"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType">
                 <Annotation Term="SAP__common.CreatedBy" Path="CreatedBy"/>
                 <Annotation Term="SAP__common.CreatedAt" Path="CreatedAt"/>
                 <Annotation Term="SAP__common.ChangedBy" Path="ChangedBy"/>
@@ -548,14 +548,14 @@
                 </Annotation>
                 <Annotation Term="SAP__common.Messages" Path="SAP__Messages"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/CreatedAt">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/CreatedAt">
                 <Annotation Term="SAP__common.Label" String="Created At"/>
                 <Annotation Term="SAP__core.Computed"/>
                 <Annotation Term="SAP__common.Heading" String="Created On"/>
                 <Annotation Term="SAP__common.QuickInfo" String="Creation Date Time"/>
                 <Annotation Term="SAP__common.DocumentationRef" String="urn:sap-com:documentation:key?=type=DE&amp;id=ABP_CREATION_TSTMPL"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/ChangedBy">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/ChangedBy">
                 <Annotation Term="SAP__common.Label" String="Changed By"/>
                 <Annotation Term="SAP__core.Computed"/>
                 <Annotation Term="SAP__common.IsUpperCase"/>
@@ -563,57 +563,57 @@
                 <Annotation Term="SAP__common.QuickInfo" String="Last Changed By User"/>
                 <Annotation Term="SAP__common.DocumentationRef" String="urn:sap-com:documentation:key?=type=DE&amp;id=ABP_LASTCHANGE_USER"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/ChangedAt">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/ChangedAt">
                 <Annotation Term="SAP__common.Label" String="Changed At"/>
                 <Annotation Term="SAP__core.Computed"/>
                 <Annotation Term="SAP__common.Heading" String="Changed On"/>
                 <Annotation Term="SAP__common.QuickInfo" String="Last Change Date Time"/>
                 <Annotation Term="SAP__common.DocumentationRef" String="urn:sap-com:documentation:key?=type=DE&amp;id=ABP_LASTCHANGE_TSTMPL"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/HasDraftEntity">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/HasDraftEntity">
                 <Annotation Term="SAP__core.Computed"/>
                 <Annotation Term="SAP__UI.HiddenFilter"/>
                 <Annotation Term="SAP__UI.Hidden"/>
                 <Annotation Term="SAP__common.Label" String="Has Draft"/>
                 <Annotation Term="SAP__common.QuickInfo" String="Draft - Indicator - Has draft document"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/DraftEntityCreationDateTime">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/DraftEntityCreationDateTime">
                 <Annotation Term="SAP__core.Computed"/>
                 <Annotation Term="SAP__UI.HiddenFilter"/>
                 <Annotation Term="SAP__UI.Hidden"/>
                 <Annotation Term="SAP__common.Label" String="Draft Created On"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/DraftEntityLastChangeDateTime">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/DraftEntityLastChangeDateTime">
                 <Annotation Term="SAP__core.Computed"/>
                 <Annotation Term="SAP__UI.HiddenFilter"/>
                 <Annotation Term="SAP__UI.Hidden"/>
                 <Annotation Term="SAP__common.Label" String="Draft Last Changed On"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/HasActiveEntity">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/HasActiveEntity">
                 <Annotation Term="SAP__core.Computed"/>
                 <Annotation Term="SAP__UI.HiddenFilter"/>
                 <Annotation Term="SAP__UI.Hidden"/>
                 <Annotation Term="SAP__common.Label" String="Has active"/>
                 <Annotation Term="SAP__common.QuickInfo" String="Draft - Indicator - Has active document"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/IsActiveEntity">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/IsActiveEntity">
                 <Annotation Term="SAP__core.Computed"/>
                 <Annotation Term="SAP__UI.HiddenFilter"/>
                 <Annotation Term="SAP__UI.Hidden"/>
                 <Annotation Term="SAP__common.Label" String="Is active"/>
                 <Annotation Term="SAP__common.QuickInfo" String="Draft - Indicator - Is active document"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/__EntityControl">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/__EntityControl">
                 <Annotation Term="SAP__core.Computed"/>
                 <Annotation Term="SAP__UI.HiddenFilter"/>
                 <Annotation Term="SAP__UI.Hidden"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/__OperationControl">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/__OperationControl">
                 <Annotation Term="SAP__core.Computed"/>
                 <Annotation Term="SAP__UI.HiddenFilter"/>
                 <Annotation Term="SAP__UI.Hidden"/>
             </Annotations>
-            <Annotations Target="SAP__self.Container/ZC_FI_ACDOCA">
+            <Annotations Target="SAP__self.Container/ZC_FIACDOCA">
                 <Annotation Term="SAP__common.DraftRoot">
                     <Record>
                         <PropertyValue Property="ActivationAction" String="com.sap.gateway.srvd.zui_fi_acdoca_o4.v0001.Activate"/>
@@ -713,12 +713,12 @@
                     </Collection>
                 </Annotation>
             </Annotations>
-            <Annotations Target="SAP__self.Edit(SAP__self.ZC_FI_ACDOCAType)/PreserveChanges">
+            <Annotations Target="SAP__self.Edit(SAP__self.ZC_FIACDOCAType)/PreserveChanges">
                 <Annotation Term="SAP__common.IsUpperCase"/>
                 <Annotation Term="SAP__common.Label" String="TRUE"/>
                 <Annotation Term="SAP__common.QuickInfo" String="Data element for domain BOOLE: TRUE (='X') and FALSE (=' ')"/>
             </Annotations>
-            <Annotations Target="SAP__self.Edit(SAP__self.ZC_FI_ACDOCAType)">
+            <Annotations Target="SAP__self.Edit(SAP__self.ZC_FIACDOCAType)">
                 <Annotation Term="SAP__core.OperationAvailable" Path="_it/__OperationControl/Edit"/>
             </Annotations>
             <Annotations Target="SAP__self.Container">
@@ -729,7 +729,7 @@
                     </Record>
                 </Annotation>
                 <Annotation Term="SAP__common.ApplyMultiUnitBehaviorForSortingAndFiltering" Bool="true"/>
-                <Annotation Term="SAP__UI.LeadingEntitySet" String="ZC_FI_ACDOCA"/>
+                <Annotation Term="SAP__UI.LeadingEntitySet" String="ZC_FIACDOCA"/>
                 <Annotation Term="SAP__capabilities.FilterFunctions">
                     <Collection>
                         <String>eq</String>
@@ -908,17 +908,17 @@
                 <Annotation Term="SAP__UI.Hidden"/>
                 <Annotation Term="SAP__common.Label" String="Draft In Process By (Description)"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/__EntityControl/Deletable">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/__EntityControl/Deletable">
                 <Annotation Term="SAP__common.Label" String="Dyn. Method Control"/>
                 <Annotation Term="SAP__common.Heading" String="Dynamic Method Control"/>
                 <Annotation Term="SAP__common.QuickInfo" String="Dynamic Method Property"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/__EntityControl/Updatable">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/__EntityControl/Updatable">
                 <Annotation Term="SAP__common.Label" String="Dyn. Method Control"/>
                 <Annotation Term="SAP__common.Heading" String="Dynamic Method Control"/>
                 <Annotation Term="SAP__common.QuickInfo" String="Dynamic Method Property"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAType/__OperationControl/Edit">
+            <Annotations Target="SAP__self.ZC_FIACDOCAType/__OperationControl/Edit">
                 <Annotation Term="SAP__common.Label" String="Dyn. Action Control"/>
                 <Annotation Term="SAP__common.Heading" String="Dynamic Action Control"/>
                 <Annotation Term="SAP__common.QuickInfo" String="Dynamic Action Property"/>
@@ -929,7 +929,7 @@
             <Annotations Target="SAP__self.I_DraftAdministrativeDataType/LastChangeDateTime">
                 <Annotation Term="SAP__common.Label" String="Draft Last Changed On"/>
             </Annotations>
-            <Annotations Target="SAP__self.ZC_FI_ACDOCAOperationControl/Edit">
+            <Annotations Target="SAP__self.ZC_FIACDOCAOperationControl/Edit">
                 <Annotation Term="SAP__common.Label" String="Dyn. Action Control"/>
                 <Annotation Term="SAP__common.Heading" String="Dynamic Action Control"/>
                 <Annotation Term="SAP__common.QuickInfo" String="Dynamic Action Property"/>
