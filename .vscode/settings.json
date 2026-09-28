@@ -1,4 +1,5 @@
 {
     "SAP HANA Database Explorer.Objects Definition For SQL Generation Retention Time": 7,
-    "SAP HANA Database Explorer.Use Objects Definition For SQL Generation": false
+    "SAP HANA Database Explorer.Use Objects Definition For SQL Generation": false,
+    "abapfs.remote": {}
 }
