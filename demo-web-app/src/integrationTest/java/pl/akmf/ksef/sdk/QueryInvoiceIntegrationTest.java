@@ -1,0 +1,654 @@
+package pl.akmf.ksef.sdk;
+
+import jakarta.xml.bind.JAXBException;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import pl.akmf.ksef.sdk.api.builders.batch.OpenBatchSessionRequestBuilder;
+import pl.akmf.ksef.sdk.api.builders.invoices.InvoiceQueryFiltersBuilder;
+import pl.akmf.ksef.sdk.api.builders.invoices.InvoicesAsyncQueryFiltersBuilder;
+import pl.akmf.ksef.sdk.api.builders.permission.proxy.GrantAuthorizationPermissionsRequestBuilder;
+import pl.akmf.ksef.sdk.api.builders.session.OpenOnlineSessionRequestBuilder;
+import pl.akmf.ksef.sdk.api.builders.session.SendInvoiceOnlineSessionRequestBuilder;
+import pl.akmf.ksef.sdk.client.model.ApiException;
+import pl.akmf.ksef.sdk.client.model.exceptions.BadRequestApiError;
+import pl.akmf.ksef.sdk.client.model.exceptions.BadRequestApiException;
+import pl.akmf.ksef.sdk.client.model.exceptions.BadRequestProblemDetails;
+import pl.akmf.ksef.sdk.client.model.invoice.InitAsyncInvoicesQueryResponse;
+import pl.akmf.ksef.sdk.client.model.invoice.InvoiceExportFilters;
+import pl.akmf.ksef.sdk.client.model.invoice.InvoiceExportRequest;
+import pl.akmf.ksef.sdk.client.model.invoice.InvoiceExportStatus;
+import pl.akmf.ksef.sdk.client.model.invoice.InvoiceMetadata;
+import pl.akmf.ksef.sdk.client.model.invoice.InvoicePackageMetadata;
+import pl.akmf.ksef.sdk.client.model.invoice.InvoicePackagePart;
+import pl.akmf.ksef.sdk.client.model.invoice.InvoiceQueryDateRange;
+import pl.akmf.ksef.sdk.client.model.invoice.InvoiceQueryDateType;
+import pl.akmf.ksef.sdk.client.model.invoice.InvoiceQueryFilters;
+import pl.akmf.ksef.sdk.client.model.invoice.InvoiceQuerySubjectType;
+import pl.akmf.ksef.sdk.client.model.invoice.QueryInvoiceMetadataResponse;
+import pl.akmf.ksef.sdk.client.model.permission.OperationResponse;
+import pl.akmf.ksef.sdk.client.model.permission.PermissionStatusInfo;
+import pl.akmf.ksef.sdk.client.model.permission.proxy.GrantAuthorizationPermissionsRequest;
+import pl.akmf.ksef.sdk.client.model.permission.proxy.SubjectIdentifier;
+import pl.akmf.ksef.sdk.client.model.permission.search.InvoicePermissionType;
+import pl.akmf.ksef.sdk.client.model.session.EncryptionData;
+import pl.akmf.ksef.sdk.client.model.session.EncryptionInfo;
+import pl.akmf.ksef.sdk.client.model.session.FileMetadata;
+import pl.akmf.ksef.sdk.client.model.session.FormCode;
+import pl.akmf.ksef.sdk.client.model.session.SchemaVersion;
+import pl.akmf.ksef.sdk.client.model.session.SessionInvoiceStatusResponse;
+import pl.akmf.ksef.sdk.client.model.session.SessionInvoicesResponse;
+import pl.akmf.ksef.sdk.client.model.session.SessionStatusResponse;
+import pl.akmf.ksef.sdk.client.model.session.SessionValue;
+import pl.akmf.ksef.sdk.client.model.session.SystemCode;
+import pl.akmf.ksef.sdk.client.model.session.batch.BatchPartSendingInfo;
+import pl.akmf.ksef.sdk.client.model.session.batch.CompressionType;
+import pl.akmf.ksef.sdk.client.model.session.batch.OpenBatchSessionRequest;
+import pl.akmf.ksef.sdk.client.model.session.batch.OpenBatchSessionResponse;
+import pl.akmf.ksef.sdk.client.model.session.online.OpenOnlineSessionRequest;
+import pl.akmf.ksef.sdk.client.model.session.online.OpenOnlineSessionResponse;
+import pl.akmf.ksef.sdk.client.model.session.online.SendInvoiceOnlineSessionRequest;
+import pl.akmf.ksef.sdk.client.model.session.online.SendInvoiceResponse;
+import pl.akmf.ksef.sdk.client.model.testdata.TestDataAttachmentRequest;
+import pl.akmf.ksef.sdk.client.model.util.SortOrder;
+import pl.akmf.ksef.sdk.client.peppol.PeppolProvider;
+import pl.akmf.ksef.sdk.client.peppol.PeppolProvidersListResponse;
+import pl.akmf.ksef.sdk.configuration.BaseIntegrationTest;
+import pl.akmf.ksef.sdk.system.FilesUtil;
+import pl.akmf.ksef.sdk.util.IdentifierGeneratorUtils;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.stream.Stream;
+
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.awaitility.Awaitility.await;
+import static org.junit.Assert.assertThrows;
+
+class QueryInvoiceIntegrationTest extends BaseIntegrationTest {
+
+    private static final String PATH_SAMPLE_INVOICE_TEMPLATE_XML = "/xml/invoices/sample/invoice-template.xml";
+    private static final String XML_INVOICES_SAMPLE_INVOICE_TEMPLATE_V_3_XML = "/xml/invoices/sample/invoice-template_v3.xml";
+    private static final String XML_INVOICES_SAMPLE_INVOICE_TEMPLATE_PEF_ATTACHMENT_XML = "/xml/invoices/sample/invoice_template_pef_attachment.xml";
+    private static final int DEFAULT_NUMBER_OF_PARTS = 2;
+    private static final int DEFAULT_INVOICES_COUNT = 35;
+
+    @Test
+    void queryInvoiceE2ETest() throws JAXBException, IOException, ApiException {
+        String contextNip = IdentifierGeneratorUtils.generateRandomNIP();
+        String accessToken = authWithCustomNip(contextNip, contextNip).accessToken();
+
+        EncryptionData encryptionData = cryptographyService.getEncryptionData();
+
+        String sessionReferenceNumber = openOnlineSession(encryptionData, SystemCode.FA_3, SchemaVersion.VERSION_1_0E, SessionValue.FA, accessToken);
+
+        String invoiceReferenceNumber = sendInvoiceOnlineSession(contextNip, sessionReferenceNumber, encryptionData, XML_INVOICES_SAMPLE_INVOICE_TEMPLATE_V_3_XML, accessToken);
+
+        await().pollDelay(Duration.ZERO)
+                .atMost(50, SECONDS)
+                .pollInterval(5, SECONDS)
+                .until(() -> isInvoicesInSessionProcessed(sessionReferenceNumber, 1, accessToken));
+
+        await().pollDelay(Duration.ZERO)
+                .atMost(50, SECONDS)
+                .pollInterval(5, SECONDS)
+                .until(() -> waitForStoringInvoice(sessionReferenceNumber, invoiceReferenceNumber, accessToken));
+
+        throwWhileSendingInvoiceMetadataRequestWithWrongPageSize(accessToken);
+
+        getInvoiceMetadata(accessToken);
+
+        InvoiceExportStatus invoiceExportStatus = initExportAndFetchInvoiceExportStatus(accessToken, encryptionData);
+
+        DownloadResults downloadResults = downloadAndProcessPackage(invoiceExportStatus, encryptionData);
+        Assertions.assertTrue(downloadResults.invoicesXml.getFirst().contains(downloadResults.invoicePackageMetadata.getInvoices().getFirst().getKsefNumber()));
+    }
+
+    @Test
+    void queryInvoiceBatchWithTarGzE2ETest() throws JAXBException, IOException, ApiException {
+        String contextNip = IdentifierGeneratorUtils.generateRandomNIP();
+        String accessToken = authWithCustomNip(contextNip, contextNip).accessToken();
+
+        EncryptionData encryptionData = cryptographyService.getEncryptionData();
+        String sessionReferenceNumber = openBatchSessionAndSendInvoicesParts(contextNip, accessToken, DEFAULT_INVOICES_COUNT, DEFAULT_NUMBER_OF_PARTS, encryptionData, CompressionType.TarGz);
+        closeBatchSession(sessionReferenceNumber, accessToken);
+        getBatchSessionStatus(sessionReferenceNumber, accessToken, 200, DEFAULT_INVOICES_COUNT, DEFAULT_INVOICES_COUNT, 0);
+
+        await().pollDelay(Duration.ZERO)
+                .atMost(80, SECONDS)
+                .pollInterval(5, SECONDS)
+                .until(() -> isInvoicesInSessionProcessed(sessionReferenceNumber, DEFAULT_INVOICES_COUNT, accessToken));
+
+        getInvoiceMetadata(DEFAULT_INVOICES_COUNT, null, accessToken);
+
+        InvoiceExportStatus invoiceExportStatus = initExportAndFetchInvoiceExportStatus(accessToken, null, false, CompressionType.TarGz, encryptionData);
+
+        DownloadResults downloadResults = downloadAndProcessPackage(invoiceExportStatus, DEFAULT_INVOICES_COUNT, CompressionType.TarGz, encryptionData);
+        Assertions.assertTrue(downloadResults.invoicesXml.getFirst().contains(downloadResults.invoicePackageMetadata.getInvoices().getFirst().getKsefNumber()));
+    }
+
+    @Test
+    void queryInvoiceExportOnlyMetadata() throws JAXBException, IOException, ApiException {
+        String contextNip = IdentifierGeneratorUtils.generateRandomNIP();
+        String accessToken = authWithCustomNip(contextNip, contextNip).accessToken();
+
+        EncryptionData encryptionData = cryptographyService.getEncryptionData();
+
+        String sessionReferenceNumber = openOnlineSession(encryptionData, SystemCode.FA_3, SchemaVersion.VERSION_1_0E, SessionValue.FA, accessToken);
+
+        String invoiceReferenceNumber = sendInvoiceOnlineSession(contextNip, sessionReferenceNumber, encryptionData, XML_INVOICES_SAMPLE_INVOICE_TEMPLATE_V_3_XML, accessToken);
+
+        await().pollDelay(Duration.ZERO)
+                .atMost(50, SECONDS)
+                .pollInterval(5, SECONDS)
+                .until(() -> isInvoicesInSessionProcessed(sessionReferenceNumber, 1, accessToken));
+
+        await().pollDelay(Duration.ZERO)
+                .atMost(50, SECONDS)
+                .pollInterval(5, SECONDS)
+                .until(() -> waitForStoringInvoice(sessionReferenceNumber, invoiceReferenceNumber, accessToken));
+
+        getInvoiceMetadata(accessToken);
+
+        InvoiceExportStatus invoiceExportStatus = initExportAndFetchInvoiceExportStatus(accessToken, null, true, encryptionData);
+
+        Map<String, String> downloadedFiles = downloadPackage(invoiceExportStatus, CompressionType.Zip, encryptionData);
+
+        String metadataJson = downloadedFiles.keySet()
+                .stream()
+                .filter(fileName -> fileName.endsWith(".json"))
+                .findFirst()
+                .map(downloadedFiles::get)
+                .orElse(null);
+        InvoicePackageMetadata invoicePackageMetadata = objectMapper.readValue(metadataJson, InvoicePackageMetadata.class);
+
+        Assertions.assertEquals(1, downloadedFiles.size());
+        Assertions.assertEquals(1, invoicePackageMetadata.getInvoices().size());
+    }
+
+    static Stream<Arguments> inputTestParameters() {
+        return Stream.of(
+                Arguments.of(true, 1),
+                Arguments.of(false, 1),
+                Arguments.of(null, 2)
+        );
+    }
+
+    // scenariusz wysyłki faktur z załącznikiem i bez, następnie zapytanie o metadane faktur i export paczki faktur z filtrem na pole hasAttachment i wartościami true/false/null
+    @ParameterizedTest
+    @MethodSource("inputTestParameters")
+    void queryInvoiceWithAttachmentAndWithout(Boolean filterWithHasAttachment, int expectedInvoiceSize) throws JAXBException, IOException, ApiException {
+        String contextNip = IdentifierGeneratorUtils.generateRandomNIP();
+        String peppolId = IdentifierGeneratorUtils.generatePeppolId();
+
+        String accessToken = authWithCustomNip(contextNip, contextNip).accessToken();
+        String accessTokenForPefProvider = authAsPeppolProvider(peppolId).accessToken();
+
+        checkPeppolProviderList(peppolId);
+        grantPefInvoicingToProvider(peppolId, accessToken);
+        grantAttachmentCredential(contextNip);
+
+        EncryptionData encryptionData = cryptographyService.getEncryptionData();
+        EncryptionData encryptionDataOnline = cryptographyService.getEncryptionData();
+
+        // fv pef z zalacznikiem
+        String pefSessionReferenceNumber = openOnlineSession(encryptionData, SystemCode.PEF_3, SchemaVersion.VERSION_2_1, SessionValue.FA_PEF,
+                accessTokenForPefProvider);
+        String pefInvoiceReferenceNumber = sendPefInvoice(pefSessionReferenceNumber, encryptionData, contextNip, XML_INVOICES_SAMPLE_INVOICE_TEMPLATE_PEF_ATTACHMENT_XML,
+                accessTokenForPefProvider);
+        // zwykla fv bez zalacznika
+        String sessionReferenceNumber = openOnlineSession(encryptionDataOnline, SystemCode.FA_3, SchemaVersion.VERSION_1_0E, SessionValue.FA,
+                accessToken);
+        String invoiceReferenceNumber = sendInvoiceOnlineSession(contextNip, sessionReferenceNumber, encryptionDataOnline, XML_INVOICES_SAMPLE_INVOICE_TEMPLATE_V_3_XML, accessToken);
+
+        SessionInvoicesResponse failedInvoicesOnline = ksefClient.getSessionFailedInvoices(sessionReferenceNumber, null, 10, accessToken);
+        SessionInvoicesResponse failedInvoicesPef = ksefClient.getSessionFailedInvoices(pefSessionReferenceNumber, null, 10, accessTokenForPefProvider);
+        Assertions.assertNull(failedInvoicesOnline.getInvoices());
+        Assertions.assertNull(failedInvoicesPef.getInvoices());
+
+        // oczekiwanie az obie fv sie przetworza i zapisza
+        await().pollDelay(Duration.ZERO)
+                .atMost(60, SECONDS)
+                .pollInterval(5, SECONDS)
+                .until(() -> isInvoicesInSessionProcessed(pefSessionReferenceNumber, 1, accessTokenForPefProvider));
+        await().pollDelay(Duration.ZERO)
+                .atMost(30, SECONDS)
+                .pollInterval(5, SECONDS)
+                .until(() -> isInvoicesInSessionProcessed(sessionReferenceNumber, 1, accessToken));
+        await().pollDelay(Duration.ZERO)
+                .atMost(50, SECONDS)
+                .pollInterval(5, SECONDS)
+                .until(() -> waitForStoringInvoice(pefSessionReferenceNumber, pefInvoiceReferenceNumber, accessTokenForPefProvider));
+        await().pollDelay(Duration.ZERO)
+                .atMost(50, SECONDS)
+                .pollInterval(5, SECONDS)
+                .until(() -> waitForStoringInvoice(sessionReferenceNumber, invoiceReferenceNumber, accessToken));
+
+        QueryInvoiceMetadataResponse invoiceMetadata = getInvoiceMetadata(expectedInvoiceSize, filterWithHasAttachment, accessToken);
+        if (expectedInvoiceSize == 1) {
+            Assertions.assertEquals(filterWithHasAttachment, invoiceMetadata.getInvoices().getFirst().getHasAttachment());
+        } else {
+            Assertions.assertTrue(invoiceMetadata.getInvoices().stream().anyMatch(InvoiceMetadata::getHasAttachment));
+            Assertions.assertTrue(invoiceMetadata.getInvoices().stream().anyMatch(e -> !e.getHasAttachment()));
+        }
+
+        InvoiceExportStatus invoiceExportStatus = initExportAndFetchInvoiceExportStatus(accessToken, filterWithHasAttachment, encryptionData);
+        DownloadResults downloadResults = downloadAndProcessPackage(invoiceExportStatus, expectedInvoiceSize, encryptionData);
+        if (expectedInvoiceSize == 1) {
+            Assertions.assertEquals(filterWithHasAttachment, downloadResults.invoicePackageMetadata.getInvoices().getFirst().getHasAttachment());
+        } else {
+            Assertions.assertTrue(downloadResults.invoicePackageMetadata.getInvoices().stream().anyMatch(InvoiceMetadata::getHasAttachment));
+            Assertions.assertTrue(downloadResults.invoicePackageMetadata.getInvoices().stream().anyMatch(e -> !e.getHasAttachment()));
+        }
+    }
+
+    private QueryInvoiceMetadataResponse getInvoiceMetadata(String accessToken) throws ApiException {
+        return getInvoiceMetadata(1, null, accessToken);
+    }
+
+    private QueryInvoiceMetadataResponse getInvoiceMetadata(int expectedInvoicesSize, Boolean hasAttachment, String accessToken) throws ApiException {
+        InvoiceQueryFilters request = new InvoiceQueryFiltersBuilder()
+                .withSubjectType(InvoiceQuerySubjectType.SUBJECT1)
+                .withDateRange(
+                        new InvoiceQueryDateRange(InvoiceQueryDateType.INVOICING, OffsetDateTime.now().minusDays(10),
+                                OffsetDateTime.now().plusDays(10)))
+                .build();
+        request.setHasAttachment(hasAttachment);
+
+        QueryInvoiceMetadataResponse response = ksefClient.queryInvoiceMetadata(0, 50, SortOrder.ASC, request, accessToken);
+
+        Assertions.assertNotNull(response);
+        Assertions.assertEquals(expectedInvoicesSize, response.getInvoices().size());
+
+        return response;
+    }
+
+    private void throwWhileSendingInvoiceMetadataRequestWithWrongPageSize(String accessToken) {
+        InvoiceQueryFilters request = new InvoiceQueryFiltersBuilder()
+                .withSubjectType(InvoiceQuerySubjectType.SUBJECT1)
+                .withDateRange(
+                        new InvoiceQueryDateRange(InvoiceQueryDateType.INVOICING, OffsetDateTime.now().minusDays(10), OffsetDateTime.now().plusDays(10)))
+                .build();
+
+        ApiException apiException = assertThrows(ApiException.class, () ->
+                ksefClient.queryInvoiceMetadata(0, 5, SortOrder.ASC, request, accessToken)
+        );
+        Assertions.assertEquals(400, apiException.getCode());
+        BadRequestApiException badRequestApiException = (BadRequestApiException) apiException;
+        BadRequestProblemDetails exceptionResponse = badRequestApiException.getBadRequestProblemDetails();
+        Assertions.assertFalse(exceptionResponse.getErrors().isEmpty());
+        BadRequestApiError error = exceptionResponse.getErrors().getFirst();
+        Assertions.assertEquals(21405, error.getCode());
+        Assertions.assertEquals("Błąd walidacji danych wejściowych.", error.getDescription());
+        Assertions.assertEquals("'pageSize' must be between 10 and 250. You entered 5.", error.getDetails().getFirst());
+    }
+
+    private boolean isInvoicesInSessionProcessed(String sessionReferenceNumber, int expectedSuccessfulInvoicesCount, String accessToken) {
+        try {
+            SessionStatusResponse statusResponse = ksefClient.getSessionStatus(sessionReferenceNumber, accessToken);
+            return statusResponse != null &&
+                    statusResponse.getSuccessfulInvoiceCount() != null &&
+                    statusResponse.getSuccessfulInvoiceCount() > 0 &&
+                    statusResponse.getSuccessfulInvoiceCount() == expectedSuccessfulInvoicesCount &&
+                    (statusResponse.getFailedInvoiceCount() == null ||
+                            statusResponse.getFailedInvoiceCount() == 0);
+        } catch (Exception e) {
+            Assertions.fail(e.getMessage());
+        }
+        return false;
+    }
+
+    private boolean waitForStoringInvoice(String sessionReferenceNumber, String invoiceReferenceNumber, String accessToken) {
+        try {
+            SessionInvoiceStatusResponse statusResponse = ksefClient.getSessionInvoiceStatus(sessionReferenceNumber, invoiceReferenceNumber, accessToken);
+            return Objects.nonNull(statusResponse.getPermanentStorageDate());
+        } catch (Exception e) {
+            Assertions.fail(e.getMessage());
+        }
+        return false;
+    }
+
+    private String openOnlineSession(EncryptionData encryptionData, SystemCode systemCode,
+                                     SchemaVersion schemaVersion,
+                                     SessionValue value,
+                                     String accessToken) throws ApiException {
+        OpenOnlineSessionRequest request = new OpenOnlineSessionRequestBuilder()
+                .withFormCode(new FormCode(systemCode, schemaVersion, value))
+                .withEncryptionInfo(encryptionData.encryptionInfo())
+                .build();
+
+        OpenOnlineSessionResponse openOnlineSessionResponse = ksefClient.openOnlineSession(request, accessToken);
+        Assertions.assertNotNull(openOnlineSessionResponse);
+        Assertions.assertNotNull(openOnlineSessionResponse.getReferenceNumber());
+        return openOnlineSessionResponse.getReferenceNumber();
+    }
+
+    private String sendInvoiceOnlineSession(String nip, String sessionReferenceNumber, EncryptionData encryptionData,
+                                            String path, String accessToken) throws IOException, ApiException {
+        String invoiceTemplate = new String(readBytesFromPath(path), StandardCharsets.UTF_8)
+                .replace("#nip#", nip)
+                .replace("#invoicing_date#",
+                        LocalDate.of(2025, 9, 15).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")))
+                .replace("#invoice_number#", UUID.randomUUID().toString());
+
+        byte[] invoice = invoiceTemplate.getBytes(StandardCharsets.UTF_8);
+
+        byte[] encryptedInvoice = cryptographyService.encryptBytesWithAES256(invoice,
+                encryptionData.cipherKey(),
+                encryptionData.cipherIv());
+
+        FileMetadata invoiceMetadata = cryptographyService.getMetaData(invoice);
+        FileMetadata encryptedInvoiceMetadata = cryptographyService.getMetaData(encryptedInvoice);
+
+        SendInvoiceOnlineSessionRequest sendInvoiceOnlineSessionRequest = new SendInvoiceOnlineSessionRequestBuilder()
+                .withInvoiceHash(invoiceMetadata.getHashSHA())
+                .withInvoiceSize(invoiceMetadata.getFileSize())
+                .withEncryptedInvoiceHash(encryptedInvoiceMetadata.getHashSHA())
+                .withEncryptedInvoiceSize(encryptedInvoiceMetadata.getFileSize())
+                .withEncryptedInvoiceContent(Base64.getEncoder().encodeToString(encryptedInvoice))
+                .build();
+
+        SendInvoiceResponse sendInvoiceResponse = ksefClient.onlineSessionSendInvoice(sessionReferenceNumber, sendInvoiceOnlineSessionRequest, accessToken);
+        Assertions.assertNotNull(sendInvoiceResponse);
+        Assertions.assertNotNull(sendInvoiceResponse.getReferenceNumber());
+
+        return sendInvoiceResponse.getReferenceNumber();
+    }
+
+    private InvoiceExportStatus initExportAndFetchInvoiceExportStatus(String accessToken, EncryptionData encryptionData) throws ApiException {
+        return initExportAndFetchInvoiceExportStatus(accessToken, null, encryptionData);
+    }
+
+    private InvoiceExportStatus initExportAndFetchInvoiceExportStatus(String accessToken, Boolean hasAttachment, EncryptionData encryptionData) throws ApiException {
+        return initExportAndFetchInvoiceExportStatus(accessToken, hasAttachment, false, encryptionData);
+    }
+
+    private InvoiceExportStatus initExportAndFetchInvoiceExportStatus(String accessToken, Boolean hasAttachment, boolean onlyMetadata, EncryptionData encryptionData) throws ApiException {
+        return initExportAndFetchInvoiceExportStatus(accessToken, hasAttachment, onlyMetadata, null, encryptionData);
+    }
+
+    private InvoiceExportStatus initExportAndFetchInvoiceExportStatus(String accessToken, Boolean hasAttachment, boolean onlyMetadata, CompressionType compressionType, EncryptionData encryptionData) throws ApiException {
+        InvoiceExportFilters filters = new InvoicesAsyncQueryFiltersBuilder()
+                .withSubjectType(InvoiceQuerySubjectType.SUBJECT1)
+                .withDateRange(
+                        new InvoiceQueryDateRange(InvoiceQueryDateType.INVOICING, OffsetDateTime.now().minusDays(10), OffsetDateTime.now().plusDays(10)))
+                .build();
+        filters.setHasAttachment(hasAttachment);
+
+        InvoiceExportRequest request = new InvoiceExportRequest(
+                new EncryptionInfo(encryptionData.encryptionInfo().getEncryptedSymmetricKey(),
+                        encryptionData.encryptionInfo().getInitializationVector()), filters, onlyMetadata);
+        request.setCompressionType(compressionType);
+
+        InitAsyncInvoicesQueryResponse response = ksefClient.initAsyncQueryInvoice(request, accessToken);
+
+        await().pollDelay(Duration.ZERO)
+                .atMost(45, SECONDS)
+                .pollInterval(1, SECONDS)
+                .until(() -> isInvoiceFetched(response.getReferenceNumber(), accessToken));
+
+        return ksefClient.checkStatusAsyncQueryInvoice(response.getReferenceNumber(), accessToken);
+    }
+
+    private Boolean isInvoiceFetched(String referenceNumber, String accessToken) throws ApiException {
+        InvoiceExportStatus response = ksefClient.checkStatusAsyncQueryInvoice(referenceNumber, accessToken);
+
+        Assertions.assertNotNull(response);
+        return response.getStatus().getCode().equals(200);
+    }
+
+    private DownloadResults downloadAndProcessPackage(InvoiceExportStatus invoiceExportStatus, EncryptionData encryptionData) throws IOException {
+        return downloadAndProcessPackage(invoiceExportStatus, 1, encryptionData);
+    }
+
+    private DownloadResults downloadAndProcessPackage(InvoiceExportStatus invoiceExportStatus, int expectedInvoiceSize, EncryptionData encryptionData) throws IOException {
+        return downloadAndProcessPackage(invoiceExportStatus, expectedInvoiceSize, CompressionType.Zip, encryptionData);
+    }
+
+    private DownloadResults downloadAndProcessPackage(InvoiceExportStatus invoiceExportStatus, int expectedInvoiceSize, CompressionType compressionType, EncryptionData encryptionData) throws IOException {
+        Map<String, String> downloadedFiles = downloadPackage(invoiceExportStatus, compressionType, encryptionData);
+
+        String metadataJson = downloadedFiles.keySet()
+                .stream()
+                .filter(fileName -> fileName.endsWith(".json"))
+                .findFirst()
+                .map(downloadedFiles::get)
+                .orElse(null);
+        InvoicePackageMetadata invoicePackageMetadata = objectMapper.readValue(metadataJson, InvoicePackageMetadata.class);
+
+        List<String> invoices = downloadedFiles.keySet()
+                .stream()
+                .filter(fileName -> fileName.endsWith(".xml"))
+                .toList();
+
+        Assertions.assertEquals(expectedInvoiceSize, invoices.size());
+        Assertions.assertEquals(expectedInvoiceSize, invoicePackageMetadata.getInvoices().size());
+
+        return new DownloadResults(invoicePackageMetadata, invoices);
+    }
+
+    private Map<String, String> downloadPackage(InvoiceExportStatus invoiceExportStatus, CompressionType compressionType, EncryptionData encryptionData) throws IOException {
+        List<InvoicePackagePart> parts = invoiceExportStatus.getPackageParts().getParts();
+        byte[] mergedZip = FilesUtil.mergeZipParts(
+                encryptionData,
+                parts,
+                part -> ksefClient.downloadPackagePart(part),
+                (encryptedPackagePart, key, iv) -> cryptographyService.decryptBytesWithAes256(encryptedPackagePart, key, iv)
+        );
+        if (compressionType == null || compressionType.equals(CompressionType.Zip)) {
+            return FilesUtil.unzip(mergedZip);
+        } else {
+            return FilesUtil.extractTarGz(mergedZip);
+        }
+    }
+
+    private void checkPeppolProviderList(String peppolProvider) throws ApiException {
+        int pageSize = 100;
+        int pageOffset = 0;
+
+        while (true) {
+            PeppolProvidersListResponse response = ksefClient.getPeppolProvidersList(pageOffset, pageSize);
+
+            Assertions.assertNotNull(response);
+            Assertions.assertFalse(response.getPeppolProviders().isEmpty());
+
+            List<String> peppolIds = response.getPeppolProviders()
+                    .stream()
+                    .map(PeppolProvider::getId)
+                    .toList();
+
+            if (peppolIds.contains(peppolProvider)) {
+                break;
+            }
+
+            pageOffset += 1;
+        }
+    }
+
+    private void grantPefInvoicingToProvider(String peppolProvider, String accessToken) throws ApiException {
+        GrantAuthorizationPermissionsRequest.PermissionsAuthorizationSubjectDetails subjectDetails =
+                new GrantAuthorizationPermissionsRequest.PermissionsAuthorizationSubjectDetails();
+        subjectDetails.setFullName("fullName");
+        GrantAuthorizationPermissionsRequest request = new GrantAuthorizationPermissionsRequestBuilder()
+                .withSubjectIdentifier(new SubjectIdentifier(SubjectIdentifier.IdentifierType.PEPPOL_ID, peppolProvider))
+                .withPermission(InvoicePermissionType.PEF_INVOICING)
+                .withDescription("pef grant")
+                .withSubjectDetails(subjectDetails)
+                .build();
+
+        OperationResponse response = ksefClient.grantsPermissionsProxyEntity(request, accessToken);
+        Assertions.assertNotNull(response);
+
+        await().pollDelay(Duration.ZERO)
+                .atMost(10, SECONDS)
+                .pollInterval(5, SECONDS)
+                .until(() -> isPermissionStatusReady(response.getReferenceNumber(), accessToken));
+    }
+
+    private Boolean isPermissionStatusReady(String grantReferenceNumber, String accessToken) throws ApiException {
+        PermissionStatusInfo status = ksefClient.permissionOperationStatus(grantReferenceNumber, accessToken);
+        return status != null && status.getStatus().getCode() == 200;
+    }
+
+    private void grantAttachmentCredential(String contextNip) throws ApiException {
+        TestDataAttachmentRequest testDataAttachmentRequest = new TestDataAttachmentRequest();
+        testDataAttachmentRequest.setNip(contextNip);
+
+        ksefClient.addAttachmentPermissionTest(testDataAttachmentRequest);
+    }
+
+    private String sendPefInvoice(String sessionReferenceNumber, EncryptionData encryptionData,
+                                  String contextNip, String path, String accessToken) throws IOException, ApiException {
+        String buyerNip = IdentifierGeneratorUtils.generateRandomNIP();
+        String iban = IdentifierGeneratorUtils.generateIban();
+        String invoiceTemplate = new String(readBytesFromPath(path), StandardCharsets.UTF_8)
+                .replace("#buyer_reference#", "PL" + buyerNip)
+                .replace("#buyer_nip#", "PL" + buyerNip)
+                .replace("#supplier_nip#", "PL" + contextNip)
+                .replace("#nip#", "PL" + contextNip)
+                .replace("#invoice_number#", UUID.randomUUID().toString())
+                .replace("#iban_plain#", iban)
+                .replace("#issue_date#", LocalDate.of(2025, 9, 15).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")))
+                .replace("#due_date#", LocalDate.of(2025, 9, 15).format(java.time.format.DateTimeFormatter.ofPattern(
+                        "yyyy-MM-dd")));
+
+        byte[] invoice = invoiceTemplate.getBytes(StandardCharsets.UTF_8);
+
+        byte[] encryptedInvoice = cryptographyService.encryptBytesWithAES256(invoice,
+                encryptionData.cipherKey(),
+                encryptionData.cipherIv());
+
+        FileMetadata invoiceMetadata = cryptographyService.getMetaData(invoice);
+        FileMetadata encryptedInvoiceMetadata = cryptographyService.getMetaData(encryptedInvoice);
+
+        SendInvoiceOnlineSessionRequest sendInvoiceOnlineSessionRequest = new SendInvoiceOnlineSessionRequestBuilder()
+                .withInvoiceHash(invoiceMetadata.getHashSHA())
+                .withInvoiceSize(invoiceMetadata.getFileSize())
+                .withEncryptedInvoiceHash(encryptedInvoiceMetadata.getHashSHA())
+                .withEncryptedInvoiceSize(encryptedInvoiceMetadata.getFileSize())
+                .withEncryptedInvoiceContent(Base64.getEncoder().encodeToString(encryptedInvoice))
+                .build();
+
+        SendInvoiceResponse sendInvoiceResponse = ksefClient.onlineSessionSendInvoice(sessionReferenceNumber, sendInvoiceOnlineSessionRequest, accessToken);
+        Assertions.assertNotNull(sendInvoiceResponse);
+        Assertions.assertNotNull(sendInvoiceResponse.getReferenceNumber());
+
+        return sendInvoiceResponse.getReferenceNumber();
+    }
+
+    private String openBatchSessionAndSendInvoicesParts(String context, String accessToken, int invoicesCount, int partsCount, EncryptionData encryptionData, CompressionType compressionType) throws IOException, ApiException {
+        String invoice = new String(readBytesFromPath(PATH_SAMPLE_INVOICE_TEMPLATE_XML), StandardCharsets.UTF_8);
+
+        Map<String, byte[]> invoicesInMemory = FilesUtil.generateInvoicesInMemory(invoicesCount, context, invoice);
+
+        byte[] packedFilesBytes;
+        if (compressionType == null || compressionType == CompressionType.Zip) {
+            byte[] zipBytes = FilesUtil.createZip(invoicesInMemory);
+            packedFilesBytes = zipBytes;
+        } else {
+            byte[] tarGzBytes = FilesUtil.createTarGz(invoicesInMemory);
+            packedFilesBytes = tarGzBytes;
+        }
+
+        // get ZIP metadata (before crypto)
+        FileMetadata packedFilesMetadata = cryptographyService.getMetaData(packedFilesBytes);
+
+        List<byte[]> packedFilesParts = FilesUtil.splitZip(partsCount, packedFilesBytes);
+
+        // Encrypt zip parts
+        List<BatchPartSendingInfo> encryptedPackedFilesParts = encryptZipParts(packedFilesParts, encryptionData.cipherKey(), encryptionData.cipherIv());
+
+        // Build request
+        OpenBatchSessionRequest request = buildOpenBatchSessionRequest(packedFilesMetadata, encryptedPackedFilesParts, encryptionData, compressionType);
+
+        OpenBatchSessionResponse response = ksefClient.openBatchSession(request, accessToken);
+        Assertions.assertNotNull(response.getReferenceNumber());
+
+        ksefClient.sendBatchParts(response, encryptedPackedFilesParts);
+
+        return response.getReferenceNumber();
+    }
+
+    private List<BatchPartSendingInfo> encryptZipParts(List<byte[]> packedFilesParts, byte[] cipherKey, byte[] cipherIv) {
+        List<BatchPartSendingInfo> encryptedPackedFilesParts = new ArrayList<>();
+        for (int i = 0; i < packedFilesParts.size(); i++) {
+            byte[] encryptedPackedFilesPart = cryptographyService.encryptBytesWithAES256(
+                    packedFilesParts.get(i),
+                    cipherKey,
+                    cipherIv
+            );
+            FileMetadata packedFilesPartMetadata = cryptographyService.getMetaData(encryptedPackedFilesPart);
+            encryptedPackedFilesParts.add(new BatchPartSendingInfo(encryptedPackedFilesPart, packedFilesPartMetadata, (i + 1)));
+        }
+        return encryptedPackedFilesParts;
+    }
+
+    private OpenBatchSessionRequest buildOpenBatchSessionRequest(FileMetadata packedFilesMetadata, List<BatchPartSendingInfo> encryptedZipParts, EncryptionData encryptionData, CompressionType compressionType) {
+        OpenBatchSessionRequestBuilder builder = OpenBatchSessionRequestBuilder.create()
+                .withFormCode(SystemCode.FA_2, SchemaVersion.VERSION_1_0E, SessionValue.FA)
+                .withOfflineMode(false)
+                .withBatchFile(packedFilesMetadata.getFileSize(), packedFilesMetadata.getHashSHA(), compressionType);
+
+        for (int i = 0; i < encryptedZipParts.size(); i++) {
+            BatchPartSendingInfo part = encryptedZipParts.get(i);
+            builder = builder.addBatchFilePart(i + 1,
+                    part.getMetadata().getFileSize(), part.getMetadata().getHashSHA());
+        }
+
+        return builder.endBatchFile()
+                .withEncryption(
+                        encryptionData.encryptionInfo().getEncryptedSymmetricKey(),
+                        encryptionData.encryptionInfo().getInitializationVector(),
+                        encryptionData.encryptionInfo().getPublicKeyId()
+                )
+                .build();
+    }
+
+    private void closeBatchSession(String referenceNumber, String accessToken) throws ApiException {
+        ksefClient.closeBatchSession(referenceNumber, accessToken);
+    }
+
+
+    private SessionStatusResponse getBatchSessionStatus(String referenceNumber, String accessToken, int expectedStatusCode,
+                                                        Integer expectedInvoiceCount, Integer expectedSuccessfulInvoiceCount,
+                                                        Integer expectedFailedInvoicesCount) throws ApiException {
+        await().pollDelay(Duration.ZERO)
+                .atMost(30, SECONDS)
+                .pollInterval(2, SECONDS)
+                .until(() -> {
+                    SessionStatusResponse response = ksefClient.getSessionStatus(referenceNumber, accessToken);
+                    return response.getStatus().getCode() == expectedStatusCode;
+                });
+
+        SessionStatusResponse response = ksefClient.getSessionStatus(referenceNumber, accessToken);
+
+        Assertions.assertNotNull(response);
+        Assertions.assertEquals(expectedInvoiceCount, response.getInvoiceCount());
+        Assertions.assertEquals(expectedSuccessfulInvoiceCount, response.getSuccessfulInvoiceCount());
+        Assertions.assertEquals(expectedFailedInvoicesCount, response.getFailedInvoiceCount());
+
+        return response;
+    }
+
+    class DownloadResults {
+
+        InvoicePackageMetadata invoicePackageMetadata;
+        List<String> invoicesXml;
+
+        public DownloadResults(InvoicePackageMetadata invoicePackageMetadata, List<String> invoicesXml) {
+            this.invoicePackageMetadata = invoicePackageMetadata;
+            this.invoicesXml = invoicesXml;
+        }
+    }
+}
