@@ -7,7 +7,7 @@ description: "Rozwijaj i diagnozuj ABAP Cloud, CDS, RAP oraz publikację OData V
 
 ## Granice i przygotowanie
 
-Pracuj według [AGENTS.md](../../../../AGENTS.md) i bieżącego [STATUS](../../../../docs/STATUS.md); sprawdź branch, `git status`, ROADMAP i właściwy ADR/dziennik. Linki są względem tego pliku; polecenia Git wykonuj z repozytorium. Przed zmianą podaj mały plan i kryteria akceptacji. Zachowuj zastane zmiany.
+Pracuj według [AGENTS.md](../../../AGENTS.md) i bieżącego [STATUS](../../../docs/STATUS.md); sprawdź branch, `git status`, ROADMAP i właściwy ADR/dziennik. Linki są względem tego pliku; polecenia Git wykonuj z repozytorium. Przed zmianą podaj mały plan i kryteria akceptacji. Zachowuj zastane zmiany.
 
 SAP jest źródłem danych finansowych, RAP adapterem SAP, a CAP Java właścicielem procesu KSeF. Nie implementuj kryptografii ani nowego klienta KSeF w ABAP. Pliki `abap/` są punktem orientacyjnym, nie dowodem stanu systemu: sprawdzaj `ZFI_ACDOCA`, CDS, behavior definitions/implementations, service definitions i bindings w SAP. Nie przyjmuj nazwy `ZUI_FI_ACDOCA_O4` ani URI z UI5 za potwierdzony kontrakt.
 

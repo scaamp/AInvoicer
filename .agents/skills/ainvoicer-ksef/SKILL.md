@@ -7,7 +7,7 @@ description: "Implementuj i diagnozuj KSeF 2.0 w AInvoicer przez oficjalny Java 
 
 ## Granice
 
-Przeczytaj [AGENTS.md](../../../../AGENTS.md), [STATUS](../../../../docs/STATUS.md), ROADMAP, właściwy dziennik i [ADR-0001](../../../../docs/decisions/ADR-0001-cap-java-ksef-architecture.md). Sprawdź branch, `git status`, istniejące integracje, POM i testy. Linki są względem tego pliku.
+Przeczytaj [AGENTS.md](../../../AGENTS.md), [STATUS](../../../docs/STATUS.md), ROADMAP, właściwy dziennik i [ADR-0001](../../../docs/decisions/ADR-0001-cap-java-ksef-architecture.md). Sprawdź branch, `git status`, istniejące integracje, POM i testy. Linki są względem tego pliku.
 
 Używaj biblioteki `CIRFMF/ksef-client-java` w tej samej JVM co CAP Java/Spring Boot, za interfejsem aplikacji. Nie kopiuj całej `demo-web-app`, kontrolerów ani wspólnego stanu sesji. Node/Python pozostają funkcjami AI, ABAP adapterem SAP. Eksperyment na `feature/ksef-java-e2e-runner` jest referencją; sprawdź dostępność i audytuj wybrane fragmenty bez przełączania/niszczenia pracy użytkownika. Nie zakładaj obecności runnera ani SDK na bieżącej gałęzi.
 

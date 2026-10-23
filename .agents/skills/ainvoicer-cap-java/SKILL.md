@@ -7,7 +7,7 @@ description: "Implementuj backend AInvoicer w cap-java/: modele i usługi CDS, O
 
 ## Granice i przygotowanie
 
-Przeczytaj [AGENTS.md](../../../../AGENTS.md), [STATUS](../../../../docs/STATUS.md), ROADMAP, właściwy dziennik i [ADR-0001](../../../../docs/decisions/ADR-0001-cap-java-ksef-architecture.md). Sprawdź branch, `git status`, rzeczywiste `cap-java/` i zmiany użytkownika. Linki są względem tego pliku; polecenia poniżej względem repozytorium.
+Przeczytaj [AGENTS.md](../../../AGENTS.md), [STATUS](../../../docs/STATUS.md), ROADMAP, właściwy dziennik i [ADR-0001](../../../docs/decisions/ADR-0001-cap-java-ksef-architecture.md). Sprawdź branch, `git status`, rzeczywiste `cap-java/` i zmiany użytkownika. Linki są względem tego pliku; polecenia poniżej względem repozytorium.
 
 CAP Java + Spring Boot jest backendem biznesowym w jednej JVM; oficjalne SDK MF pozostaje biblioteką za adapterem aplikacji. SAP jest źródłem danych finansowych, CAP przechowuje operacje KSeF, korelacje, referencje, statusy i audyt. Nie replikuj całej `ZFI_ACDOCA`, nie otwieraj JDBC do bazy ABAP ani nie wykonuj pozornych JOIN-ów SQL lokalnych encji ze zdalnym OData. Nie migruj istniejących UI5/Node/Python w ramach zadania CAP.
 

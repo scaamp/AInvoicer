@@ -12,6 +12,14 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
 
 `[x]` oznacza ukończenie z podanym zakresem potwierdzenia, `[ ]` — pracę do wykonania. IN PROGRESS oznacza zadanie rozpoczęte. Ten plik jest planem; historia czynności i wyniki są w [dzienniku](journal/2026-10-23-cap-java-bootstrap.md).
 
+## Narzędzia projektowe — Agent Skills
+
+- [x] Trzy kanoniczne Skills ABAP/RAP, CAP Java i KSeF w `.agents/skills/`, odwołania Claude w `.claude/skills/` oraz sekcje `Project Skills` w instrukcjach agentów.
+- [x] Walidacja statyczna i ręczna ocena czterech scenariuszy; Codex `skills/list` wykrywa trzy aktywne Skills w zakresie repo bez błędów ładowania.
+- [ ] Potwierdzenie automatycznego doboru przez model oraz wykrywania/odczytu kanonicznych instrukcji w sesji Claude Code. Wersje CLI i poprawne pliki nie zastępują tego testu.
+
+Dowody i sposób wywołania: [dziennik Skills](journal/2026-10-23-project-skills.md). Utworzenie Skills nie kończy żadnego etapu implementacji CAP/SAP/KSeF.
+
 ## Phase 1 — CAP Java Bootstrap — IN PROGRESS
 
 - [x] Wygenerowanie projektu CAP Java w `cap-java/` (pliki zweryfikowane; polecenie inicjalizacji z relacji użytkownika).
