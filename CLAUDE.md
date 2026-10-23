@@ -23,7 +23,7 @@ abap/                   # istniejące źródła ABAP/CDS/RAP i ZFI_ACDOCA
 sapui5/ainvoicer/       # istniejący frontend UI5
 node/                   # istniejące usługi Node
 python/                 # istniejące usługi Python
-cap-java/               # PLANOWANY nowy backend CAP; może jeszcze nie istnieć
+cap-java/               # rozpoczęty szkielet CAP Java; stan w docs/STATUS.md
 ```
 
 Istnieje też potwierdzony eksperyment KSeF E2E na oddzielnej gałęzi `feature/ksef-java-e2e-runner`. Możesz go przeanalizować bez modyfikowania bieżącej gałęzi; nie kopiuj bez audytu kontrolerów demo, zwracania JWT ani globalnego stanu sesji.
@@ -48,6 +48,12 @@ Istnieje też potwierdzony eksperyment KSeF E2E na oddzielnej gałęzi `feature/
 
 ## Preferowany pierwszy etap
 
-Utwórz (dopiero na zlecenie) szkielet `cap-java/`: działające CAP Java + Spring Boot, minimalny CDS model `KsefOperations`, OData V4, prosty handler, H2 lokalnie i testy. Dopiero później podłącz RAP Remote OData oraz oficjalny KSeF Java SDK.
+Kontynuuj istniejący szkielet `cap-java/` według [docs/STATUS.md](docs/STATUS.md): zweryfikuj uruchomienie CAP Java + Spring Boot i H2, następnie przygotuj minimalny model CDS, OData V4, handler i testy. Dopiero później podłącz RAP Remote OData oraz oficjalny KSeF Java SDK.
+
+## Project Knowledge Base & Documentation Workflow
+
+Na początku każdej sesji obowiązkowo przeczytaj [AGENTS.md](AGENTS.md), [docs/STATUS.md](docs/STATUS.md), [docs/ROADMAP.md](docs/ROADMAP.md) i najnowszy wpis w `docs/journal/`; indeks notatek jest w [docs/README.md](docs/README.md). Dla zadań architektonicznych sprawdź odpowiednie ADR. Zweryfikuj notatki względem Git i kodu.
+
+Po implementacji aktualizuj Project Knowledge Base według workflow w `AGENTS.md`: STATUS, dziennik, w razie potrzeby ROADMAP i ADR. Zapisuj rzeczywiste wyniki oraz brakujące weryfikacje i następny krok. Nie duplikuj tutaj reguł architektury ani bezpieczeństwa; `AGENTS.md` pozostaje nadrzędnym źródłem zasad.
 
 Komunikacja z użytkownikiem i komentarze edukacyjne: **po polsku**. Nazwy API, klas, metod, artefaktów i kontraktów: konsekwentnie po angielsku.

@@ -130,3 +130,30 @@ Komunikuj się po polsku, technicznie i konkretnie. Kod, nazwy klas i publiczne 
 - KSeF TEST Swagger: https://api-test.ksef.mf.gov.pl/docs/v2/index.html
 
 Sprawdzaj wersję dokumentacji/SDK przed implementacją. Obowiązujący kontrakt to faktyczna wersja wdrożonego API, nie pamięć agenta.
+
+## 10. Project Knowledge Base & Documentation Workflow
+
+Wspólna baza wiedzy projektu znajduje się w [docs/README.md](docs/README.md). Codex, Claude Code, VS Code, Obsidian i GitHub korzystają z tych samych plików Markdown; nie twórz równoległych kopii dokumentacji dla poszczególnych narzędzi.
+
+### Na początku każdej nowej sesji
+
+1. Przeczytaj `AGENTS.md` jako nadrzędne źródło reguł.
+2. Przeczytaj [docs/STATUS.md](docs/STATUS.md).
+3. Przeczytaj [docs/ROADMAP.md](docs/ROADMAP.md).
+4. Sprawdź najnowszy wpis w `docs/journal/` (według daty; przy kilku wpisach z tego samego dnia sprawdź właściwe tematy). Indeks jest w `docs/README.md`.
+5. Przeczytaj odpowiednie ADR w `docs/decisions/`, jeżeli zadanie dotyczy architektury.
+6. Zweryfikuj branch, `git status` i rzeczywisty kod przed rozpoczęciem pracy.
+
+Nie zakładaj, że `STATUS.md` jest bardziej aktualny od repozytorium. Przy rozbieżnościach sprawdź fakty i skoryguj dokumentację; nie opieraj implementacji na niezweryfikowanej notatce.
+
+### Po zakończeniu zadania implementacyjnego
+
+1. Zaktualizuj `docs/STATUS.md`, w tym datę, blokery i najbliższe kroki.
+2. Dopisz dziennik sesji albo zaktualizuj dzisiejszy wpis dotyczący tego samego zadania, korzystając z [JOURNAL_TEMPLATE.md](docs/templates/JOURNAL_TEMPLATE.md). Unikaj wielu wpisów dla drobnych operacji w tej samej sesji.
+3. Zaktualizuj `docs/ROADMAP.md`, jeśli zmienił się stan zadania lub plan; roadmapa nie zastępuje historii zmian.
+4. Dodaj ADR tylko dla istotnej decyzji architektonicznej. Nowe dzienniki i ADR podlinkuj w `docs/README.md`.
+5. Wyraźnie oddziel ukończone zadania od niezweryfikowanych oraz relację użytkownika od własnych wyników. Rozróżniaj inspekcję, mock, test lokalny i integrację live.
+6. Podsumuj rzeczywiście wykonane polecenia, wersje narzędzi, wyniki buildów/testów i ograniczenia. Brak testów nie oznacza PASS.
+7. Wskaż następny konkretny krok umożliwiający kontynuację przez człowieka lub innego agenta.
+
+Dokumentację aktualizuj razem z implementacją. Pisz po polsku, stosuj standardowe relatywne linki Markdown, YAML frontmatter i tagi tematyczne. Nie umieszczaj sekretów ani poufnych odpowiedzi API. `docs/` ma działać jako Obsidian Vault bez community plugins; lokalnego `docs/.obsidian/` nie dodawaj do Git.

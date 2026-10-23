@@ -3,6 +3,8 @@
 
 **AInvoicer** is a fullstack SAP-based invoice processing application that merges traditional finance logic with modern AI capabilities. This demo project showcases the integration of ABAP RAP, SAPUI5, OData v4, and AI microservices deployed in SAP BTP Cloud Foundry.
 
+Aktualny stan rozwoju CAP Java i KSeF, roadmapa, dziennik oraz decyzje architektoniczne: [baza wiedzy projektu](docs/README.md). Folder `docs/` można otworzyć jako Obsidian Vault.
+
 ---
 
 ## 💡 Overview

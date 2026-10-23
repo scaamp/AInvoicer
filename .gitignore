@@ -59,3 +59,6 @@ target/
 *.sqlite3
 *.db
 *.h2.db
+
+# Lokalne ustawienia Obsidian Vault
+docs/.obsidian/
