@@ -157,3 +157,15 @@ Nie zakładaj, że `STATUS.md` jest bardziej aktualny od repozytorium. Przy rozb
 7. Wskaż następny konkretny krok umożliwiający kontynuację przez człowieka lub innego agenta.
 
 Dokumentację aktualizuj razem z implementacją. Pisz po polsku, stosuj standardowe relatywne linki Markdown, YAML frontmatter i tagi tematyczne. Nie umieszczaj sekretów ani poufnych odpowiedzi API. `docs/` ma działać jako Obsidian Vault bez community plugins; lokalnego `docs/.obsidian/` nie dodawaj do Git.
+
+## 11. Project Skills
+
+Kanoniczne instrukcje są w `.agents/skills/`; `.claude/skills/` zawiera wyłącznie krótkie odwołania z frontmatter. Po wybraniu Skill przeczytaj jego pełny kanoniczny `SKILL.md`. Dobieraj Skills do zakresu zadania, nie ładuj wszystkich naraz. Skills nie rozszerzają uprawnień do SAP, KSeF, deploymentu ani Git.
+
+| Skill | Kanoniczny plik (Codex) | Odwołanie Claude Code | Zastosowanie |
+| --- | --- | --- | --- |
+| `ainvoicer-abap-rap` | [SKILL.md](.agents/skills/ainvoicer-abap-rap/SKILL.md) | [SKILL.md](.claude/skills/ainvoicer-abap-rap/SKILL.md) | ABAP Cloud, CDS/RAP i rzeczywisty kontrakt SAP OData V4 przez dostępne MCP ABAP FS |
+| `ainvoicer-cap-java` | [SKILL.md](.agents/skills/ainvoicer-cap-java/SKILL.md) | [SKILL.md](.claude/skills/ainvoicer-cap-java/SKILL.md) | Modele/usługi CDS CAP, handlers, CQN, persystencja i Remote Services w `cap-java/` |
+| `ainvoicer-ksef` | [SKILL.md](.agents/skills/ainvoicer-ksef/SKILL.md) | [SKILL.md](.claude/skills/ainvoicer-ksef/SKILL.md) | Oficjalny SDK MF, auth, FA(3), sesje, statusy/UPO i rekoncyliacja |
+
+Codex CLI/IDE: `$ainvoicer-cap-java Utwórz encję CAP i handler operacji faktury`; lista przez `/skills`. Claude Code: `/ainvoicer-cap-java Utwórz encję CAP i handler operacji faktury`. Analogicznie wywołuj pozostałe nazwy. Dla protokołu KSeF z implementacją modeli/handlerów użyj KSeF + CAP; dla konsumpcji istniejącego RAP użyj CAP i opcjonalnie ABAP do analizy SAP. Wyniki walidacji i cztery przykłady doboru: [dziennik Skills](docs/journal/2026-10-23-project-skills.md).

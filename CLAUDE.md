@@ -57,3 +57,15 @@ Na początku każdej sesji obowiązkowo przeczytaj [AGENTS.md](AGENTS.md), [docs
 Po implementacji aktualizuj Project Knowledge Base według workflow w `AGENTS.md`: STATUS, dziennik, w razie potrzeby ROADMAP i ADR. Zapisuj rzeczywiste wyniki oraz brakujące weryfikacje i następny krok. Nie duplikuj tutaj reguł architektury ani bezpieczeństwa; `AGENTS.md` pozostaje nadrzędnym źródłem zasad.
 
 Komunikacja z użytkownikiem i komentarze edukacyjne: **po polsku**. Nazwy API, klas, metod, artefaktów i kontraktów: konsekwentnie po angielsku.
+
+## Project Skills
+
+Pełne instrukcje są w `.agents/skills/`; pliki `.claude/skills/` odsyłają do nich bez duplikowania treści. Przed pracą przeczytaj kanoniczny plik wybranego Skill. Nie uruchamiaj wszystkich Skills przy każdym zadaniu; zachowaj reguły i granice uprawnień z `AGENTS.md`.
+
+| Skill / wywołanie Claude Code | Odwołanie Claude | Kanoniczny Skill | Kiedy używać |
+| --- | --- | --- | --- |
+| `/ainvoicer-abap-rap` | [SKILL.md](.claude/skills/ainvoicer-abap-rap/SKILL.md) | [SKILL.md](.agents/skills/ainvoicer-abap-rap/SKILL.md) | Zmiany ABAP Cloud/CDS/RAP i analiza rzeczywistych obiektów SAP przez MCP ABAP FS |
+| `/ainvoicer-cap-java` | [SKILL.md](.claude/skills/ainvoicer-cap-java/SKILL.md) | [SKILL.md](.agents/skills/ainvoicer-cap-java/SKILL.md) | CDS CAP, handlers, CQN, H2/Maven i Remote OData w `cap-java/` |
+| `/ainvoicer-ksef` | [SKILL.md](.claude/skills/ainvoicer-ksef/SKILL.md) | [SKILL.md](.agents/skills/ainvoicer-ksef/SKILL.md) | KSeF 2.0 przez SDK MF: auth, faktury, statusy/UPO, retry i rekoncyliacja |
+
+Przykład: `/ainvoicer-abap-rap Zmień CDS i wystaw dodatkowe pola przez RAP OData`. Do protokołu KSeF dołącz CAP tylko gdy zmieniasz też tę warstwę. Do konsumpcji gotowego RAP wybierz CAP; ABAP dołącz, jeśli trzeba zbadać/zmienić obiekty SAP. Codex używa tych samych nazw z prefiksem `$`, np. `$ainvoicer-ksef`. Wykrywanie/aktywację i instrukcję odświeżenia opisuje [dziennik Skills](docs/journal/2026-10-23-project-skills.md).
