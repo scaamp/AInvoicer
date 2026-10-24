@@ -1,7 +1,7 @@
 
 # 🧠 AInvoicer
 
-**AInvoicer** is a fullstack SAP-based invoice processing application that merges traditional finance logic with modern AI capabilities. This demo project showcases the integration of ABAP RAP, SAPUI5, OData v4, and AI microservices deployed in SAP BTP Cloud Foundry.
+**AInvoicer** is a fullstack SAP-based invoice processing application that merges traditional finance logic with modern AI capabilities. The repository contains SAPUI5, AI services, an ABAP Cloud RAP simulation model, and a CAP Java backend under development for KSeF 2.0. Project status and architecture notes: [Project Knowledge Base](docs/README.md).
 
 Aktualny stan rozwoju CAP Java i KSeF, roadmapa, dziennik oraz decyzje architektoniczne: [baza wiedzy projektu](docs/README.md). Folder `docs/` można otworzyć jako Obsidian Vault.
 
@@ -12,7 +12,7 @@ Aktualny stan rozwoju CAP Java i KSeF, roadmapa, dziennik oraz decyzje architekt
 The application enables:
 
 - Connecting SAPUI5 frontend with ABAP RAP and OData v4 backend
-- Processing financial data from the `ZFI_ACDOCA` model
+- Simulating invoice data in the custom ABAP tables `ZAINV_INV_H`, `ZAINV_INV_I`, and `ZAINV_INV_REF` (current RAP service exposes only the header)
 - Scanning and analyzing invoices with AI (OCR + NLP)
 - Smart filtering using natural language queries
 - Tracking AI queries and prompts with Langfuse
@@ -32,7 +32,7 @@ The application enables:
 ![NLP](./gif/search_documents_voice.gif)
 
 - 📄 **OCR Invoice Scanner**  
-  Node.js microservice + OpenAI analyzes uploaded invoices (PDF/JPG/PNG) and extracts structured data matching the `ZFI_ACDOCA` table.
+  Node.js microservice + OpenAI analyzes uploaded invoices (PDF/JPG/PNG) and extracts structured invoice data for the existing application workflow.
   
 ![NLP](./gif/ocr_document.gif)
 
@@ -63,7 +63,7 @@ The application allows users to convert any text (e.g., AI-generated responses) 
 
 | Layer         | Technology                                                    |
 |---------------|---------------------------------------------------------------|
-| Backend       | ABAP RAP (`ZFI_ACDOCA` table, OData v4 service)               |
+| Backend       | ABAP Cloud RAP simulation model; CAP Java + Spring Boot is under development for KSeF |
 | Frontend      | SAPUI5 (Freestyle, sap.ui.table, mdc.FilterBar)               |
 | AI Services   | Python (Flask), Node.js (Express), OpenAI SDK                 |
 | Integration   | OData v4 (SAPUI5 ↔ ABAP), REST (SAPUI5 ↔ AI)                  |
@@ -75,7 +75,7 @@ The application allows users to convert any text (e.g., AI-generated responses) 
 
 ## 📚 Additional Topics Covered
 
-- 🧾 Custom ACDOCA-based model (`ZFI_ACDOCA`) for invoice simulation
+- 🧾 Custom ABAP invoice simulation model (`ZAINV_INV_H/I/REF`); current RAP projection covers the header only
 - 🧠 Prompt engineering with predefined rules and examples
 - 🧮 `$top` simulation in UI5 via model slicing
 - 🧪 Postman endpoint testing
@@ -105,7 +105,7 @@ The application allows users to convert any text (e.g., AI-generated responses) 
 
 # 🧠 AInvoicer
 
-**AInvoicer** to pełnostackowa aplikacja SAP do przetwarzania faktur, łącząca klasyczną logikę finansową z nowoczesnymi możliwościami sztucznej inteligencji. Projekt demonstracyjny pokazuje integrację technologii takich jak ABAP RAP, SAPUI5, OData v4 oraz mikrousług AI na platformie SAP BTP Cloud Foundry.
+**AInvoicer** to pełnostackowa aplikacja SAP do przetwarzania faktur, łącząca logikę finansową z możliwościami AI. Repozytorium zawiera SAPUI5, usługi AI, symulacyjny model ABAP Cloud RAP oraz rozwijany backend CAP Java dla integracji KSeF 2.0. Stan i architekturę opisuje [baza wiedzy projektu](docs/README.md).
 
 ---
 
@@ -114,7 +114,7 @@ The application allows users to convert any text (e.g., AI-generated responses) 
 Aplikacja umożliwia:
 
 - Łączenie SAPUI5 z ABAP RAP i OData v4
-- Przetwarzanie danych finansowych z modelu `ZFI_ACDOCA`
+- Symulacja danych faktur w tabelach ABAP `ZAINV_INV_H`, `ZAINV_INV_I` i `ZAINV_INV_REF` (obecny serwis RAP wystawia tylko nagłówek)
 - Skanowanie i analizę faktur z użyciem AI (OCR + NLP)
 - Inteligentne filtrowanie danych z użyciem języka naturalnego
 - Monitorowanie zapytań i promptów z wykorzystaniem Langfuse
@@ -127,7 +127,7 @@ Aplikacja umożliwia:
   Dzięki OpenAI i Langfuse, zapytania użytkownika w języku naturalnym są przekształcane w filtry OData. Przykład: „Pokaż dokumenty powyżej 5000 EUR z 2024”.
 
 - 📄 **OCR Invoice Scanner**  
-  Mikrousługa Node.js + OpenAI analizuje przesłane faktury (PDF/JPG/PNG) i wyodrębnia dane zgodne ze strukturą `ZFI_ACDOCA`.
+  Mikrousługa Node.js + OpenAI analizuje przesłane faktury (PDF/JPG/PNG) i wyodrębnia dane strukturalne na potrzeby istniejącego przepływu aplikacji.
 
 - 📊 **Dynamiczna Tabela (sap.ui.table)**  
   Z funkcjami:  
@@ -157,7 +157,7 @@ Aplikacja umożliwia konwersję dowolnego tekstu (np. odpowiedzi AI) na głos o 
 
 | Warstwa       | Technologia                                                  |
 |---------------|--------------------------------------------------------------|
-| Backend       | ABAP RAP (tabela `ZFI_ACDOCA`, serwis OData v4)              |
+| Backend       | Symulacyjny model ABAP Cloud RAP; CAP Java + Spring Boot jest rozwijany dla KSeF |
 | Frontend      | SAPUI5 (Freestyle, sap.ui.table, mdc.FilterBar)              |
 | AI Services   | Python (Flask), Node.js (Express), OpenAI SDK                |
 | Integracja    | OData v4 (SAPUI5 ↔ ABAP), REST (SAPUI5 ↔ AI)                 |
@@ -169,7 +169,7 @@ Aplikacja umożliwia konwersję dowolnego tekstu (np. odpowiedzi AI) na głos o 
 
 ## 📚 Additional Topics Covered
 
-- 🧾 Własny model danych ACDOCA (`ZFI_ACDOCA`) dla symulacji dokumentów
+- 🧾 Własny model symulacyjnych faktur ABAP (`ZAINV_INV_H/I/REF`); obecna projekcja RAP obejmuje tylko nagłówek
 - 🧠 Prompt engineering z predefiniowanymi regułami i przykładami
 - 🧮 Symulacja `$top` w UI5 przez model slicing
 - 🧪 Testowanie endpointów z Postmanem

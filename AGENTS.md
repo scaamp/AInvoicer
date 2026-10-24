@@ -20,10 +20,11 @@ Główne cele:
 
 ## 2. Zweryfikowany stan repozytorium a stan docelowy
 
-Istniejące katalogi: `abap/`, `sapui5/ainvoicer/`, `node/`, `python/`.
-W `abap/` jest m.in. `classes/zbp_r_fi_acdoca.abap`, definicje CDS, słownik z `ZFI_ACDOCA` oraz pliki service binding. Frontend SAPUI5 jest w `sapui5/ainvoicer/`.
+Istniejące katalogi: `abap/`, `sapui5/ainvoicer/`, `node/`, `python/` i `cap-java/`. W `abap/src/` znajdują się obiekty abapGit dla symulacyjnego modelu faktur `ZAINV_INV_H`, `ZAINV_INV_I`, `ZAINV_INV_REF` oraz RAP nagłówka `ZAPI_AINV_INV_H_O4`. Nie zakładaj dostępności standardowych tabel S/4HANA (np. ACDOCA, BKPF, BSEG, RBKP, VBRK) ani rzeczywistych dokumentów FI/MM/SD w używanym ABAP Environment. Poprzedni model `ZFI_ACDOCA` nie jest docelowym źródłem danych CAP.
 
-UWAGA: artefakty repozytorium i rzeczywiste nazwy wdrożonych bindingów OData mogą się różnić (np. `ZUI_FI_ACDOCA_O4` vs nazewnictwo używane wcześniej w projekcie). Zawsze sprawdzaj rzeczywiste service definition/binding, adres, `$metadata` i dostępne encje w systemie. Nie zgaduj kontraktów.
+Pliki pod `abap/src/` są eksportem repozytorium, a nie dowodem aktualnego stanu aktywacji/publikacji w SAP. Przed integracją sprawdzaj w docelowym systemie definicję i binding, ich aktywny stan, adres, `$metadata`, encje, autoryzację i dostęp do danych. Nazwa `ZAPI_AINV_INV_H_O4` pochodzi z eksportu; nie wymyślaj URL-i ani kontraktu runtime. Aktualny zakres eksportu i luki opisuje [przewodnik modelu RAP](docs/guides/ABAP_RAP_INVOICE_MODEL.md).
+
+Konfigurację lokalnego repo abapGit opisuje [workflow abapGit](docs/guides/ABAPGIT_WORKFLOW.md). Repozytorium Git, projekt Eclipse `abap` i projekt ABAP ADT `H01_EN` to różne elementy; synchronizacja Git nie aktywuje ani nie wdraża obiektów w SAP.
 
 Na osobnej gałęzi `feature/ksef-java-e2e-runner` istnieje sprawdzony eksperyment Node.js → Java SDK → KSeF TEST, z prawdziwym numerem KSeF i UPO. Traktuj go jako referencję/test dowodowy, a NIE jako kod produkcyjny do bezpośredniego skopiowania. Nie zakładaj, że pliki tej gałęzi już znajdują się na bieżącej gałęzi.
 
@@ -40,7 +41,7 @@ CAP Java + Spring Boot (SAP BTP Cloud Foundry)
       ├── Persistence: H2/SQLite tylko lokalnie; SAP HANA Cloud docelowo
       ├── SAP Remote Service (Destination / OAuth2)
       │          ▼
-      │     ABAP Environment: ZFI_ACDOCA → CDS/RAP → OData V4
+      │     ABAP Environment: ZAINV_INV_H/I/REF → CDS/RAP → OData V4
       └── KSeF integration service → oficjalny Java SDK MF → KSeF API 2.0
 
 node/ i python/ = istniejące, niezależne funkcje AI; nie są właścicielami KSeF auth.
@@ -52,11 +53,11 @@ node/ i python/ = istniejące, niezależne funkcje AI; nie są właścicielami K
 - **SAPUI5**: frontend OData V4; stopniowo przepinany na CAP bez naruszania istniejących ekranów, kiedy odpowiednie API CAP będzie gotowe.
 - **Node.js / Python**: zachowaj istniejące OCR/AI/NLP/TTS i inne funkcje. Nie przenoś ich do CAP bez osobnego zadania.
 
-Nie próbuj otwierać JDBC/SQL bezpośrednio do wewnętrznych tabel bazy ABAP Environment. CAP CDS nie daje automatycznie dostępu do `ZFI_ACDOCA`. Importuj kontrakt z istniejącego API OData i użyj CAP Java Remote Services / SAP Cloud SDK Destinations. Nie wykonuj fikcyjnych JOIN-ów SQL między zdalnym OData a lokalną bazą CAP.
+Nie próbuj otwierać JDBC/SQL bezpośrednio do wewnętrznych tabel bazy ABAP Environment. CAP CDS nie daje automatycznie dostępu do tabel ABAP. Importuj zweryfikowany kontrakt z dostępnego API OData i użyj CAP Java Remote Services / SAP Cloud SDK Destinations. Nie wykonuj fikcyjnych JOIN-ów SQL między zdalnym OData a lokalną bazą CAP. Obecny eksport RAP obejmuje tylko nagłówek; pozycje i referencje nie są jeszcze wystawione jako dzieci/nawigacje OData.
 
 ## 4. Dane i model domenowy
 
-- SAP pozostaje źródłem prawdy dla dokumentów FI/MM/SD i `ZFI_ACDOCA`.
+- ABAP Environment utrzymuje własne dane symulacyjne faktur w `ZAINV_INV_H` (nagłówki), `ZAINV_INV_I` (pozycje) i `ZAINV_INV_REF` (powiązania do symulowanych źródeł). Nie są to standardowe tabele księgowe S/4HANA.
 - CAP jest źródłem prawdy dla procesu integracji KSeF: `KsefOperations`, `KsefInvoices`, referencje sesji/faktury, numer KSeF, status, audit trail, idempotency key, korelacja do dokumentu SAP.
 - Rozdziel dane faktury i stan operacji, wysyłkę i odbiór, stan techniczny i biznesowy.
 - Duże XML FA(3)/UPO przechowuj wyłącznie w świadomie wybranym trwałym magazynie (np. repozytorium dokumentów); w DB trzymaj odpowiednie metadane i referencje. Nie używaj lokalnego dysku Cloud Foundry jako trwałego storage.
@@ -107,6 +108,15 @@ Pierwszy vertical slice: **jedna syntetyczna faktura w KSeF TEST, od SAP Remote 
 - Każda istotna funkcja/metoda integracyjna powinna mieć krótkie komentarze po polsku: cel, używane API, stany błędów i konsekwencje.
 - Nie modyfikuj przypadkowo istniejących RAP/UI5/Node/Python. Zmieniaj tylko pliki potrzebne do zadania; nie commituj wygenerowanych artefaktów ani zależności.
 - Zmiany w architekturze lub właścicielu danych najpierw opisz jako decyzję z kompromisami; nie wykonuj cichej migracji.
+
+### Praca z obiektami ABAP synchronizowanymi przez abapGit
+
+- Traktuj `abap/src/` jako eksport obiektów pakietu `ZAINVOICER` skonfigurowany w `.abapgit.xml`; przed zmianą obiektu sprawdź aktywne źródło w SAP ADT. Lokalny plik nie potwierdza aktywacji ani zgodności systemu.
+- Rozróżniaj lokalny Git/EGit, synchronizację obiektów SAP przez abapGit w ADT, edycję i aktywację przez SAP ADT oraz transport/lifecycle SAP. Git commit/push nie wdraża kodu do SAP.
+- Zmiany w plikach eksportu ABAP uzgadniaj z kierunkiem synchronizacji. Po zmianie w Git wykonaj kontrolowany import/compare przez abapGit, sprawdź staged/diff i dopiero potem aktywuj oraz testuj w SAP. Po zmianie w SAP aktywuj i przeglądaj staged changes abapGit przed eksportem.
+- Nie wykonuj przypadkowego Pull, usuwania obiektów, rozwiązywania konfliktów przez nadpisanie ani zmian `.abapgit.xml`. Przed synchronizacją sprawdź gałąź `java-cap-ksef`, pakiet i pełny zakres różnic.
+- Plik `abap/.project` jest lokalną konfiguracją Eclipse, ignorowaną przez Git; nie jest ustawieniem abapGit ani projektem ABAP podłączonym do systemu.
+- Eksport definicji obiektów nie eksportuje automatycznie danych tabel. Nie zapisuj credentiali GitHub PAT, haseł, sekretów SAP/KSeF ani rzeczywistych danych faktur w repozytorium lub dokumentacji. Szczegóły: [workflow abapGit](docs/guides/ABAPGIT_WORKFLOW.md).
 
 ## 8. Sposób pracy agenta
 

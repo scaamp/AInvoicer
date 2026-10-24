@@ -10,7 +10,7 @@ To jedyne źródło prawdy o architekturze, granicach komponentów, bezpieczeńs
 - Repo: `scaamp/AInvoicer`; gałąź rozwoju architektury: `java-cap-ksef`.
 - Cel: produkcyjnie zaprojektowana aplikacja SAP Fiori do faktur zakupowych/sprzedażowych i KSeF 2.0; najpierw E2E TEST.
 - **CAP Java + Spring Boot**: nowy centralny backend i właściciel procesu KSeF; **oficjalne Java SDK MF działa jako biblioteka w tej samej JVM**.
-- **ABAP Cloud/RAP**: pozostaje adapterem OData V4 do `ZFI_ACDOCA` i danych SAP, nie nowym silnikiem KSeF.
+- **ABAP Cloud/RAP**: utrzymuje symulacyjny model faktur `ZAINV_INV_H/I/REF`; obecny eksport RAP wystawia wyłącznie nagłówek przez service definition/binding `ZAPI_AINV_INV_H_O4`. Nie zakładaj tabel ani dokumentów S/4HANA.
 - **SAPUI5**: istniejący frontend; docelowo OData V4 z CAP.
 - **Node.js/Python**: zachowane dotychczasowe usługi AI.
 - **Baza CAP**: lokalnie H2 / SQLite na potrzeby developmentu; docelowo HANA Cloud do operacji, statusów i audytu, bez kopiowania całej tabeli SAP.
@@ -19,7 +19,7 @@ To jedyne źródło prawdy o architekturze, granicach komponentów, bezpieczeńs
 ## Nawigacja po repo
 
 ```text
-abap/                   # istniejące źródła ABAP/CDS/RAP i ZFI_ACDOCA
+abap/                   # lokalny projekt Eclipse i eksport abapGit w abap/src/
 sapui5/ainvoicer/       # istniejący frontend UI5
 node/                   # istniejące usługi Node
 python/                 # istniejące usługi Python
@@ -51,6 +51,8 @@ Istnieje też potwierdzony eksperyment KSeF E2E na oddzielnej gałęzi `feature/
 Kontynuuj istniejący szkielet `cap-java/` według [docs/STATUS.md](docs/STATUS.md): zweryfikuj uruchomienie CAP Java + Spring Boot i H2, następnie przygotuj minimalny model CDS, OData V4, handler i testy. Dopiero później podłącz RAP Remote OData oraz oficjalny KSeF Java SDK.
 
 ## Project Knowledge Base & Documentation Workflow
+
+Zasady abapGit i rozdział lokalnego checkoutu, projektu ADT oraz repozytorium SAP opisuje [kanoniczny przewodnik](docs/guides/ABAPGIT_WORKFLOW.md). Bieżący model oraz ograniczenia RAP są w [przewodniku modelu faktur](docs/guides/ABAP_RAP_INVOICE_MODEL.md). Traktuj eksport Git jako źródło do analizy, nie dowód aktywnego runtime SAP.
 
 Na początku każdej sesji obowiązkowo przeczytaj [AGENTS.md](AGENTS.md), [docs/STATUS.md](docs/STATUS.md), [docs/ROADMAP.md](docs/ROADMAP.md) i najnowszy wpis w `docs/journal/`; indeks notatek jest w [docs/README.md](docs/README.md). Dla zadań architektonicznych sprawdź odpowiednie ADR. Zweryfikuj notatki względem Git i kodu.
 

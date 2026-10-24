@@ -10,7 +10,7 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
 
 [Project Home](README.md) · [Aktualny stan i dowody](STATUS.md) · [Decyzja architektoniczna](decisions/ADR-0001-cap-java-ksef-architecture.md)
 
-`[x]` oznacza ukończenie z podanym zakresem potwierdzenia, `[ ]` — pracę do wykonania. IN PROGRESS oznacza zadanie rozpoczęte. Ten plik jest planem; historię opisują [dziennik bootstrapu](journal/2026-10-23-cap-java-bootstrap.md) i [weryfikacja Phase 1](journal/2026-10-24-cap-java-bootstrap-verification.md).
+`[x]` oznacza ukończenie z podanym zakresem potwierdzenia, `[ ]` — pracę do wykonania. IN PROGRESS oznacza zadanie rozpoczęte. Ten plik jest planem; historię opisują [dziennik bootstrapu](journal/2026-10-23-cap-java-bootstrap.md), [weryfikacja Phase 1](journal/2026-10-24-cap-java-bootstrap-verification.md) i [pierwszy eksport abapGit/RAP](journal/2026-10-24-abapgit-rap-initial-export.md).
 
 ## Narzędzia projektowe — Agent Skills
 
@@ -48,12 +48,16 @@ Własne API CDS/OData i CRUD nie wchodziły w Phase 1; ich sprawdzenie należy d
 
 ## Phase 3 — SAP Remote Integration
 
-- [ ] Potwierdzenie wdrożonego service definition/binding, adresu, `$metadata` i encji dla danych `ZFI_ACDOCA`.
+- [x] Bootstrap Git/abapGit dla pakietu `ZAINVOICER`: branch `java-cap-ksef`, `.abapgit.xml` wskazuje `/abap/src/`, Folder Logic `FULL`; pierwszy eksport potwierdzony commitem `39ab869`.
+- [x] Inspekcja repo wykazała symulacyjny model tabel `ZAINV_INV_H`, `ZAINV_INV_I`, `ZAINV_INV_REF` i service definition/binding `ZAPI_AINV_INV_H_O4`; RAP obejmuje obecnie tylko nagłówek.
+- [ ] W SAP ADT potwierdzić aktywny service definition/binding, stan publikacji/release, adres, `$metadata`, encje i autoryzację. W pliku bindingu jest rozbieżność `PUBLISHED=true` / `RELEASE_STATE=NOT_RELEASED`; eksport nie rozstrzyga runtime.
+- [ ] Zaprojektować i dodać root/projection CDS, behavior, DCL i service exposure dla pozycji/referencji, w tym compositions/nawigacje jeśli potrzebne. Zweryfikować klucze i relacje logiczne.
+- [ ] Wykonać test `$metadata` oraz autoryzowany odczyt syntetycznej faktury z SAP; osobno zapisać wynik mock i live.
 - [ ] Import kontraktu RAP OData V4, konfiguracja CAP Java Remote Service.
 - [ ] Destination / uwierzytelnienie zgodne z faktyczną konfiguracją SAP/BTP.
 - [ ] Test adaptera oraz autoryzowany odczyt syntetycznych danych faktury z SAP; osobne wyniki mock i live.
 
-Bez bezpośredniego SQL do bazy ABAP i bez pozornych JOIN-ów z lokalną bazą CAP.
+ABAP Environment jest tu źródłem symulacyjnych danych aplikacyjnych; nie zakładaj standardowych tabel/dokumentów S/4HANA ani modelu `ZFI_ACDOCA`. Bez bezpośredniego SQL do bazy ABAP i bez pozornych JOIN-ów z lokalną bazą CAP. Szczegóły: [model RAP](guides/ABAP_RAP_INVOICE_MODEL.md) i [workflow abapGit](guides/ABAPGIT_WORKFLOW.md).
 
 ## Phase 4 — KSeF SDK Integration
 

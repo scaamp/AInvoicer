@@ -21,6 +21,9 @@ AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijan
 - [Dziennik: walidacja i autoryzacja KsefOperations](journal/2026-10-24-ksef-operations-validation-authorization.md).
 - [Dziennik: Phase 2.3 — model KsefInvoices i relacja z operacjami](journal/2026-10-24-ksef-invoices-model.md).
 - [Dziennik: lokalna konsola H2 w przeglądarce](journal/2026-10-24-h2-console.md).
+- [Dziennik: pierwszy eksport abapGit i model RAP faktur](journal/2026-10-24-abapgit-rap-initial-export.md).
+- [Przewodnik: workflow abapGit w AInvoicer](guides/ABAPGIT_WORKFLOW.md).
+- [Przewodnik: model ABAP RAP faktur](guides/ABAP_RAP_INVOICE_MODEL.md).
 - [Dziennik: Project Skills — zakresy, wywołania i wyniki walidacji](journal/2026-10-23-project-skills.md).
 - [ADR-0001 — wybór CAP Java i integracji SDK KSeF](decisions/ADR-0001-cap-java-ksef-architecture.md).
 - [Szablon wpisu dziennika](templates/JOURNAL_TEMPLATE.md).
@@ -43,13 +46,13 @@ Node.js / Python: istniejące niezależne funkcje AI
 
 To architektura docelowa. Stan wdrożenia opisuje [STATUS](STATUS.md), a uzasadnienie i kompromisy — [ADR-0001](decisions/ADR-0001-cap-java-ksef-architecture.md).
 
-SAP pozostaje źródłem prawdy dla danych finansowych, CAP dla operacji KSeF, statusów, korelacji i audytu. Dostęp do SAP odbywa się przez autoryzowane API, bez bezpośredniego SQL do bazy ABAP. Java SDK KSeF działa jako biblioteka w backendzie. XML FA(3) i UPO wymagają świadomie wybranego trwałego magazynu; lokalny dysk Cloud Foundry nie jest takim magazynem.
+ABAP Environment utrzymuje w tym scenariuszu symulacyjne dane faktur, a CAP ma być właścicielem operacji KSeF, statusów, korelacji i audytu. Nie zakładamy standardowych tabel S/4HANA ani bezpośredniego SQL do bazy ABAP; CAP ma korzystać z autoryzowanego API. Java SDK KSeF działa docelowo jako biblioteka w backendzie. XML FA(3) i UPO wymagają świadomie wybranego trwałego magazynu; lokalny dysk Cloud Foundry nie jest takim magazynem.
 
 ## Mapa repozytorium
 
 | Katalog | Rola |
 | --- | --- |
-| `abap/` | Istniejące artefakty ABAP, CDS, RAP, `ZFI_ACDOCA` |
+| `abap/` | Lokalny projekt Eclipse i eksport abapGit w `abap/src/`; symulacyjny model `ZAINV_INV_H/I/REF`, RAP obecnie tylko dla nagłówka. Nie jest to dowód stanu runtime SAP. |
 | `sapui5/ainvoicer/` | Istniejący frontend SAPUI5 |
 | `node/`, `python/` | Istniejące funkcje AI |
 | `cap-java/` | Rozpoczęty backend CAP Java + Spring Boot |
