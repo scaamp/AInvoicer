@@ -35,11 +35,13 @@ Własne API CDS/OData i CRUD nie wchodziły w Phase 1; ich sprawdzenie należy d
 - [x] Minimalna encja CDS `KsefOperations`: korelacja SAP jako tekst, NIP, kierunek, typ, status NEW, klucz idempotencji, referencje i błąd.
 - [ ] Encja CDS `KsefInvoices` i dalsze pola procesu: status techniczny i biznesowy, referencje oraz audyt.
 - [x] `KsefService` wystawia `KsefOperations` przez OData V4, wymaga uwierzytelnionego użytkownika i blokuje zapis statusów/referencji technicznych po stronie konsumenta.
-- [ ] Minimalne Java Event Handlers i walidacja wejścia po stronie serwera.
+- [x] Minimalny Java `@Before` handler CREATE: NIP z sumą kontrolną, direction, katalog operationType, wymagany idempotencyKey (trim) i status `NEW`.
 - [x] Lokalna weryfikacja `$metadata`, podstawowego CRUD i persystencji H2; walidacja domenowa i autoryzacja podatnika pozostają do wykonania.
 - [ ] Przed pierwszą wysyłką: trwała operacja, unikalny idempotency key, kontrola konkurencji i worker/outbox po commit.
 - [ ] Przed efektami zewnętrznymi: `UNKNOWN/RECONCILIATION_REQUIRED`, odtwarzanie po restarcie oraz testy niejednoznacznych odpowiedzi.
-- [ ] Kontrola dostępu do operacji i kontekstu podatnika; bez sekretów w modelu publicznym.
+- [x] Kontrola dostępu do operacji: rola `KsefOperator`, lista atrybutów `$user.taxpayerNips`, izolacja CREATE/READ i blokada UPDATE/DELETE w publicznym serwisie.
+- [x] Testy integracyjne OData + Spring Security + CAP + H2: użytkownicy operator A/B, anonimowy/brak roli, walidacja, status, brak UPDATE/DELETE i unikalność idempotencji.
+- [ ] Docelowa konfiguracja IAS/XSUAA i mapowanie zaufanych claimów do roli `KsefOperator` oraz atrybutu `taxpayerNips` (przed udostępnieniem serwisu użytkownikom).
 
 ## Phase 3 — SAP Remote Integration
 
