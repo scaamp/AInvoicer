@@ -46,9 +46,15 @@ Konfiguracja śledzona w głównym pliku `.abapgit.xml`:
 
 Mapuje ona zawartość pakietu wybranego w abapGit do `/abap/src/`. Sama konfiguracja nie dowodzi, że wszystkie obiekty SAP są aktywne ani że service binding działa w runtime.
 
+## Preferowany workflow Codexa: SAP jako środowisko implementacji
+
+Dla ABAP obowiązuje **Codex/VS Code (analiza) → ABAP FS/MCP (edycja live H01, jeśli faktycznie dostępna) → SAP H01 (diagnostyka, aktywacja, testy) → Eclipse ADT/abapGit Stage and Push → GitHub → lokalny Git**. Przy braku zapisu/aktywacji przez MCP korzystaj z ADT; patch lokalny + kontrolowany import Git → SAP to fallback, nie domyślna ścieżka. Szczegóły i reguły bezpieczeństwa: [AGENTS.md](../../AGENTS.md) i [Skill ABAP/RAP](../../.agents/skills/ainvoicer-abap-rap/SKILL.md).
+
+Nie myl trzech stanów: kod aktywny w H01, snapshot w GitHub i pliki `D:\AInvoicer\abap\src\`. `abapGit Pull` nie pobiera niezacommitowanych zmian VS Code. Po `Stage and Push` odśwież lokalny checkout dopiero po sprawdzeniu `git status` (dla czystego drzewa: `git pull --ff-only origin java-cap-ksef`). Przy konflikcie nie nadpisuj kodu w ciemno i nie wykonuj automatycznego Pull.
+
 ## Zmiana z SAP do GitHub i narzędzi lokalnych
 
-1. W SAP ADT (`H01_EN`) odczytaj aktywny obiekt, sprawdź zależności, pakiet i wymagany transport. Wprowadzaj i aktywuj zmianę w SAP zgodnie z normalnym cyklem ABAP.
+1. W systemie H01 odczytaj aktualny obiekt, zależności, pakiet i wymagany transport. Dla istniejących obiektów preferuj Codex + potwierdzone narzędzia ABAP FS/MCP; dla brakujących możliwości MCP użyj ADT. Zapisz, aktywuj i sprawdź kod w SAP zgodnie z zakresem zlecenia.
 2. Otwórz połączone repo abapGit dla pakietu `ZAINVOICER` i sprawdź różnice/staged changes. Potwierdź, że dotyczą oczekiwanych obiektów i nie obejmują przypadkowych usunięć lub plików spoza zakresu.
 3. Zsynchronizuj eksport przez funkcję `Stage and Push` w pluginie abapGit. Przed zatwierdzeniem sprawdź branch `java-cap-ksef`, listę plików i diff.
 4. W lokalnym checkout wykonaj zwykły przegląd Git. Codex/VS Code/Obsidian czytają te same pliki; mogą przygotować zmianę dokumentacji lub kodu, ale nie aktywują jej w SAP.

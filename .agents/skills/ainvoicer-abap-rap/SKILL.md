@@ -13,11 +13,14 @@ ABAP Environment w tym projekcie zawiera symulacyjny model `ZAINV_INV_H/I/REF`; 
 
 ## Workflow
 
-### Synchronizacja abapGit
+### Domyślny tryb: Codex → ABAP FS/MCP → H01 → abapGit → Git
 
-Rozróżniaj EGit/lokalny checkout, abapGit ADT, SAP ADT i transport SAP. Pakiet `ZAINVOICER` mapuje się przez `.abapgit.xml` do `/abap/src/` (`FOLDER_LOGIC=FULL`); branch repo to `java-cap-ksef`. Przy edycji plików ABAP sprawdź aktywne źródło SAP, a przed importem/eksportem przejrzyj staged changes, branch i zakres obiektów. Nie wykonuj przypadkowego Pull ani zbiorczego usuwania; konflikty rozstrzygaj przez jawne porównanie. Git push nie aktywuje ani nie transportuje obiektów. Nie zapisuj PAT ani credentiali w repo. Pełny proces opisuje przewodnik abapGit.
+**Kod ABAP rozwijaj przede wszystkim w obiektach SAP H01, nie w lokalnych plikach `abap/src/`.** Codex korzysta z repo do analizy, ale po potwierdzeniu funkcji MCP odczytuje/modyfikuje live źródła obiektów i uruchamia diagnostykę. Jeżeli MCP nie wspiera operacji (zwłaszcza tworzenia obiektów RAP, DDIC, service bindings lub aktywacji), przejdź na Eclipse ADT, zamiast wymyślać działanie narzędzia.
 
-Eksport pokazuje tabele `ZAINV_INV_H`, `ZAINV_INV_I`, `ZAINV_INV_REF`, ale CDS/behavior/DCL/service obejmują obecnie tylko root nagłówka. Nie zakładaj compositions ani nawigacji do dzieci. W pierwszej kolejności potwierdź ten zakres w bieżących plikach i systemie.
+Trzy stany kodu: (1) aktywne/nieaktywne źródło SAP (`H01_EN`, pakiet `ZAINVOICER`); (2) zatwierdzony eksport GitHub (`java-cap-ksef`); (3) lokalny checkout `D:\AInvoicer\abap\src\`. Żaden nie aktualizuje pozostałych automatycznie. `abapGit Pull` pobiera **GitHub**, nie niezacommitowane zmiany plików VS Code.
+
+### Procedura live w SAP
+
 
 1. **Odkryj możliwości.** Sprawdź, czy klient udostępnia połączony MCP ABAP FS. Odczytaj faktyczną listę narzędzi i ich schematy; przyporządkuj odczyt, wyszukiwanie, diagnostykę, zapis, aktywację, ABAP Unit i ATC. Potwierdź połączenie, system, klienta, środowisko i uprawnienia bez ujawniania credentiali. Funkcja rozszerzenia VS Code nie musi być dostępna przez MCP.
 2. **Odczytaj stan SAP.** Pobierz aktualne źródła i właściwą wersję active/inactive. Ustal zależności, where-used, klucze, typy DDIC, asocjacje, projekcje, DCL i autoryzację behavior. Rozróżniaj istniejące zmiany użytkownika od własnych. Nie zapisuj na podstawie starej kopii z Git.
@@ -27,6 +30,11 @@ Eksport pokazuje tabele `ZAINV_INV_H`, `ZAINV_INV_I`, `ZAINV_INV_REF`, ale CDS/b
 6. **Zweryfikuj składnię i jakość.** Uruchom dostępną diagnostykę dla właściwej wersji źródła i popraw błędy zależności. ATC uruchom z wariantem odpowiednim dla ABAP Cloud, podaj wariant i ustalenia; nie obchodź problemów automatycznymi wyłączeniami. Uruchom właściwe ABAP Unit. Składnia, ATC i testy to odrębne wyniki.
 7. **Aktywuj warunkowo.** Tylko gdy aktywacja jest dostępna przez MCP, mieści się w zleceniu i dotyczy środowiska nieprodukcyjnego, aktywuj wskazane obiekty w kolejności zależności. Nie aktywuj wszystkich nieaktywnych obiektów systemu. Sprawdź odpowiedź, ponowny odczyt active i diagnostykę; zapis pliku nie oznacza aktywacji.
 8. **Sprawdź usługę.** Potwierdź rzeczywisty binding, publikację, URL, `$metadata`, entity sets, klucze i nowe pola. Wykonaj autoryzowany odczyt syntetycznych danych; test akcji zapisującej tylko w zleconym zakresie. Sprawdź walidacje, DCL/behavior authorization i regresję kontraktu UI5/CAP. HTTP 200 dla metadanych nie dowodzi działania danych i autoryzacji.
+9. **Eksportuj zatwierdzony stan.** Po sprawdzeniu aktywacji/testów wykonaj (po zleceniu użytkownika) `Stage and Push` z `H01_EN → abapGit → ZAINVOICER` na `java-cap-ksef`; wcześniej skontroluj kompletny diff, dodania/usunięcia i `.abapgit.xml`. Po eksporcie sprawdź lokalny `git status`; przy czystym drzewie wykonaj `git pull --ff-only origin java-cap-ksef` (lub EGit). Nie używaj reset/force-push, nie nadpisuj pracy lokalnej.
+
+### Tryb alternatywny: patch lokalny → kontrolowany import
+
+Gdy MCP nie obsługuje zapisu/aktywacji danego typu lub modelowanie wymaga Eclipse ADT, przygotuj niewielką zmianę w ADT albo lokalny patch kodu do review. Dopuszczalne pliki patcha to m.in. `*.clas.abap`, `*.ddls.asddls`, `*.bdef.asbdef`, `*.dcls.asdcls`; **nie edytuj automatycznie metadanych `*.tabl.xml`, `*.srvb.xml` czy `.abapgit.xml`**. Patch Git nie jest kodem aktywnym w SAP: po uzgodnieniu wykonaj Git commit/push, porównanie i bezpieczny abapGit Pull/import, następnie aktywację i test. Wstrzymaj import przy różnicy względem nowszej wersji SAP. Nigdy nie edytuj jednocześnie tego samego obiektu przez MCP i lokalnie; ustal jeden kierunek synchronizacji.
 
 ## Brak możliwości i wynik
 

@@ -109,14 +109,18 @@ Pierwszy vertical slice: **jedna syntetyczna faktura w KSeF TEST, od SAP Remote 
 - Nie modyfikuj przypadkowo istniejących RAP/UI5/Node/Python. Zmieniaj tylko pliki potrzebne do zadania; nie commituj wygenerowanych artefaktów ani zależności.
 - Zmiany w architekturze lub właścicielu danych najpierw opisz jako decyzję z kompromisami; nie wykonuj cichej migracji.
 
-### Praca z obiektami ABAP synchronizowanymi przez abapGit
+### Kanoniczny workflow rozwoju ABAP Cloud: MCP-first, abapGit po weryfikacji
 
-- Traktuj `abap/src/` jako eksport obiektów pakietu `ZAINVOICER` skonfigurowany w `.abapgit.xml`; przed zmianą obiektu sprawdź aktywne źródło w SAP ADT. Lokalny plik nie potwierdza aktywacji ani zgodności systemu.
-- Rozróżniaj lokalny Git/EGit, synchronizację obiektów SAP przez abapGit w ADT, edycję i aktywację przez SAP ADT oraz transport/lifecycle SAP. Git commit/push nie wdraża kodu do SAP.
-- Zmiany w plikach eksportu ABAP uzgadniaj z kierunkiem synchronizacji. Po zmianie w Git wykonaj kontrolowany import/compare przez abapGit, sprawdź staged/diff i dopiero potem aktywuj oraz testuj w SAP. Po zmianie w SAP aktywuj i przeglądaj staged changes abapGit przed eksportem.
-- Nie wykonuj przypadkowego Pull, usuwania obiektów, rozwiązywania konfliktów przez nadpisanie ani zmian `.abapgit.xml`. Przed synchronizacją sprawdź gałąź `java-cap-ksef`, pakiet i pełny zakres różnic.
-- Plik `abap/.project` jest lokalną konfiguracją Eclipse, ignorowaną przez Git; nie jest ustawieniem abapGit ani projektem ABAP podłączonym do systemu.
-- Eksport definicji obiektów nie eksportuje automatycznie danych tabel. Nie zapisuj credentiali GitHub PAT, haseł, sekretów SAP/KSeF ani rzeczywistych danych faktur w repozytorium lub dokumentacji. Szczegóły: [workflow abapGit](docs/guides/ABAPGIT_WORKFLOW.md).
+**Domyślny schemat:** `Codex + VS Code (analiza) → ABAP FS/MCP (edycja rzeczywistego obiektu H01) → SAP H01 (diagnostyka, aktywacja, testy) → Eclipse ADT + abapGit (Stage and Push) → GitHub java-cap-ksef → lokalny checkout`.
+
+- **SAP H01 / pakiet `ZAINVOICER`** to źródło prawdy o stanie zapisanym, aktywnym i działającym w systemie. Sprawdzaj active/inactive, blokady i status OData. **GitHub** to zatwierdzony snapshot źródeł po eksporcie. **`D:\AInvoicer\abap\src\`** to lokalna kopia repo — nie live SAP. Te trzy stany nie synchronizują się automatycznie.
+- **Preferuj bezpośrednią zmianę w H01 przez MCP** dla istniejących klas/CDS/BDEF/DCL, ale najpierw odkryj realnie dostępne narzędzia i uprawnienia ABAP FS, poprawność systemu/klienta oraz obsługę danego typu obiektu. Nie zakładaj, że MCP potrafi tworzyć obiekty, zapisywać lub aktywować tylko na podstawie dokumentacji. Przy brakach użyj Eclipse ADT.
+- **Implementacja:** najpierw odczytaj aktualny obiekt live, porównaj z eksportem Git, uzgodnij zakres, zależności i transport; potem wykonaj minimalną zmianę w SAP. Nie nadpisuj wersji użytkownika ani cudzych blokad. Zapis przez MCP nie jest aktywacją. Syntax Check, aktywacja, ABAP Unit/ATC i test OData/`$metadata` są odrębnymi rezultatami, które należy potwierdzić; aktywuj tylko w autoryzowanym zakresie i środowisku nieprodukcyjnym.
+- **Eksport po SAP:** dopiero po aktywacji i adekwatnych testach sprawdź różnice w `H01_EN → abapGit Repositories → ZAINVOICER → Stage and Push`. Przejrzyj add/modify/delete, branch `java-cap-ksef` i `STARTING_FOLDER=/abap/src/`, `FOLDER_LOGIC=FULL`. Nie wykonuj push/commita bez zlecenia użytkownika. Po eksporcie sprawdź lokalne `git status`; tylko przy czystym drzewie zaktualizuj checkout przez `git pull --ff-only origin java-cap-ksef` lub EGit. Przy rozbieżnej historii/pracy lokalnej wstrzymaj się i porównaj zmiany.
+- **Fallback Git → SAP:** jeśli MCP nie obsługuje zapisu/aktywacji, można przygotować recenzowany lokalny patch `*.clas.abap`, `*.ddls.asddls`, `*.bdef.asbdef`, `*.dcls.asdcls`. Taki patch jest **niezweryfikowany w SAP**; nie publikuj go jako gotowego rozwiązania. Po uzgodnieniu kierunku wykonaj commit/push → kontrolowany abapGit Pull/import → aktywacja i testy w H01. Nie importuj automatycznie ani nie akceptuj usunięć bez kontroli. Struktury tabel i metadane `*.tabl.xml`, `*.srvb.xml` edytuj w ADT zamiast ręcznie.
+- **Zasada jednego edytora:** nie rozwijaj tego samego obiektu równolegle przez MCP/ADT i lokalne pliki Git. Git push nie jest aktywacją, transportem ani eksportem danych tabel. `abap/.project` to konfiguracja lokalnego projektu Eclipse, nie abapGit; tokeny PAT i credentiale nigdy nie trafiają do repo/logów.
+
+Instrukcje szczegółowe: [Skill ABAP/RAP](.agents/skills/ainvoicer-abap-rap/SKILL.md) oraz [przewodnik abapGit](docs/guides/ABAPGIT_WORKFLOW.md).
 
 ## 8. Sposób pracy agenta
 
