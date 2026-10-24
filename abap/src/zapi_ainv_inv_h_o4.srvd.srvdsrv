@@ -1,0 +1,11 @@
+@EndUserText: {
+  label: 'Service Definition for ZC_AINV_INV_H'
+}
+@ObjectModel: {
+  leadingEntity: {
+    name: 'ZC_AINV_INV_H'
+  }
+}
+define service ZAPI_AINV_INV_H_O4 provider contracts odata_v4_webapi {
+  expose ZC_AINV_INV_H;
+}

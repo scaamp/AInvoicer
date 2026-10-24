@@ -1,0 +1,54 @@
+managed implementation in class ZBP_R_AINV_INV_H unique;
+strict ( 2 );
+extensible;
+define behavior for ZR_AINV_INV_H alias ZrAinvInvH
+persistent table ZAINV_INV_H
+extensible
+etag master LocalLastChangedAt
+lock master
+authorization master( global )
+{
+  field ( readonly )
+   InvoiceUUID,
+   LocalCreatedBy,
+   LocalCreatedAt,
+   LocalLastChangedBy,
+   LocalLastChangedAt,
+   LastChangedAt;
+
+  field ( numbering : managed )
+   InvoiceUUID;
+
+
+  create;
+  update;
+  delete;
+
+  mapping for ZAINV_INV_H corresponding extensible
+  {
+    InvoiceUUID = INVOICE_UUID;
+    InvoiceNumber = INVOICE_NUMBER;
+    OriginProcess = ORIGIN_PROCESS;
+    Direction = DIRECTION;
+    InvoiceKind = INVOICE_KIND;
+    InvoiceStatus = INVOICE_STATUS;
+    CompanyCode = COMPANY_CODE;
+    IssueDate = ISSUE_DATE;
+    PostingDate = POSTING_DATE;
+    DueDate = DUE_DATE;
+    SellerNip = SELLER_NIP;
+    SellerName = SELLER_NAME;
+    BuyerNip = BUYER_NIP;
+    BuyerName = BUYER_NAME;
+    NetAmount = NET_AMOUNT;
+    TaxAmount = TAX_AMOUNT;
+    GrossAmount = GROSS_AMOUNT;
+    CurrencyCode = CURRENCY_CODE;
+    LocalCreatedBy = LOCAL_CREATED_BY;
+    LocalCreatedAt = LOCAL_CREATED_AT;
+    LocalLastChangedBy = LOCAL_LAST_CHANGED_BY;
+    LocalLastChangedAt = LOCAL_LAST_CHANGED_AT;
+    LastChangedAt = LAST_CHANGED_AT;
+  }
+
+}
