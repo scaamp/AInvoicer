@@ -1,6 +1,6 @@
 ---
 title: "AInvoicer — plan rozwoju"
-date: 2026-10-23
+date: 2026-10-24
 type: roadmap
 status: aktywny
 tags: [ainvoicer, roadmap, cap-java, ksef]
@@ -10,7 +10,7 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
 
 [Project Home](README.md) · [Aktualny stan i dowody](STATUS.md) · [Decyzja architektoniczna](decisions/ADR-0001-cap-java-ksef-architecture.md)
 
-`[x]` oznacza ukończenie z podanym zakresem potwierdzenia, `[ ]` — pracę do wykonania. IN PROGRESS oznacza zadanie rozpoczęte. Ten plik jest planem; historia czynności i wyniki są w [dzienniku](journal/2026-10-23-cap-java-bootstrap.md).
+`[x]` oznacza ukończenie z podanym zakresem potwierdzenia, `[ ]` — pracę do wykonania. IN PROGRESS oznacza zadanie rozpoczęte. Ten plik jest planem; historię opisują [dziennik bootstrapu](journal/2026-10-23-cap-java-bootstrap.md) i [weryfikacja Phase 1](journal/2026-10-24-cap-java-bootstrap-verification.md).
 
 ## Narzędzia projektowe — Agent Skills
 
@@ -20,15 +20,15 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
 
 Dowody i sposób wywołania: [dziennik Skills](journal/2026-10-23-project-skills.md). Utworzenie Skills nie kończy żadnego etapu implementacji CAP/SAP/KSeF.
 
-## Phase 1 — CAP Java Bootstrap — IN PROGRESS
+## Phase 1 — CAP Java Bootstrap — COMPLETE
 
 - [x] Wygenerowanie projektu CAP Java w `cap-java/` (pliki zweryfikowane; polecenie inicjalizacji z relacji użytkownika).
-- [x] Pierwsze `mvn clean verify` po zmianie JDK (historyczny sukces potwierdzony przez użytkownika; aktualna próba FAIL przy pakowaniu JAR — patrz STATUS).
-- [ ] BLOCKED: powtarzalny pełny build i konfiguracja lokalnego developmentu: JDK 25, Maven zgodny z POM, opis uruchomienia; wyjaśnić brak `target/classes/application.yaml` podczas pakowania.
-- [ ] Uruchomienie aplikacji Spring Boot i potwierdzenie startu CAP.
-- [ ] Potwierdzenie działania H2 w profilu lokalnym, nie tylko obecności zależności.
+- [x] Powtarzalny `mvn clean verify`: dwa uruchomienia na JDK 25.0.4.1 i Maven 3.9.16; CDS, kompilacja, zasoby i oba JAR-y zbudowane.
+- [x] Poprzedni `NoSuchFileException` sprawdzony: nie odtworzono; `application.yaml` skopiowano do `target/classes` przed pakowaniem. Przyczyna dawnego incydentu pozostaje nieustalona.
+- [x] Uruchomienie Spring Boot/CAP Runtime z executable JAR; HTTP Index odpowiada pod `http://localhost:8080/`.
+- [x] Test integracyjny H2 DataSource: `SELECT 1` PASS.
 
-Warunek zakończenia: powtarzalny build i uruchomienie z lokalną bazą; własne API zostanie sprawdzone w Phase 2.
+Własne API CDS/OData i CRUD nie wchodziły w Phase 1; ich sprawdzenie należy do Phase 2.
 
 ## Phase 2 — CAP Domain Model
 

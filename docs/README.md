@@ -15,6 +15,7 @@ AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijan
 - [STATUS — aktualny stan i najbliższe kroki](STATUS.md).
 - [ROADMAP — plan rozwoju](ROADMAP.md).
 - [Dziennik: bootstrap CAP Java i utworzenie bazy wiedzy](journal/2026-10-23-cap-java-bootstrap.md).
+- [Dziennik: weryfikacja Phase 1 CAP Java Bootstrap](journal/2026-10-24-cap-java-bootstrap-verification.md).
 - [Dziennik: Project Skills — zakresy, wywołania i wyniki walidacji](journal/2026-10-23-project-skills.md).
 - [ADR-0001 — wybór CAP Java i integracji SDK KSeF](decisions/ADR-0001-cap-java-ksef-architecture.md).
 - [Szablon wpisu dziennika](templates/JOURNAL_TEMPLATE.md).
@@ -68,6 +69,7 @@ To te same pliki, które edytujesz w VS Code i przeglądasz w GitHub. Wystarcza 
 ## Dokumentacja źródłowa
 
 - [SAP CAP Java](https://cap.cloud.sap/docs/java/) — modele, serwisy i integracja ze Spring Boot.
+- [CAP Java — H2 for Development](https://cap.cloud.sap/docs/guides/databases/h2) — H2 in-memory do lokalnego developmentu i testów.
 - [CAP Java Remote Services](https://cap.cloud.sap/docs/java/cqn-services/remote-services) — konsumowanie API OData przez CQN i Destinations.
 - [CAP Java Event Queues](https://cap.cloud.sap/docs/java/event-queues) — punkt odniesienia dla trwałego przetwarzania po commit.
 - [Oficjalne Java SDK MF](https://github.com/CIRFMF/ksef-client-java) — biblioteka `ksef-client` i osobna aplikacja demonstracyjna.
