@@ -21,6 +21,12 @@
 			<artifactId>cds-starter-spring-boot</artifactId>
 		</dependency>
 
+		<!-- Uwierzytelnianie mock users CAP Java w lokalnym development i testach -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-devtools</artifactId>
