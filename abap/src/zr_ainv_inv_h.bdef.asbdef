@@ -23,6 +23,8 @@ authorization master( global )
   create;
   update;
   delete;
+  association _Items { create; }
+  association _References { create; }
 
   mapping for ZAINV_INV_H corresponding extensible
   {
@@ -51,4 +53,86 @@ authorization master( global )
     LastChangedAt = LAST_CHANGED_AT;
   }
 
+}
+
+define behavior for ZR_AINV_INV_I alias ZrAinvInvI
+persistent table ZAINV_INV_I
+lock dependent by _Parent
+authorization dependent by _Parent
+etag dependent by _Parent
+{
+  update;
+  delete;
+
+  field ( readonly ) InvoiceUUID,
+                     LocalCreatedBy,
+                     LocalCreatedAt,
+                     LocalLastChangedBy,
+                     LocalLastChangedAt,
+                     LastChangedAt;
+
+  field ( readonly, numbering : managed ) ItemUUID;
+
+  association _Parent;
+
+  mapping for ZAINV_INV_I corresponding
+  {
+    ItemUUID = ITEM_UUID;
+    InvoiceUUID = INVOICE_UUID;
+    ItemNo = ITEM_NO;
+    MaterialId = MATERIAL_ID;
+    Description = DESCRIPTION;
+    Quantity = QUANTITY;
+    UnitCode = UNIT_CODE;
+    UnitPrice = UNIT_PRICE;
+    NetAmount = NET_AMOUNT;
+    TaxRate = TAX_RATE;
+    TaxCategory = TAX_CATEGORY;
+    TaxAmount = TAX_AMOUNT;
+    GrossAmount = GROSS_AMOUNT;
+    CurrencyCode = CURRENCY_CODE;
+    LocalCreatedBy = LOCAL_CREATED_BY;
+    LocalCreatedAt = LOCAL_CREATED_AT;
+    LocalLastChangedBy = LOCAL_LAST_CHANGED_BY;
+    LocalLastChangedAt = LOCAL_LAST_CHANGED_AT;
+    LastChangedAt = LAST_CHANGED_AT;
+  }
+}
+
+define behavior for ZR_AINV_INV_REF alias ZrAinvInvRef
+persistent table ZAINV_INV_REF
+lock dependent by _Parent
+authorization dependent by _Parent
+etag dependent by _Parent
+{
+  update;
+  delete;
+
+  field ( readonly ) InvoiceUUID,
+                     LocalCreatedBy,
+                     LocalCreatedAt,
+                     LocalLastChangedBy,
+                     LocalLastChangedAt,
+                     LastChangedAt;
+
+  field ( readonly, numbering : managed ) RefUUID;
+
+  association _Parent;
+
+  mapping for ZAINV_INV_REF corresponding
+  {
+    RefUUID = REF_UUID;
+    InvoiceUUID = INVOICE_UUID;
+    SourceSystem = SOURCE_SYSTEM;
+    SourceModule = SOURCE_MODULE;
+    ReferenceRole = REFERENCE_ROLE;
+    SourceDocNo = SOURCE_DOC_NO;
+    SourceFiscalYear = SOURCE_FISCAL_YEAR;
+    SourceItemNo = SOURCE_ITEM_NO;
+    LocalCreatedBy = LOCAL_CREATED_BY;
+    LocalCreatedAt = LOCAL_CREATED_AT;
+    LocalLastChangedBy = LOCAL_LAST_CHANGED_BY;
+    LocalLastChangedAt = LOCAL_LAST_CHANGED_AT;
+    LastChangedAt = LAST_CHANGED_AT;
+  }
 }

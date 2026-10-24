@@ -4,6 +4,8 @@
 @EndUserText.label: '###GENERATED Core Data Service Entity'
 define root view entity ZR_AINV_INV_H
   as select from ZAINV_INV_H
+  composition [0..*] of ZR_AINV_INV_I as _Items
+  composition [0..*] of ZR_AINV_INV_REF as _References
 {
   key invoice_uuid as InvoiceUUID,
   invoice_number as InvoiceNumber,
@@ -40,5 +42,7 @@ define root view entity ZR_AINV_INV_H
   @Semantics.systemDateTime.localInstanceLastChangedAt: true
   local_last_changed_at as LocalLastChangedAt,
   @Semantics.systemDateTime.lastChangedAt: true
-  last_changed_at as LastChangedAt
+  last_changed_at as LastChangedAt,
+  _Items,
+  _References
 }

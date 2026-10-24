@@ -49,10 +49,14 @@ Własne API CDS/OData i CRUD nie wchodziły w Phase 1; ich sprawdzenie należy d
 ## Phase 3 — SAP Remote Integration
 
 - [x] Bootstrap Git/abapGit dla pakietu `ZAINVOICER`: branch `java-cap-ksef`, `.abapgit.xml` wskazuje `/abap/src/`, Folder Logic `FULL`; pierwszy eksport potwierdzony commitem `39ab869`.
-- [x] Inspekcja repo wykazała symulacyjny model tabel `ZAINV_INV_H`, `ZAINV_INV_I`, `ZAINV_INV_REF` i service definition/binding `ZAPI_AINV_INV_H_O4`; RAP obejmuje obecnie tylko nagłówek.
+- [x] Inspekcja repo wykazała symulacyjny model tabel `ZAINV_INV_H`, `ZAINV_INV_I`, `ZAINV_INV_REF` i service definition/binding `ZAPI_AINV_INV_H_O4`.
 - [ ] W SAP ADT potwierdzić aktywny service definition/binding, stan publikacji/release, adres, `$metadata`, encje i autoryzację. W pliku bindingu jest rozbieżność `PUBLISHED=true` / `RELEASE_STATE=NOT_RELEASED`; eksport nie rozstrzyga runtime.
-- [ ] Zaprojektować i dodać root/projection CDS, behavior, DCL i service exposure dla pozycji/referencji, w tym compositions/nawigacje jeśli potrzebne. Zweryfikować klucze i relacje logiczne.
-- [ ] Wykonać test `$metadata` oraz autoryzowany odczyt syntetycznej faktury z SAP; osobno zapisać wynik mock i live.
+- [x] Przygotowano lokalny patch źródeł root/child CDS, behavior, DCL i service definition dla kompozycji Header–Items–References; niepotwierdzony w SAP i bez serializowanych sidecarów nowych obiektów.
+- [x] Diagnostyka tylko do odczytu potwierdziła `recordChanges=false` / `ZLOCAL` dla `ZAINVOICER`; usunięto błędny wymóg transportu. Ustalono poprawny typ tworzenia `DDLS/DF` i odtworzono historyczny komunikat deserializacji; nie naprawiono generatora MCP.
+- [ ] Po zleceniu implementacji użyć Eclipse ADT do utworzenia brakującego CDS bez requestu albo naprawić generator po porównaniu oczyszczonego śladu XML/HTTP. Klient/wydanie SAP, inner exception i HTTP nieustalone; bez prób tworzenia podczas diagnostyki.
+- [ ] Zastosować/porównać patch w ADT, aktywować zależności i poprawić ewentualne błędy składni/kontraktu dla wersji H01.
+- [ ] Wykonać EML create-by-association, READ BY ASSOCIATION, update/delete, walidację rodzica i test autoryzacji.
+- [ ] Wykonać test `$metadata`, `$expand` oraz autoryzowany odczyt syntetycznej faktury z SAP; osobno zapisać wynik statyczny i live.
 - [ ] Import kontraktu RAP OData V4, konfiguracja CAP Java Remote Service.
 - [ ] Destination / uwierzytelnienie zgodne z faktyczną konfiguracją SAP/BTP.
 - [ ] Test adaptera oraz autoryzowany odczyt syntetycznych danych faktury z SAP; osobne wyniki mock i live.

@@ -8,7 +8,7 @@ tags: [ainvoicer, cap-java, status]
 
 # Stan projektu
 
-[Project Home](README.md) · [Roadmapa](ROADMAP.md) · [Workflow abapGit](guides/ABAPGIT_WORKFLOW.md) · [Model RAP faktur](guides/ABAP_RAP_INVOICE_MODEL.md) · [Dziennik pierwszego eksportu](journal/2026-10-24-abapgit-rap-initial-export.md) · [Dziennik bootstrapu](journal/2026-10-23-cap-java-bootstrap.md) · [Weryfikacja Phase 1](journal/2026-10-24-cap-java-bootstrap-verification.md) · [Model KsefOperations](journal/2026-10-24-ksef-operations-model.md) · [Usługa i CRUD OData](journal/2026-10-24-ksef-service-definition.md) · [Walidacja i autoryzacja KsefOperations](journal/2026-10-24-ksef-operations-validation-authorization.md)
+[Project Home](README.md) · [Roadmapa](ROADMAP.md) · [Workflow abapGit](guides/ABAPGIT_WORKFLOW.md) · [Model RAP faktur](guides/ABAP_RAP_INVOICE_MODEL.md) · [Dziennik kompozycji RAP](journal/2026-10-24-abap-rap-composition.md) · [Dziennik pierwszego eksportu](journal/2026-10-24-abapgit-rap-initial-export.md) · [Dziennik bootstrapu](journal/2026-10-23-cap-java-bootstrap.md) · [Weryfikacja Phase 1](journal/2026-10-24-cap-java-bootstrap-verification.md) · [Model KsefOperations](journal/2026-10-24-ksef-operations-model.md) · [Usługa i CRUD OData](journal/2026-10-24-ksef-service-definition.md) · [Walidacja i autoryzacja KsefOperations](journal/2026-10-24-ksef-operations-validation-authorization.md)
 
 ## Current Phase
 
@@ -38,24 +38,27 @@ SAPUI5 → OData V4 → CAP Java + Spring Boot → Java SDK KSeF w jednej JVM. S
 - Lokalna konsola H2 działa pod `/h2-console` w profilu `default`, z ograniczeniem dostępu H2 do localhost. Test połączenia konsoli do jawnego Spring datasource zwrócił `Test successful`; OData odczytuje tabelę, obecnie pustą po restarcie bazy in-memory. SQL z przeglądarki nie został jeszcze wykonany.
 - Phase 2 — model i odczyt `KsefInvoices` ukończone lokalnie. Pozostaje ustalenie backendowej ścieżki tworzącej relację i wymuszającej tę samą wartość NIP w warunkach H2, który nie ma FK dla asocjacji.
 - Skills: statyczna walidacja i ręczna ocena czterech scenariuszy zakończone; automatyczna aktywacja przez model oraz wykrywanie w sesji Claude Code pozostają nieprzetestowane (potwierdzono tylko wersję CLI Claude 2.1.309).
-- SAP RAP: binding `ZAPI_AINV_INV_H_O4` i model są zinwentaryzowane z eksportu Git, ale aktywacja, publikacja runtime, `$metadata` i autoryzacja nie zostały potwierdzone w SAP. Metadane bindingu zawierają `PUBLISHED=true` oraz `RELEASE_STATE=NOT_RELEASED`; wymaga to wyjaśnienia w ADT. Pozycje i referencje nie mają jeszcze CDS/behavior/nawigacji RAP w eksporcie.
+- SAP RAP: lokalny patch kompozycji Header–Items–References pozostaje niezweryfikowany w SAP. Ponowna diagnostyka tylko do odczytu (2026-10-24) potwierdziła połączenie `h01`, `masterSystem=H01`, aktywny `ZR_AINV_INV_H` bez kompozycji i brak wyniku wyszukiwania `ZR_AINV_INV_I`. Pakiet `ZAINVOICER` ma `recordChanges=false`, komponent/superpakiet `ZLOCAL` i pustą warstwę transportową: request nie jest wymagany. Wcześniejsze tworzenie `DDLS/DF` zakończyło się błędem deserializacji `SDDIC_ST_ADT_DDLS`; odczytano pierwotne parametry i wynik z lokalnego zapisu sesji. Klient/wydanie, wewnętrzny wyjątek i HTTP pozostają nieustalone. W tej diagnostyce bez zapisów i aktywacji SAP. Wcześniej zgłoszone nieaktywne DCL root pozostawiono poza zakresem; izolacja użytkowników/podatników nadal nie jest potwierdzona. Szczegóły: [dziennik diagnostyki](journal/2026-10-24-abap-rap-composition.md#diagnostyka-tworzenia-cds-przez-abap-fs-mcp--2026-10-24).
 
 ## Blockers
 
-- Brak potwierdzonych blockerów. Poprzedni `NoSuchFileException: srv/target/classes/application.yaml` nie odtworzono. Zwykły Maven przebieg zatrzymuje się na weryfikacji wersji CDS przez proces potomny (`spawn EPERM`); build z `-Dcds.cds.skipVersionCheck=true` przeszedł.
+- SAP RAP live: tworzenie nowego DDLS przez ABAP FS 2.12.0 nie działa dla badanego wywołania (`SDDIC_ST_ADT_DDLS`); potrzebny oczyszczony ślad HTTP/wyjątek wewnętrzny albo utworzenie obiektu w Eclipse ADT w osobnym zadaniu implementacyjnym. Nie jest to bloker transportowy: `ZAINVOICER` nie rejestruje zmian. System H01 potwierdzono metadanymi pakietu/root; klient i wydanie nadal nie zostały ujawnione przez system-info. Nieaktywne DCL root poza zakresem.
+- Poprzedni `NoSuchFileException: srv/target/classes/application.yaml` nie odtworzono. Zwykły Maven przebieg zatrzymuje się na weryfikacji wersji CDS przez proces potomny (`spawn EPERM`); build z `-Dcds.cds.skipVersionCheck=true` przeszedł.
 
 ## Next Steps
 
 1. Dodać zaufaną ścieżkę aplikacyjną do łączenia operacji z fakturą, walidującą zgodność NIP przed zapisem; nie udostępniać powiązania przez publiczne OData.
-2. W Phase 3 potwierdzić w SAP aktywny binding RAP, `$metadata` i autoryzowany dostęp do modelu `ZAINV_INV_H`; ustalić rozbieżność statusu release/publikacji. Następnie zaplanować ekspozycję item/reference przed CAP Remote OData.
+2. Potwierdzić klienta/wydanie w ustawieniach połączenia ADT; po odrębnym zleceniu utworzyć brakujący CDS w Eclipse `H01_EN` / `ZAINVOICER` bez requestu, porównując wcześniej aktywne/nieaktywne wersje. Naprawę generatora MCP prowadzić na podstawie oczyszczonego śladu, bez zgadywania atrybutów XML.
+3. Po aktywacji wykonać EML oraz live `$metadata`/`$expand`, sprawdzić binding i autoryzację; dopiero potem planować CAP Remote OData.
 
-Dla narzędzi agentowych: w następnej sesji Claude Code uruchomić `/reload-skills`, sprawdzić trzy komendy `/ainvoicer-*` i odczyt kanonicznych plików; osobno potwierdzić automatyczny dobór w czterech scenariuszach z dziennika. Brak MCP ABAP FS w obecnej sesji nie pozwala potwierdzić workflow SAP live.
+Dla narzędzi agentowych: w następnej sesji Claude Code uruchomić `/reload-skills`, sprawdzić trzy komendy `/ainvoicer-*` i odczyt kanonicznych plików; osobno potwierdzić automatyczny dobór w czterech scenariuszach z dziennika.
 
 ## Verification
 
 | Sprawdzenie | Ostatni dowód / ograniczenie |
 | --- | --- |
 | Inspekcja repozytorium | 2026-10-24: branch `java-cap-ksef`; drzewo początkowo czyste, szkielet CAP śledzony |
+| SAP RAP / MCP ABAP FS | 2026-10-24: diagnostyka live tylko do odczytu — `h01`, pakiet/root z `masterSystem=H01`, `recordChanges=false`, `ZLOCAL`, pusta warstwa transportowa; root aktywny bez kompozycji, wyszukiwanie `ZR_AINV_INV_I` bez wyników. Odczytano transformację DDLS i jej dwa include. Pierwotny błąd tworzenia potwierdzono historycznym wynikiem MCP i logiem rozszerzenia 2.12.0. Nie ustalono HTTP, inner exception, klienta/wydania; bez nowej próby tworzenia, zapisu, aktywacji i testów RAP/OData. |
 | Model CDS `KsefOperations` | 2026-10-24: utworzono encję `customer.cap_java.KsefOperations` z `cuid`, `managed`, kierunkiem INBOUND/OUTBOUND, statusem domyślnym NEW oraz unikalnością `(taxpayerNip, idempotencyKey)`. PASS: model wczytany przez API kompilatora CDS w procesie Node; CLI `cds --version` nie działa w sandboxie (`spawn EPERM`), Maven build nieuruchomiony. |
 | Usługa CDS / OData V4 | 2026-10-24: `KsefService` wymaga `authenticated-user`; status, referencje KSeF i pola błędu są `@readonly`. PASS: build CDS/Maven, metadata (anonimowy 401, authenticated 200), lokalne CREATE/READ/UPDATE/DELETE na H2. Status utworzył się jako NEW mimo próby podania ACCEPTED; pola techniczne wysłane przez klienta były ignorowane. |
 | Phase 2.2 — walidacja i autoryzacja | PASS lokalnie 2026-10-24: `@restrict` CREATE/READ dla `KsefOperator` i `$user.taxpayerNips`; 14 testów OData przez Spring Boot + Spring Security + CAP + H2 potwierdziło izolację, także dla braku atrybutu, walidację, brak UPDATE/DELETE i unikalność. Mock users tylko w profilu testowym. IAS/XSUAA nie skonfigurowano. |
@@ -75,4 +78,4 @@ Dla narzędzi agentowych: w następnej sesji Claude Code uruchomić `/reload-ski
 
 ## Last Updated
 
-2026-10-24 (Europe/Warsaw), po lokalnych testach modelu CAP i udokumentowaniu pierwszego eksportu abapGit/RAP. Stan jest migawką; przed kolejną sesją porównaj go z kodem i Git.
+2026-10-24 (Europe/Warsaw), po diagnostyce tworzenia CDS przez MCP i korekcie błędnego założenia o wymaganym transporcie `ZAINVOICER`. Stan jest migawką; przed kolejną sesją porównaj go z kodem i Git.

@@ -22,6 +22,7 @@ AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijan
 - [Dziennik: Phase 2.3 — model KsefInvoices i relacja z operacjami](journal/2026-10-24-ksef-invoices-model.md).
 - [Dziennik: lokalna konsola H2 w przeglądarce](journal/2026-10-24-h2-console.md).
 - [Dziennik: pierwszy eksport abapGit i model RAP faktur](journal/2026-10-24-abapgit-rap-initial-export.md).
+- [Dziennik: RAP Composition Header–Items–References](journal/2026-10-24-abap-rap-composition.md).
 - [Przewodnik: workflow abapGit w AInvoicer](guides/ABAPGIT_WORKFLOW.md).
 - [Przewodnik: model ABAP RAP faktur](guides/ABAP_RAP_INVOICE_MODEL.md).
 - [Dziennik: Project Skills — zakresy, wywołania i wyniki walidacji](journal/2026-10-23-project-skills.md).
@@ -52,7 +53,7 @@ ABAP Environment utrzymuje w tym scenariuszu symulacyjne dane faktur, a CAP ma b
 
 | Katalog | Rola |
 | --- | --- |
-| `abap/` | Lokalny projekt Eclipse i eksport abapGit w `abap/src/`; symulacyjny model `ZAINV_INV_H/I/REF`, RAP obecnie tylko dla nagłówka. Nie jest to dowód stanu runtime SAP. |
+| `abap/` | Lokalny projekt Eclipse i eksport abapGit w `abap/src/`; dodano niezweryfikowany w SAP patch kompozycji RAP Header–Items–References. Nie jest to dowód stanu runtime SAP. |
 | `sapui5/ainvoicer/` | Istniejący frontend SAPUI5 |
 | `node/`, `python/` | Istniejące funkcje AI |
 | `cap-java/` | Rozpoczęty backend CAP Java + Spring Boot |

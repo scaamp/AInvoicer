@@ -54,11 +54,40 @@ Nie myl trzech stanów: kod aktywny w H01, snapshot w GitHub i pliki `D:\AInvoic
 
 ## Zmiana z SAP do GitHub i narzędzi lokalnych
 
-1. W systemie H01 odczytaj aktualny obiekt, zależności, pakiet i wymagany transport. Dla istniejących obiektów preferuj Codex + potwierdzone narzędzia ABAP FS/MCP; dla brakujących możliwości MCP użyj ADT. Zapisz, aktywuj i sprawdź kod w SAP zgodnie z zakresem zlecenia.
+1. W systemie H01 odczytaj aktualny obiekt, zależności i konfigurację pakietu; transport ustal tylko wtedy, gdy SAP go wymaga. Dla lokalnego `ZAINVOICER` z wyłączonym rejestrowaniem zmian nie wymagaj requestu. Dla istniejących obiektów preferuj Codex + potwierdzone narzędzia ABAP FS/MCP; dla brakujących możliwości MCP użyj ADT. Zapisz, aktywuj i sprawdź kod w SAP zgodnie z zakresem zlecenia.
 2. Otwórz połączone repo abapGit dla pakietu `ZAINVOICER` i sprawdź różnice/staged changes. Potwierdź, że dotyczą oczekiwanych obiektów i nie obejmują przypadkowych usunięć lub plików spoza zakresu.
 3. Zsynchronizuj eksport przez funkcję `Stage and Push` w pluginie abapGit. Przed zatwierdzeniem sprawdź branch `java-cap-ksef`, listę plików i diff.
 4. W lokalnym checkout wykonaj zwykły przegląd Git. Codex/VS Code/Obsidian czytają te same pliki; mogą przygotować zmianę dokumentacji lub kodu, ale nie aktywują jej w SAP.
-5. Transport SAP pozostaje osobnym krokiem lifecycle. Nie utożsamiaj go z commitem ani push do GitHub.
+5. Transport SAP pozostaje osobnym mechanizmem lifecycle, używanym tam, gdzie wymaga go konfiguracja. `Stage and Push` lokalnego pakietu nie wymaga dodania requestu. Nie utożsamiaj transportu z commitem ani push do GitHub.
+
+## Lokalny pakiet ZAINVOICER i tworzenie CDS
+
+Odczyt live `/sap/bc/adt/packages/zainvoicer` z 2026-10-24 potwierdził:
+
+| Właściwość | Wartość / znaczenie |
+| --- | --- |
+| `adtcore:masterSystem` | `H01` |
+| `pak:recordChanges` | `false` — rejestrowanie zmian wyłączone |
+| `pak:isRecordChangesEditable` | `false` |
+| Superpakiet / komponent oprogramowania | `ZLOCAL` / `ZLOCAL`, opis komponentu: rozwój lokalny |
+| Warstwa transportowa | pusta |
+
+To odpowiada potwierdzonemu przez użytkownika komunikatowi Eclipse „No change recording enabled for package ZAINVOICER” i tworzeniu w ADT bez requestu. Nie wymagaj transportu, nie zmieniaj pakietu ani nie przenoś obiektów do `$TMP`. Lokalny pakiet może mieć nazwę `ZAINVOICER`. Przy innym systemie/pakiecie lub zmianie konfiguracji sprawdź te właściwości ponownie. Wynik `not-locked` istniejącego obiektu i pusta lista transportów użytkownika nie zastępują odczytu konfiguracji pakietu.
+
+W `abapfs_create_object` typ tworzenia Data Definition to `DDLS/DF`; podaj `connectionId`, `name`, `description` (maksymalnie 60 znaków) i jawny `packageName: "ZAINVOICER"`. Nie podawaj `additionalOptions.transportRequest` dla tej konfiguracji. `DDLS` używane przez wyszukiwanie/odczyt nie jest aliasem tworzenia w ABAP FS 2.12.0. Schemat nie udostępnia pól źródła CDS, szablonu, `source_type` ani wersji języka ABAP. Mapa biblioteki obejmuje też `DCLS/DL`, `DDLX/EX`, `DDLA/ADF`; nie jest to dowód ich poprawnego tworzenia w H01.
+
+### CREATION_FAILED / SDDIC_ST_ADT_DDLS
+
+Rozdziel dwie ścieżki diagnostyczne: konfigurację transportów oraz deserializację XML metadanych DDLS. W incydencie z 2026-10-24 poprawne wywołanie `DDLS/DF` zwróciło `CREATION_FAILED` i komunikat SAP o transformacji `SDDIC_ST_ADT_DDLS`. Próba z `DDLS` zwróciła odrębny błąd `Unknown object type: DDLS`. Edycja/aktywacja istniejącego root CDS nie sprawdza ścieżki tworzenia nowego obiektu.
+
+Zbadana biblioteka buduje dla DDLS root `ddl:ddlSource`, namespace `http://www.sap.com/adt/ddic/ddlsources` i wysyła POST do `/sap/bc/adt/ddic/ddl/sources` z `Content-Type: application/*`. To ustalenie z kodu, nie przechwycony ślad nieudanego żądania. Odczyt transformacji w H01 potwierdza root/namespace i obsługę `ddl:source_type`; nie potwierdza, że brak tego atrybutu spowodował błąd. Brakuje wewnętrznego wyjątku deserializacji i statusu HTTP. Nie zapisuj zgadywanego kodu HTTP ani listy „obowiązkowych atrybutów SAP” jako ustalonego rozwiązania.
+
+1. Zachowaj oczyszczone parametry, wersję ABAP FS i pełny dostępny komunikat. Sprawdź wyszukiwaniem/odczytem, czy obiekt nie powstał częściowo. Nie ponawiaj operacji w ciemno i nie modyfikuj root CDS jako obejścia.
+2. Dla dalszej diagnozy porównaj oczyszczone XML/nagłówki i zagnieżdżony wyjątek z istniejącego śladu ADT; nowa próba tworzenia wymaga osobnego zlecenia. Wrapper MCP 2.12.0 pomija `stack` i szczegóły HTTP, więc samo `CREATION_FAILED` nie wystarcza do ustalenia przyczyny. Nie publikuj nagłówków Authorization, cookies, CSRF ani credentiali.
+3. Gdy tworzenie przez MCP nie działa, użyj w Eclipse `H01_EN` kreatora Data Definition w `ZAINVOICER`, bez requestu przy nadal wyłączonym rejestrowaniu zmian. Przed tym sprawdź brak istniejącego/nieaktywnego obiektu; zachowaj zasadę jednego edytora. Wykonuj tworzenie, zapis i aktywację tylko w autoryzowanym zadaniu implementacyjnym. Diagnostyka nie upoważnia do tego fallbacku.
+4. Po utworzeniu w ADT odczytaj stan przez MCP i zweryfikuj osobno źródło, składnię, aktywację oraz testy RAP/OData. Następnie, dopiero po zleceniu, wykonaj kontrolowany abapGit `Stage and Push`. Dla brudnego lokalnego checkout nie wykonuj automatycznego pull.
+
+Dowody i ograniczenia incydentu: [dziennik RAP — diagnostyka tworzenia CDS](../journal/2026-10-24-abap-rap-composition.md#diagnostyka-tworzenia-cds-przez-abap-fs-mcp--2026-10-24). Kontrakt generatora: [kod upstream abap-adt-api](https://github.com/marcellourbani/abap-adt-api/blob/master/src/api/objectcreator.ts); sprawdzaj zgodność z lokalnie zainstalowaną wersją.
 
 ## Zmiana z Git do SAP
 

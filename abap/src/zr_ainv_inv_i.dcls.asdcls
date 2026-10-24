@@ -1,0 +1,7 @@
+@EndUserText.label: 'ZR_AINV_INV_I'
+@MappingRole: true
+define role ZR_AINV_INV_I {
+  grant select on ZR_AINV_INV_I
+  where INHERITING CONDITIONS FROM ENTITY ZR_AINV_INV_H
+    REPLACING { ROOT WITH _Parent };
+}
