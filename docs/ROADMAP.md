@@ -33,11 +33,14 @@ Własne API CDS/OData i CRUD nie wchodziły w Phase 1; ich sprawdzenie należy d
 ## Phase 2 — CAP Domain Model
 
 - [x] Minimalna encja CDS `KsefOperations`: korelacja SAP jako tekst, NIP, kierunek, typ, status NEW, klucz idempotencji, referencje i błąd.
-- [ ] Encja CDS `KsefInvoices` i dalsze pola procesu: status techniczny i biznesowy, referencje oraz audyt.
+- [x] Encja CDS `KsefInvoices`: kierunek, korelacja SAP, strony, numer KSeF, status biznesowy `UNCONFIRMED` i referencje do magazynu; status operacji pozostaje techniczny.
+- [x] Opcjonalna asocjacja `KsefOperations` → `KsefInvoices`; publiczne OData wyklucza nawigację i nie pozwala klientowi ustawiać FK. Referencje XML/UPO są ukryte, encja faktury jest tylko do odczytu i filtrowana per NIP.
+- [ ] Zaufana ścieżka backendowa do wiązania operacji z fakturą musi sprawdzać zgodność NIP. H2 nie generuje constraint FK dla asocjacji; obecny test potwierdza poprawne powiązanie, a nie automatyczne odrzucanie błędnego FK.
 - [x] `KsefService` wystawia `KsefOperations` przez OData V4, wymaga uwierzytelnionego użytkownika i blokuje zapis statusów/referencji technicznych po stronie konsumenta.
 - [x] Minimalny Java `@Before` handler CREATE: NIP z sumą kontrolną, direction, katalog operationType, wymagany idempotencyKey (trim) i status `NEW`.
-- [x] Lokalna weryfikacja `$metadata`, podstawowego CRUD i persystencji H2; walidacja domenowa i autoryzacja podatnika pozostają do wykonania.
-- [ ] Przed pierwszą wysyłką: trwała operacja, unikalny idempotency key, kontrola konkurencji i worker/outbox po commit.
+- [x] Lokalna weryfikacja `$metadata`, OData i persystencji H2; walidacja domenowa oraz autoryzacja per NIP są potwierdzone testami integracyjnymi.
+- [x] Trwała encja operacji i unikalny idempotency key `(taxpayerNip, idempotencyKey)`.
+- [ ] Przed pierwszą wysyłką: kontrola konkurencji i worker/outbox po commit.
 - [ ] Przed efektami zewnętrznymi: `UNKNOWN/RECONCILIATION_REQUIRED`, odtwarzanie po restarcie oraz testy niejednoznacznych odpowiedzi.
 - [x] Kontrola dostępu do operacji: rola `KsefOperator`, lista atrybutów `$user.taxpayerNips`, izolacja CREATE/READ i blokada UPDATE/DELETE w publicznym serwisie.
 - [x] Testy integracyjne OData + Spring Security + CAP + H2: użytkownicy operator A/B, anonimowy/brak roli, walidacja, status, brak UPDATE/DELETE i unikalność idempotencji.

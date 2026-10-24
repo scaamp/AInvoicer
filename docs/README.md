@@ -19,6 +19,7 @@ AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijan
 - [Dziennik: minimalny model CDS KsefOperations](journal/2026-10-24-ksef-operations-model.md).
 - [Dziennik: KsefService, OData V4 i lokalny CRUD](journal/2026-10-24-ksef-service-definition.md).
 - [Dziennik: walidacja i autoryzacja KsefOperations](journal/2026-10-24-ksef-operations-validation-authorization.md).
+- [Dziennik: Phase 2.3 — model KsefInvoices i relacja z operacjami](journal/2026-10-24-ksef-invoices-model.md).
 - [Dziennik: lokalna konsola H2 w przeglądarce](journal/2026-10-24-h2-console.md).
 - [Dziennik: Project Skills — zakresy, wywołania i wyniki walidacji](journal/2026-10-23-project-skills.md).
 - [ADR-0001 — wybór CAP Java i integracji SDK KSeF](decisions/ADR-0001-cap-java-ksef-architecture.md).
