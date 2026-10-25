@@ -1,6 +1,6 @@
 ---
 title: "Workflow abapGit w AInvoicer"
-date: 2026-10-24
+date: 2026-10-25
 type: guide
 status: aktywny
 tags: [ainvoicer, abap, abapgit, eclipse, git]
@@ -74,16 +74,48 @@ Odczyt live `/sap/bc/adt/packages/zainvoicer` z 2026-10-24 potwierdził:
 
 To odpowiada potwierdzonemu przez użytkownika komunikatowi Eclipse „No change recording enabled for package ZAINVOICER” i tworzeniu w ADT bez requestu. Nie wymagaj transportu, nie zmieniaj pakietu ani nie przenoś obiektów do `$TMP`. Lokalny pakiet może mieć nazwę `ZAINVOICER`. Przy innym systemie/pakiecie lub zmianie konfiguracji sprawdź te właściwości ponownie. Wynik `not-locked` istniejącego obiektu i pusta lista transportów użytkownika nie zastępują odczytu konfiguracji pakietu.
 
-W `abapfs_create_object` typ tworzenia Data Definition to `DDLS/DF`; podaj `connectionId`, `name`, `description` (maksymalnie 60 znaków) i jawny `packageName: "ZAINVOICER"`. Nie podawaj `additionalOptions.transportRequest` dla tej konfiguracji. `DDLS` używane przez wyszukiwanie/odczyt nie jest aliasem tworzenia w ABAP FS 2.12.0. Schemat nie udostępnia pól źródła CDS, szablonu, `source_type` ani wersji języka ABAP. Mapa biblioteki obejmuje też `DCLS/DL`, `DDLX/EX`, `DDLA/ADF`; nie jest to dowód ich poprawnego tworzenia w H01.
+W `abapfs_create_object` typ tworzenia Data Definition to `DDLS/DF`; podaj `connectionId`, `objectType`, `name`, `description` (maksymalnie 60 znaków) i jawny `packageName: "ZAINVOICER"`. Nie podawaj `additionalOptions.transportRequest` dla tej konfiguracji. Typ wyszukiwania `DDLS` nie zastępuje typu tworzenia. Tworzenie DCL wymaga `DCLS/DL`, metadata extension `DDLX/EX`, a annotation definition `DDLA/ADF`. Zawsze sprawdź aktualny schemat i zależności typu; nie wymyślaj parametrów źródła, szablonu ani wersji języka.
+
+## ABAP FS v5 — tworzenie i diagnostyka
+
+Zweryfikowany punkt odniesienia (2026-10-25): **ABAP FS 2.12.4 / ADT creation fix 5**, [wydanie i VSIX](https://github.com/scaamp/abap-fs-creation-fix/releases/tag/v2.12.4-adt-creation-fix.5). To zmodyfikowane wydanie z repo `scaamp/abap-fs-creation-fix`; sam numer innej dystrybucji nie dowodzi obecności tych zmian. Historyczne błędy opisane niżej dotyczą wcześniejszych prób. Nie oznaczają, że tworzenie CDS lub DCL nadal jest ogólnie niedostępne.
+
+### Przed zapisem
+
+1. Odkryj aktualny schemat narzędzi MCP. Jeśli dostępne, wywołaj `abapfs_get_creation_diagnostics` z `connectionId` i `packageName`, początkowo bez `startLogging`. Odczytaj `extensionId`, `version`, `development`, `logging`, `package.recordChanges` i listę typów. Przy rozbieżności sprawdź, które okno/profil/proces VS Code wystawia MCP; nie reinstaluj ponownie w ciemno. Discovery nie potwierdza uprawnień do tworzenia.
+2. Podaj jawny pakiet. `ZAINVOICER` i `ZAINVOICER_DEV` są pakietami Cloud (wersja języka 5); `$TMP` miał inny kontekst języka/komponentu. Odmowy w `$TMP` nie dowodzą odmowy w pakiecie Cloud. Nie przenoś tam testu bez uzasadnienia i zlecenia.
+3. Aktualny `recordChanges=false` oznacza pominięcie `additionalOptions.transportRequest`; v5 pomija selektor transportu i tworzenie requestu. Dla `true` przekaż aktualny, modyfikowalny request dopuszczony w zadaniu. Numer z poprzedniego testu nie jest stałą konfiguracją. Dla `null`/braku danych sprawdź metadane pakietu ADT — nie zakładaj `false`. Brak zatwierdzonego requestu ustal z użytkownikiem, nie twórz go samodzielnie. W razie oczekującego wywołania MCP sprawdź, czy VS Code czeka na wybór w oknie; nie uruchamiaj drugiego tworzenia.
+4. Przed tworzeniem sprawdź kolizje nazwy. Po wyniku potwierdź metadane obiektu, wersję inactive i transport-info, a przy wskazanym transporcie także zawartość requestu. Wynik „Transport requested … (backend assignment not verified)” opisuje żądany parametr. Brak numeru w odpowiedzi create nie dowodzi lokalności. Quick search może nie wykazywać świeżego obiektu; puste źródło także nie oznacza, że obiekt nie istnieje.
+
+### Ślad HTTP i klasyfikacja błędów
+
+Do śladu nowej, już zleconej próby można użyć `abapfs_get_creation_diagnostics` z `startLogging: true` dla właściwego połączenia. Po zakończeniu odczytaj `creationLog`: Content-Type, XML, status, response body i żądany `corrNr`, jeśli dostępne. Log nie jest dowodem historycznej próby, której nie zarejestrował. Sam brak wpisów nie uzasadnia ponownego zapisu w SAP.
+
+Przywróć początkowy stan logowania. `startLogging: false` lub pominięcie tego pola **nie wyłącza** logowania. Jeśli wcześniej było wyłączone, wyłącz je przez polecenie VS Code `abapfs.deactivateCommLog` (także przez `abapfs_run_vscode_command`, jeśli narzędzie jest dostępne); przy wielu połączeniach wybierz właściwe. Ponowną diagnostyką sprawdź `logging=false`. Nie wyłączaj logowania, które użytkownik miał już włączone.
+
+Rozróżniaj:
+
+- 415 / `Unsupported Media Type`: kontrakt Content-Type danej kolekcji ADT.
+- `CLASS_TRANSFORMATION` / `SDDIC_ST_ADT_DDLS`: deserializacja XML konkretnego typu; sama nazwa nie identyfikuje brakującego atrybutu. Nie używaj reprezentacji klasy do DCL/DDIC.
+- 403: zachowaj komunikat SAP, sprawdź pakiet, wersję języka i uprawnienia. Samo `S_ABPLNGVS` nie dowodzi globalnego braku uprawnień użytkownika.
+- Nieznany wynik lub błąd po POST: odczytaj stan przed ponowną próbą. Nie aktywuj częściowego obiektu ani nie osłabiaj DCL/root CDS jako obejścia.
+
+Nie publikuj Authorization, Cookie, CSRF, credentiali ani poufnych treści XML. Redakcja nagłówków przez logger nie anonimizuje źródeł i metadanych biznesowych.
+
+### Zakres potwierdzenia
+
+Wcześniejsza macierz v4 obejmowała 23 typy: 20 utworzeń i 3 odmowy autoryzacji (DDLA, program, samodzielny include). Test akceptacyjny zainstalowanego v5 potwierdził **4/4** nowych obiektów: klasa i CDS w każdym z pakietów `ZAINVOICER` oraz `ZAINVOICER_DEV`; bez nowych transportów i bez aktywacji. Szczegóły, nazwy obiektów i pochodzenie dowodów: [dziennik aktualizacji instrukcji](../journal/2026-10-25-abapfs-v5-instructions.md).
+
+Nie jest to ponowny pełny test 23 typów na v5, test ECC ani potwierdzenie działania biznesowych DCL/RAP/OData AInvoicer. W nowym systemie sprawdź możliwości i wymagania ponownie. Raport potencjalnych funkcji MCP na GitHub opisuje propozycje, nie dostępne narzędzia.
 
 ### CREATION_FAILED / SDDIC_ST_ADT_DDLS
 
-Rozdziel dwie ścieżki diagnostyczne: konfigurację transportów oraz deserializację XML metadanych DDLS. W incydencie z 2026-10-24 poprawne wywołanie `DDLS/DF` zwróciło `CREATION_FAILED` i komunikat SAP o transformacji `SDDIC_ST_ADT_DDLS`. Próba z `DDLS` zwróciła odrębny błąd `Unknown object type: DDLS`. Edycja/aktywacja istniejącego root CDS nie sprawdza ścieżki tworzenia nowego obiektu.
+**Historia incydentu, nie opis bieżącego v5.** Rozdziel konfigurację transportów i deserializację XML metadanych DDLS. W incydencie z 2026-10-24 poprawne wywołanie `DDLS/DF` zwróciło `CREATION_FAILED` i komunikat SAP o transformacji `SDDIC_ST_ADT_DDLS`. Próba z `DDLS` zwróciła odrębny błąd `Unknown object type: DDLS`. Edycja/aktywacja istniejącego root CDS nie sprawdza ścieżki tworzenia nowego obiektu.
 
-Zbadana biblioteka buduje dla DDLS root `ddl:ddlSource`, namespace `http://www.sap.com/adt/ddic/ddlsources` i wysyła POST do `/sap/bc/adt/ddic/ddl/sources` z `Content-Type: application/*`. To ustalenie z kodu, nie przechwycony ślad nieudanego żądania. Odczyt transformacji w H01 potwierdza root/namespace i obsługę `ddl:source_type`; nie potwierdza, że brak tego atrybutu spowodował błąd. Brakuje wewnętrznego wyjątku deserializacji i statusu HTTP. Nie zapisuj zgadywanego kodu HTTP ani listy „obowiązkowych atrybutów SAP” jako ustalonego rozwiązania.
+Wówczas zbadana biblioteka budowała dla DDLS root `ddl:ddlSource`, namespace `http://www.sap.com/adt/ddic/ddlsources` i wysyłała POST do `/sap/bc/adt/ddic/ddl/sources` z `Content-Type: application/*`. Było to ustalenie z kodu, nie przechwycony ślad nieudanego żądania. Odczyt transformacji H01 nie dowodził przyczyny błędu. Późniejszy test v5 zarejestrował poprawne `application/vnd.sap.adt.ddlSource+xml` i HTTP 201; dla klas `application/vnd.sap.adt.oo.classes.v4+xml` i HTTP 200.
 
 1. Zachowaj oczyszczone parametry, wersję ABAP FS i pełny dostępny komunikat. Sprawdź wyszukiwaniem/odczytem, czy obiekt nie powstał częściowo. Nie ponawiaj operacji w ciemno i nie modyfikuj root CDS jako obejścia.
-2. Dla dalszej diagnozy porównaj oczyszczone XML/nagłówki i zagnieżdżony wyjątek z istniejącego śladu ADT; nowa próba tworzenia wymaga osobnego zlecenia. Wrapper MCP 2.12.0 pomija `stack` i szczegóły HTTP, więc samo `CREATION_FAILED` nie wystarcza do ustalenia przyczyny. Nie publikuj nagłówków Authorization, cookies, CSRF ani credentiali.
+2. Dla dalszej diagnozy porównaj oczyszczone XML/nagłówki i wyjątek ze śladu ADT. Nowa próba musi mieścić się w bieżącym zleceniu; samo zbieranie diagnostyki nie upoważnia do tworzenia. Historyczny wrapper 2.12.0 pomijał szczegóły HTTP; w v5 korzystaj z opisanej wyżej diagnostyki. Samo `CREATION_FAILED` nie wystarcza do ustalenia przyczyny. Nie publikuj credentiali.
 3. Gdy tworzenie przez MCP nie działa, użyj w Eclipse `H01_EN` kreatora Data Definition w `ZAINVOICER`, bez requestu przy nadal wyłączonym rejestrowaniu zmian. Przed tym sprawdź brak istniejącego/nieaktywnego obiektu; zachowaj zasadę jednego edytora. Wykonuj tworzenie, zapis i aktywację tylko w autoryzowanym zadaniu implementacyjnym. Diagnostyka nie upoważnia do tego fallbacku.
 4. Po utworzeniu w ADT odczytaj stan przez MCP i zweryfikuj osobno źródło, składnię, aktywację oraz testy RAP/OData. Następnie, dopiero po zleceniu, wykonaj kontrolowany abapGit `Stage and Push`. Dla brudnego lokalnego checkout nie wykonuj automatycznego pull.
 

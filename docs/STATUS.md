@@ -1,6 +1,6 @@
 ---
 title: "AInvoicer — aktualny stan"
-date: 2026-10-24
+date: 2026-10-25
 type: status
 status: w-trakcie
 tags: [ainvoicer, cap-java, status]
@@ -8,7 +8,7 @@ tags: [ainvoicer, cap-java, status]
 
 # Stan projektu
 
-[Project Home](README.md) · [Roadmapa](ROADMAP.md) · [Workflow abapGit](guides/ABAPGIT_WORKFLOW.md) · [Model RAP faktur](guides/ABAP_RAP_INVOICE_MODEL.md) · [Dziennik kompozycji RAP](journal/2026-10-24-abap-rap-composition.md) · [Dziennik pierwszego eksportu](journal/2026-10-24-abapgit-rap-initial-export.md) · [Dziennik bootstrapu](journal/2026-10-23-cap-java-bootstrap.md) · [Weryfikacja Phase 1](journal/2026-10-24-cap-java-bootstrap-verification.md) · [Model KsefOperations](journal/2026-10-24-ksef-operations-model.md) · [Usługa i CRUD OData](journal/2026-10-24-ksef-service-definition.md) · [Walidacja i autoryzacja KsefOperations](journal/2026-10-24-ksef-operations-validation-authorization.md)
+[Project Home](README.md) · [Roadmapa](ROADMAP.md) · [Workflow abapGit](guides/ABAPGIT_WORKFLOW.md) · [Model RAP faktur](guides/ABAP_RAP_INVOICE_MODEL.md) · [Dziennik próby tworzenia ABAP FS](journal/2026-10-25-abapfs-create-probe.md) · [Dziennik kompozycji RAP](journal/2026-10-24-abap-rap-composition.md) · [Dziennik pierwszego eksportu](journal/2026-10-24-abapgit-rap-initial-export.md) · [Dziennik bootstrapu](journal/2026-10-23-cap-java-bootstrap.md) · [Weryfikacja Phase 1](journal/2026-10-24-cap-java-bootstrap-verification.md) · [Model KsefOperations](journal/2026-10-24-ksef-operations-model.md) · [Usługa i CRUD OData](journal/2026-10-24-ksef-service-definition.md) · [Walidacja i autoryzacja KsefOperations](journal/2026-10-24-ksef-operations-validation-authorization.md)
 
 ## Current Phase
 
@@ -20,6 +20,7 @@ SAPUI5 → OData V4 → CAP Java + Spring Boot → Java SDK KSeF w jednej JVM. S
 
 ## Completed
 
+- 2026-10-25: instrukcje `AGENTS.md`, Skill ABAP/RAP i workflow abapGit zaktualizowano do zweryfikowanego ABAP FS **2.12.4 / fix 5**. Wcześniejszy test akceptacyjny tej sesji: klasa + CDS w obu pakietach Cloud, **4/4 PASS**, bez nowych requestów i aktywacji. Dwa obiekty lokalne bez transportu, dwa w `ZAINVOICER_DEV` z potwierdzonym przypisaniem do wcześniej zatwierdzonego requestu. [Dowody i ograniczenia](journal/2026-10-25-abapfs-v5-instructions.md). Nie oznacza to ukończenia biznesowych DCL ani testów RAP.
 - Istnieją `AGENTS.md`, `CLAUDE.md` i baza wiedzy `docs/`.
 - 2026-10-24: pierwszy eksport abapGit potwierdzony w `39ab869` na `java-cap-ksef`; `.abapgit.xml` kieruje pakiet `ZAINVOICER` do `/abap/src/` przy `FOLDER_LOGIC=FULL`. Repo zawiera trzy tabele symulacyjnego modelu i RAP wyłącznie dla nagłówka. Szczegóły i granice potwierdzenia: [workflow abapGit](guides/ABAPGIT_WORKFLOW.md), [model RAP](guides/ABAP_RAP_INVOICE_MODEL.md) i [dziennik](journal/2026-10-24-abapgit-rap-initial-export.md).
 - Utworzono trzy projektowe Skills w `.agents/skills/` i krótkie odwołania Claude w `.claude/skills/`: ABAP/RAP, CAP Java i KSeF. Codex CLI 0.164.0 potwierdził wszystkie trzy przez `skills/list` jako `enabled: true`, `scope: repo`, bez błędów ładowania. To potwierdza wykrywanie, nie automatyczny dobór przez model. Szczegóły i przykłady: [dziennik Skills](journal/2026-10-23-project-skills.md).
@@ -35,21 +36,25 @@ SAPUI5 → OData V4 → CAP Java + Spring Boot → Java SDK KSeF w jednej JVM. S
 
 ## In Progress
 
+- SAP H01 — 2026-10-25: przez poprawione MCP utworzono `ZR_AINV_INV_REF`, `ZC_AINV_INV_I`, `ZC_AINV_INV_REF`; `ZR_AINV_INV_I` już istniał. Aktywne są wszystkie 6 CDS, oba BDEF oraz SRVD `ZAPI_AINV_INV_H_O4`. Usunięto niedozwolone `Semantics.unitOfMeasure` z widoków pozycji, jawny provider contract z projekcji dzieci i zastąpiono ETag dependent własnym `etag master LocalLastChangedAt` dzieci; root zachowuje ETag, numbering i lock master. ATC głównego BDEF: 0 ustaleń. Aktywna klasa `ZCL_AINV_RAP_COMP_TEST` zawiera 4 testy EML, lecz wykonanie przerwał dump braku aktywnego DCL; wrapper MCP dodatkowo zgłosił błąd `toFixed`. DCL odłożono na wyraźną decyzję użytkownika. Szczegóły: [kontynuacja live](journal/2026-10-24-abap-rap-composition.md#kontynuacja-live-przez-poprawione-mcp--2026-10-25).
 - Lokalna konsola H2 działa pod `/h2-console` w profilu `default`, z ograniczeniem dostępu H2 do localhost. Test połączenia konsoli do jawnego Spring datasource zwrócił `Test successful`; OData odczytuje tabelę, obecnie pustą po restarcie bazy in-memory. SQL z przeglądarki nie został jeszcze wykonany.
 - Phase 2 — model i odczyt `KsefInvoices` ukończone lokalnie. Pozostaje ustalenie backendowej ścieżki tworzącej relację i wymuszającej tę samą wartość NIP w warunkach H2, który nie ma FK dla asocjacji.
 - Skills: statyczna walidacja i ręczna ocena czterech scenariuszy zakończone; automatyczna aktywacja przez model oraz wykrywanie w sesji Claude Code pozostają nieprzetestowane (potwierdzono tylko wersję CLI Claude 2.1.309).
-- SAP RAP: lokalny patch kompozycji Header–Items–References pozostaje niezweryfikowany w SAP. Ponowna diagnostyka tylko do odczytu (2026-10-24) potwierdziła połączenie `h01`, `masterSystem=H01`, aktywny `ZR_AINV_INV_H` bez kompozycji i brak wyniku wyszukiwania `ZR_AINV_INV_I`. Pakiet `ZAINVOICER` ma `recordChanges=false`, komponent/superpakiet `ZLOCAL` i pustą warstwę transportową: request nie jest wymagany. Wcześniejsze tworzenie `DDLS/DF` zakończyło się błędem deserializacji `SDDIC_ST_ADT_DDLS`; odczytano pierwotne parametry i wynik z lokalnego zapisu sesji. Klient/wydanie, wewnętrzny wyjątek i HTTP pozostają nieustalone. W tej diagnostyce bez zapisów i aktywacji SAP. Wcześniej zgłoszone nieaktywne DCL root pozostawiono poza zakresem; izolacja użytkowników/podatników nadal nie jest potwierdzona. Szczegóły: [dziennik diagnostyki](journal/2026-10-24-abap-rap-composition.md#diagnostyka-tworzenia-cds-przez-abap-fs-mcp--2026-10-24).
+- SAP RAP / Git: eksport `abap/src/` nie został zaktualizowany po zmianach live. Cztery źródła wymagają późniejszego eksportu z SAP: interface pozycji, obie projekcje dzieci i root BDEF; nowa klasa testowa nie ma jeszcze eksportu. Nie importować starego patcha do H01. Pakiet nadal ma `recordChanges=false` / `ZLOCAL`; kontrole nowych obiektów wskazały `not-locked` i pusty request, mimo komunikatów create „Transport requested … (backend assignment not verified)”. Klient 100 potwierdzony dumpem backendu; dokładne wydanie nieustalone. Nie wykonywano commit/push ani eksportu abapGit.
+- Odczyt requestów wymienionych przez create (`H01K900028`, `H01K900030`, `H01K900032`, `H01K900036`) potwierdził 0 obiektów w każdym; requestów nie zwalniano ani nie usuwano. Mechanizm/czas ich utworzenia nieustalony; nie są dowodem wymogu transportu dla `ZAINVOICER`.
+- ABAP FS create probe (2026-10-25): w pakiecie `ZAINVOICER_DEV` utworzyła się klasa `ZCL_AINV_FS_PROBE`; tworzenie `TABL/DT` (`ZAINV_FSPROBE`), `DDLS/DF` (`ZI_AINV_FS_PROBE`) i `DTEL/DE` (`ZDE_AINV_FS_PROBE`) zwróciło `Unsupported Media Type`, a wyszukiwanie nie wykazało częściowych obiektów. Klasa jest szkieletem bez metod. Narzędzie create zgłosiło brak transportu, lecz odczyt statusu i zawartości requestu wykazał przypisanie do `H01K900018` / task `H01K900019`; request zawiera już łącznie 6 obiektów, w tym pakiet i cztery inne klasy. Nie zmieniano ani nie zwalniano requestu, nie aktywowano klasy. Wymaga uzgodnienia właściciela/transportu przed dalszym użyciem. Szczegóły: [dziennik próby](journal/2026-10-25-abapfs-create-probe.md).
 
 ## Blockers
 
-- SAP RAP live: tworzenie nowego DDLS przez ABAP FS 2.12.0 nie działa dla badanego wywołania (`SDDIC_ST_ADT_DDLS`); potrzebny oczyszczony ślad HTTP/wyjątek wewnętrzny albo utworzenie obiektu w Eclipse ADT w osobnym zadaniu implementacyjnym. Nie jest to bloker transportowy: `ZAINVOICER` nie rejestruje zmian. System H01 potwierdzono metadanymi pakietu/root; klient i wydanie nadal nie zostały ujawnione przez system-info. Nieaktywne DCL root poza zakresem.
+- ABAP-02: brak aktywnych DCL dzieci przy `authorizationCheck: #MANDATORY` blokuje EML; dump `ACM_UNEXPECTED_VALUE` wskazał `ZR_AINV_INV_I`, `Access Control Existence: FALSE`. W poprzedniej próbie `DCLS/DL` zwracało `Unsupported Media Type`; nie jest to bieżący test v5. Użytkownik odłożył biznesowe DCL; istniejące DCL root/projection/item pozostawiono inactive, trzech pozostałych brakuje. Nie osłabiano autoryzacji. OData `$metadata`/`$expand` niepotwierdzone: narzędzie odczytu obiektów odrzuca runtime URL jako `Invalid Object URL`.
+- SAP RAP / ABAP FS: historyczny `Unsupported Media Type` i myląca informacja „local” z [próby starszej wersji](journal/2026-10-25-abapfs-create-probe.md) nie są aktualnym ogólnym blokerem v5. Test v5 potwierdził tworzenie klasy/CDS i transporty w obu pakietach Cloud. Dalsze zmiany biznesowe nadal wymagają sprawdzenia aktualnego pakietu/requestu i zakresu zadania; nie ponawiać historycznych prób w ciemno. Nie potwierdzono pełnego testu 23 typów na v5 ani ECC.
 - Poprzedni `NoSuchFileException: srv/target/classes/application.yaml` nie odtworzono. Zwykły Maven przebieg zatrzymuje się na weryfikacji wersji CDS przez proces potomny (`spawn EPERM`); build z `-Dcds.cds.skipVersionCheck=true` przeszedł.
 
 ## Next Steps
 
 1. Dodać zaufaną ścieżkę aplikacyjną do łączenia operacji z fakturą, walidującą zgodność NIP przed zapisem; nie udostępniać powiązania przez publiczne OData.
-2. Potwierdzić klienta/wydanie w ustawieniach połączenia ADT; po odrębnym zleceniu utworzyć brakujący CDS w Eclipse `H01_EN` / `ZAINVOICER` bez requestu, porównując wcześniej aktywne/nieaktywne wersje. Naprawę generatora MCP prowadzić na podstawie oczyszczonego śladu, bez zgadywania atrybutów XML.
-3. Po aktywacji wykonać EML oraz live `$metadata`/`$expand`, sprawdzić binding i autoryzację; dopiero potem planować CAP Remote OData.
+2. Po wznowieniu zakresu DCL utworzyć brakujące role `ZR_AINV_INV_REF`, `ZC_AINV_INV_I`, `ZC_AINV_INV_REF`, porównać i aktywować wszystkie wymagane DCL; następnie uruchomić `ZCL_AINV_RAP_COMP_TEST`. DCL pozostaje obecnie odłożony decyzją użytkownika.
+3. Przetestować autoryzowane OData `$metadata`/`$expand` pod adresem odczytanym z bindingu; sprawdzić izolację i zapis/persystencję. Dopiero po walidacji oraz osobnym zleceniu wyeksportować zmiany abapGit; bez automatycznego pull przy brudnym checkout.
 
 Dla narzędzi agentowych: w następnej sesji Claude Code uruchomić `/reload-skills`, sprawdzić trzy komendy `/ainvoicer-*` i odczyt kanonicznych plików; osobno potwierdzić automatyczny dobór w czterech scenariuszach z dziennika.
 
@@ -57,8 +62,9 @@ Dla narzędzi agentowych: w następnej sesji Claude Code uruchomić `/reload-ski
 
 | Sprawdzenie | Ostatni dowód / ograniczenie |
 | --- | --- |
+| ABAP-02 live H01 | 2026-10-25: aktywacja 6 DDLS + 2 BDEF + SRVD PASS, ponowny odczyt active 8 źródeł PASS. ATC `ZR_AINV_INV_H` BDEF, wariant `ABAP_CLOUD_DEVELOPMENT_DEFAULT`: 0 ustaleń. Klasa 4 testów aktywna, ale wykonanie EML przerwał dump braku DCL; brak zaliczenia testów. Binding published=true / NOT_RELEASED, rzeczywisty URL odczytany; runtime metadata/expand niezweryfikowane. |
 | Inspekcja repozytorium | 2026-10-24: branch `java-cap-ksef`; drzewo początkowo czyste, szkielet CAP śledzony |
-| SAP RAP / MCP ABAP FS | 2026-10-24: diagnostyka live tylko do odczytu — `h01`, pakiet/root z `masterSystem=H01`, `recordChanges=false`, `ZLOCAL`, pusta warstwa transportowa; root aktywny bez kompozycji, wyszukiwanie `ZR_AINV_INV_I` bez wyników. Odczytano transformację DDLS i jej dwa include. Pierwotny błąd tworzenia potwierdzono historycznym wynikiem MCP i logiem rozszerzenia 2.12.0. Nie ustalono HTTP, inner exception, klienta/wydania; bez nowej próby tworzenia, zapisu, aktywacji i testów RAP/OData. |
+| SAP RAP / MCP ABAP FS | 2026-10-25: połączenie `H01` i pakiet `ZAINVOICER_DEV` istnieją; system-info zwrócił typ/wydanie jako Unknown/N/A. Próba tworzenia klasy zakończyła się sukcesem, ale status transportu wykazał request `H01K900018` (task `H01K900019`); metadane requestu potwierdziły klasę wśród 6 obiektów. Próby `TABL/DT`, `DDLS/DF`, `DTEL/DE` zwróciły `Unsupported Media Type`; wyszukiwania kontrolne bez częściowych obiektów. Bez edycji i aktywacji. Wcześniejsza diagnostyka `ZAINVOICER` / DDLS z 2026-10-24 pozostaje odrębnym wynikiem. |
 | Model CDS `KsefOperations` | 2026-10-24: utworzono encję `customer.cap_java.KsefOperations` z `cuid`, `managed`, kierunkiem INBOUND/OUTBOUND, statusem domyślnym NEW oraz unikalnością `(taxpayerNip, idempotencyKey)`. PASS: model wczytany przez API kompilatora CDS w procesie Node; CLI `cds --version` nie działa w sandboxie (`spawn EPERM`), Maven build nieuruchomiony. |
 | Usługa CDS / OData V4 | 2026-10-24: `KsefService` wymaga `authenticated-user`; status, referencje KSeF i pola błędu są `@readonly`. PASS: build CDS/Maven, metadata (anonimowy 401, authenticated 200), lokalne CREATE/READ/UPDATE/DELETE na H2. Status utworzył się jako NEW mimo próby podania ACCEPTED; pola techniczne wysłane przez klienta były ignorowane. |
 | Phase 2.2 — walidacja i autoryzacja | PASS lokalnie 2026-10-24: `@restrict` CREATE/READ dla `KsefOperator` i `$user.taxpayerNips`; 14 testów OData przez Spring Boot + Spring Security + CAP + H2 potwierdziło izolację, także dla braku atrybutu, walidację, brak UPDATE/DELETE i unikalność. Mock users tylko w profilu testowym. IAS/XSUAA nie skonfigurowano. |
@@ -78,4 +84,4 @@ Dla narzędzi agentowych: w następnej sesji Claude Code uruchomić `/reload-ski
 
 ## Last Updated
 
-2026-10-24 (Europe/Warsaw), po diagnostyce tworzenia CDS przez MCP i korekcie błędnego założenia o wymaganym transporcie `ZAINVOICER`. Stan jest migawką; przed kolejną sesją porównaj go z kodem i Git.
+2026-10-25 (Europe/Warsaw), po aktywacji kompozycji ABAP-02 w H01 przez MCP; DCL odłożony decyzją użytkownika, testy EML przerwane brakiem DCL, OData runtime niepotwierdzone. Stan jest migawką; przed kolejną sesją porównaj go z kodem i Git.

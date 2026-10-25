@@ -1,6 +1,6 @@
 ---
 title: "AInvoicer — plan rozwoju"
-date: 2026-10-24
+date: 2026-10-25
 type: roadmap
 status: aktywny
 tags: [ainvoicer, roadmap, cap-java, ksef]
@@ -52,10 +52,14 @@ Własne API CDS/OData i CRUD nie wchodziły w Phase 1; ich sprawdzenie należy d
 - [x] Inspekcja repo wykazała symulacyjny model tabel `ZAINV_INV_H`, `ZAINV_INV_I`, `ZAINV_INV_REF` i service definition/binding `ZAPI_AINV_INV_H_O4`.
 - [ ] W SAP ADT potwierdzić aktywny service definition/binding, stan publikacji/release, adres, `$metadata`, encje i autoryzację. W pliku bindingu jest rozbieżność `PUBLISHED=true` / `RELEASE_STATE=NOT_RELEASED`; eksport nie rozstrzyga runtime.
 - [x] Przygotowano lokalny patch źródeł root/child CDS, behavior, DCL i service definition dla kompozycji Header–Items–References; niepotwierdzony w SAP i bez serializowanych sidecarów nowych obiektów.
-- [x] Diagnostyka tylko do odczytu potwierdziła `recordChanges=false` / `ZLOCAL` dla `ZAINVOICER`; usunięto błędny wymóg transportu. Ustalono poprawny typ tworzenia `DDLS/DF` i odtworzono historyczny komunikat deserializacji; nie naprawiono generatora MCP.
-- [ ] Po zleceniu implementacji użyć Eclipse ADT do utworzenia brakującego CDS bez requestu albo naprawić generator po porównaniu oczyszczonego śladu XML/HTTP. Klient/wydanie SAP, inner exception i HTTP nieustalone; bez prób tworzenia podczas diagnostyki.
-- [ ] Zastosować/porównać patch w ADT, aktywować zależności i poprawić ewentualne błędy składni/kontraktu dla wersji H01.
-- [ ] Wykonać EML create-by-association, READ BY ASSOCIATION, update/delete, walidację rodzica i test autoryzacji.
+- [x] Diagnostyka tylko do odczytu potwierdziła `recordChanges=false` / `ZLOCAL` dla `ZAINVOICER`; usunięto błędny wymóg transportu. Ustalono poprawny typ tworzenia `DDLS/DF` i odtworzono historyczny komunikat deserializacji. W tamtym etapie nie naprawiano generatora MCP; późniejszy wynik v5 opisano niżej.
+- [x] Zapisano istniejące obiekty kompozycji według `d3dedf4` (2026-10-24); historia: [dziennik edycji](journal/2026-10-24-abap-rap-composition.md#edycja-istniejacych-obiektow-wedlug-d3dedf4--2026-10-24).
+- [x] ABAP-02 live (2026-10-25): utworzono przez poprawione MCP 3 brakujące DDLS, zachowano zastany `ZR_AINV_INV_I`; aktywowano 6 CDS, 2 BDEF i istniejący SRVD. Poprawki H01: brak niedozwolonego `Semantics.unitOfMeasure`, dziedziczenie provider contract w child projections i własny ETag dzieci. Root/binding zachowane. ATC głównego BDEF: 0 ustaleń. [Dowody i różnice z Git](journal/2026-10-24-abap-rap-composition.md#kontynuacja-live-przez-poprawione-mcp--2026-10-25).
+- [x] Próba możliwości tworzenia MCP w `ZAINVOICER_DEV` (2026-10-25): `CLAS/OC` utworzyła się, `TABL/DT`, `DDLS/DF` i `DTEL/DE` zwróciły `Unsupported Media Type`; brak częściowych obiektów po kontrolnym wyszukiwaniu. Kontrola statusu ujawniła przypisanie klasy do istniejącego requestu `H01K900018`, mimo odpowiedzi „local — no transport required”; nie zmieniano requestu ani nie aktywowano klasy. Szczegóły: [dziennik](journal/2026-10-25-abapfs-create-probe.md).
+- [x] ABAP FS 2.12.4 / fix 5: potwierdzono **4/4** nowych klas/CDS w obu pakietach Cloud, brak nowych requestów i poprawne przypisania SAP; uaktualniono instrukcje. `recordChanges=false` pomija selektor, a „Transport requested” wymaga odczytu przypisania. To nie jest pełny test typów ani test ECC. [Dowody i procedura](journal/2026-10-25-abapfs-v5-instructions.md).
+- [ ] Uzupełnić/aktywować biznesowe DCL — odłożone decyzją użytkownika. Historyczne `Unsupported Media Type` nie jest wynikiem testu v5 tych ról; istnieją 3 nieaktywne role, brakuje 3 pozostałych. Nie zmieniać `#MANDATORY` dla obejścia testów.
+- [ ] Zaliczyć EML create-by-association, READ BY ASSOCIATION, update/delete, walidację rodzica i test autoryzacji. Aktywna klasa `ZCL_AINV_RAP_COMP_TEST` ma 4 testy bufora RAP z rollback; uruchomienie przerwał dump `ACM_UNEXPECTED_VALUE` dla brakującego aktywnego DCL `ZR_AINV_INV_I`, a wrapper MCP zgłosił błąd `toFixed`.
+- [ ] Po zakończeniu walidacji i osobnym zleceniu wyeksportować stan SAP przez abapGit. Lokalny eksport nadal zawiera 4 starsze źródła CDS/BDEF i nie zawiera nowej klasy testowej; nie importować starego patcha do H01.
 - [ ] Wykonać test `$metadata`, `$expand` oraz autoryzowany odczyt syntetycznej faktury z SAP; osobno zapisać wynik statyczny i live.
 - [ ] Import kontraktu RAP OData V4, konfiguracja CAP Java Remote Service.
 - [ ] Destination / uwierzytelnienie zgodne z faktyczną konfiguracją SAP/BTP.

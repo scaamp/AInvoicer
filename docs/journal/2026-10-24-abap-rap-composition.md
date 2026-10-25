@@ -191,3 +191,151 @@ Ocena: pierwotne wywołanie nie narusza schematu MCP. Ograniczenie schematu i ut
 1. W Eclipse porównać bez ujawniania credentiali system, klienta i endpoint z połączeniem MCP. Zachować lokalny pakiet bez rejestrowania zmian; nie tworzyć requestu.
 2. Po osobnym zleceniu implementacji utworzyć `ZR_AINV_INV_I` kreatorem Data Definition w `H01_EN` / `ZAINVOICER`, wcześniej sprawdzając brak częściowego obiektu. Wykonać odczyt MCP, składnię i aktywację w uzgodnionym zakresie. Root pozostawić poza zakresem obejścia.
 3. Do naprawy MCP odzyskać istniejący oczyszczony trace albo zaplanować osobno autoryzowaną próbę z rejestracją: metoda/ścieżka, Content-Type/Accept, XML, status i SAP exception chain. Porównać z Eclipse oraz dopiero wtedy poprawić/przetestować generator i zgłosić błąd autorowi. Nie przesyłać zgłoszenia ani logów automatycznie. Żadne ponowne tworzenie nie jest częścią tej diagnostyki.
+
+## Zapis BDEF ZR_AINV_INV_H przez MCP — 2026-10-24
+
+Nowe zlecenie użytkownika: edycja wyłącznie behavior definition `ZR_AINV_INV_H` w H01 według dostarczonego kompletnego kodu. Kryterium zapisu: dokładna zgodność odczytanej wersji inactive z podanym źródłem. Zakres nie obejmował tworzenia brakujących CDS, zmiany root CDS, DCL ani eksportu abapGit.
+
+### Stan początkowy i wykonanie
+
+- Branch `java-cap-ksef`, `git status --short` początkowo pusty. Odczytano instrukcje, Skill ABAP/RAP, STATUS, ROADMAP, indeks i ten dziennik oraz lokalny BDEF wyłącznie do porównania.
+- MCP wskazał typ `BDEF/BDO`, pakiet `ZAINVOICER`. Active i inactive zawierały to samo źródło nagłówka (54 linie); lista nieaktywnych obiektów dla tej nazwy zawierała tylko istniejący DCL.
+- Odczyt pakietu potwierdził `masterSystem=H01`, `recordChanges=false`, komponent `ZLOCAL`, pustą warstwę transportową. Kontrola dokładnego BDEF: `not-locked`. Konfiguracja połączenia `h01` wskazuje klienta `100`; nie potwierdzono numeru klienta odczytem backendu ani wydania systemu.
+- Aktywny root CDS nie ma kompozycji; odczyt child CDS nie znalazł `ZR_AINV_INV_I` ani `ZR_AINV_INV_REF`. Wyszukiwanie `ZR_AINV_INV_*` typu DDLS zwróciło wyłącznie root.
+- `replace_string_in_abap_object` zapisał pełne źródło użytkownika (123 linie) w SAP, bez transportu. Powtórny `get_object_source(version=inactive)` i porównanie tekstu w pamięci potwierdziły dokładną zgodność. Nie edytowano lokalnego eksportu `abap/src/`.
+
+### Walidacja live
+
+| Sprawdzenie | Wynik |
+| --- | --- |
+| Zapis i odczyt inactive | PASS, 123 linie, dokładna zgodność tekstu |
+| `get_abap_diagnostics` | FAIL, 4 błędy: linia 23 brak `_Items`; linia 24 brak `_References`; linia 52 nieznany `ZR_AINV_INV_I`; linia 91 nieznany `ZR_AINV_INV_REF` |
+| Lista nieaktywnych obiektów po zapisie | BDEF oraz zastany DCL o tej samej nazwie; DCL pozostawiono nietknięty |
+| Aktywacja | NIE WYKONANO z powodu błędów zależności; bez wywołania `action=activate` |
+| Kontrolny odczyt active | PASS dla zachowania poprzednich 54 linii, tekst identyczny z odczytem początkowym |
+| ATC / ABAP Unit / EML / OData | NIE WYKONANO; brak aktywacji, zadanie ograniczone do BDEF |
+
+Użyte narzędzia MCP: `get_configured_systems`, `get_object_info`, `get_object_source` active/inactive, `get_workspace_uri`, `get_object_transport_status`, `get_object_by_uri`, `search_objects`, `replace_string_in_abap_object`, `get_abap_diagnostics`, `activate_object(action=get_inactive_objects)`. Bieżącej wersji rozszerzenia nie odczytywano; wcześniejsza diagnostyka opisywała 2.12.0. Polecenia lokalne: `Get-Content -Encoding UTF8`, `Get-ChildItem`, `git branch --show-current`, `git status --short`; edycja dokumentacji przez `apply_patch`. Sprawdzono referencję [SAP: Defining Composite Business Objects](https://learning.sap.com/courses/building-transactional-apps-with-the-abap-restful-application-programming-model/defining-composite-business-objects); dowodem konkretnych błędów pozostaje diagnostyka H01.
+
+Zmienione pliki lokalne: `docs/STATUS.md`, `docs/ROADMAP.md` i ten dziennik. Brak commita/push, eksportu i zmian innych obiektów SAP.
+
+### Następny krok
+
+W osobnym zakresie uzupełnić brakujące child CDS oraz kompozycje root i asocjacje `_Parent`, porównując active/inactive; następnie ponowić diagnostykę i aktywować uzgodnione zależności oraz BDEF. Dopiero po tym wykonać testy RAP/OData. Obecny rezultat to zapisany nieaktywny BDEF, nie działający model kompozycji.
+
+## Edycja istniejacych obiektow wedlug d3dedf4 — 2026-10-24
+
+### Zakres i stan początkowy
+
+Użytkownik zlecił wykonanie edycji istniejących obiektów, pozostawiając tworzenie nowych sobie. Punktem odniesienia jest commit `d3dedf4423620b75581418b0f035364c96a06bfc`, równy lokalnemu HEAD na `java-cap-ksef`. Zastane zmiany trzech plików dokumentacji zachowano. Odczytano ponownie Skill ABAP/RAP oraz active/inactive obu root DDLS i BDEF. Root BDEF zawierał już wcześniej zapisany kod dzieci; pozostałe definicje nadal dotyczyły nagłówka. Zastane nieaktywne DCL root i projection pozostawiono bez zmian.
+
+### Wykonane zmiany live
+
+Przez MCP zapisano kolejno cztery istniejące obiekty, bez tworzenia i bez transportu:
+
+| Obiekt | Typ | Zmiana | Diagnostyka po zapisie |
+| --- | --- | --- | --- |
+| `ZR_AINV_INV_H` | DDLS/DF | Kompozycje `_Items`, `_References` i ekspozycja w liście pól | 2 błędy: child źródła nie istnieją lub nie są aktywne |
+| `ZC_AINV_INV_H` | DDLS/DF | Przekierowania do projection children | 2 błędy: `_Items`, `_References` nieznane |
+| `ZC_AINV_INV_H` | BDEF/BDO | Behavior dzieci, `use association` root i `_Parent` dzieci | 1 błąd: base BDEF `ZR_AINV_INV_H` zawiera błędy |
+| `ZAPI_AINV_INV_H_O4` | SRVD/SRV | Ekspozycja `ZC_AINV_INV_I`, `ZC_AINV_INV_REF` | Narzędzie nie zwróciło diagnostyk; nie dowodzi aktywacji ani poprawności runtime |
+
+Dla każdego obiektu uzyskano workspace URI i sprawdzono transport status (`not-locked`), ponownie odczytano aktualny kod i porównano ze stanem początkowym, po czym wykonano pełną zamianę na źródło z commita. Kontrolne odczyty potwierdziły zgodność wszystkich czterech źródeł z commitem po normalizacji CRLF/LF i końcowego newline. Dla DDLS/BDEF odczyt kontrolny używał `version=inactive`; dla SRVD odczytano `source/main`, a metadane i inactive-object list potwierdziły wersję inactive.
+
+Root BDEF nie wymagał ponownego zapisu. Ponowna diagnostyka nadal zwróciła 4 błędy: brak dwóch asocjacji i nieznane dwa typy dzieci. Narzędzie sprawdza zależności względem dostępnego stanu SAP; zapis root CDS bez skutecznej aktywacji nie usuwa tych błędów.
+
+### Weryfikacja i ograniczenia
+
+- PASS: zapis i odczyt czterech obiektów live; kontrolne odczyty active obu DDLS i obu BDEF są identyczne z początkowymi źródłami.
+- Lista inactive: 7 obiektów — 2 DDLS, 2 BDEF, 1 SRVD oraz 2 zastane DCL. Nie wykonywano `action=activate`; nie tworzono obiektów, nie zmieniano DCL, klas ani bindingu.
+- ATC, ABAP Unit, EML i OData NIE WYKONANO: brakuje dzieci i aktywacji. Brak diagnostyk SRVD nie jest PASS całej integracji.
+- Użyto: `get_object_source` active/inactive, `get_object_by_uri`, `get_workspace_uri`, `get_object_transport_status`, `replace_string_in_abap_object`, `get_abap_diagnostics`, `activate_object(action=get_inactive_objects)`. Nie odczytywano ponownie wersji rozszerzenia.
+- Polecenia lokalne: `git branch --show-current`, `git status --short`, `git rev-parse HEAD`, `git show d3dedf4:<plik>`, odczyt Skill/STATUS/ROADMAP. Źródeł `abap/src/` nie edytowano, bez commita/push.
+- Zmienione lokalnie: STATUS, ROADMAP i ten dziennik. Kontrola whitespace: `git -c core.whitespace=cr-at-eol diff --check`.
+
+### Kolejny krok
+
+Użytkownik utworzy w ADT cztery DDLS i cztery DCLS o nazwach `ZR_AINV_INV_I`, `ZR_AINV_INV_REF`, `ZC_AINV_INV_I`, `ZC_AINV_INV_REF`, według odpowiadających plików commita. Potem należy ponowić diagnostykę, aktywować zależności wraz z istniejącymi root/projection i behavior, sprawdzić DCL oraz usługę. Obecne źródła do edycji są zapisane; nie ma jeszcze działającej kompozycji live.
+
+## Kontynuacja live przez poprawione MCP — 2026-10-25
+
+### Cel, zakres i stan wejściowy
+
+Użytkownik wznowił ABAP-02 z poleceniem doprowadzenia H01 do rezultatu, następnie wykluczył Eclipse i poinformował o wgraniu poprawek narzędzia. Pierwszy odczyt MCP zwracał 401; po wznowieniu połączenie odpowiadało. Próba utworzenia `ZR_AINV_INV_REF` przed poprawką zwróciła `CREATION_FAILED / Unsupported Media Type`, a odczyt i lista inactive potwierdziły brak częściowego obiektu. Ponowienie nastąpiło dopiero po informacji o nowej poprawce, nie w ciemno.
+
+- Branch `java-cap-ksef`, lokalny HEAD `d3dedf4`. Zachowano zastane zmiany dokumentacji, w tym osobny dziennik `2026-10-25-abapfs-create-probe.md`; nie nadpisywano jego wyników.
+- H01 / `ZAINVOICER`: ponowny odczyt pakietu potwierdził `masterSystem=H01`, `recordChanges=false`, komponent/superpakiet `ZLOCAL`, pustą warstwę transportową. Klient 100 został później potwierdzony dumpem backendu; dokładnego wydania SAP nie ustalono.
+- W H01 istniał już `ZR_AINV_INV_I` z kodem pozycji oraz nieaktywny DCL pozycji. Brakowało trzech pozostałych child DDLS i trzech DCL. Root CDS/projection, oba BDEF i SRVD zawierały wcześniejsze zapisy kompozycji.
+- Odczytano definicje trzech tabel, źródła CDS/BDEF, DCL root/projection/item, lokalną implementację behavior, SRVD i binding. Pola i klucze tabel odpowiadają modelowi; nie zmieniano tabel.
+- Lokalnie wykryto instalację `ABAP remote filesystem (ADT creation fix 3 candidate)` 2.12.2 oraz wcześniejsze wersje. Numer aktywnego procesu MCP nie został niezależnie odczytany; dowodem poprawy jest udane tworzenie DDLS.
+
+### Wykonane zmiany w SAP
+
+| Obiekt | Typ | Wynik |
+| --- | --- | --- |
+| `ZR_AINV_INV_REF` | DDLS/DF | Utworzony, zapisany, aktywny |
+| `ZC_AINV_INV_I` | DDLS/DF | Utworzony, zapisany, poprawiony, aktywny |
+| `ZC_AINV_INV_REF` | DDLS/DF | Utworzony, zapisany, poprawiony, aktywny |
+| `ZR_AINV_INV_I` | DDLS/DF | Zastany; poprawiony i aktywowany |
+| `ZR_AINV_INV_H` | DDLS/DF | Aktywowano wcześniejszy zapis kompozycji |
+| `ZC_AINV_INV_H` | DDLS/DF | Aktywowano wcześniejsze przekierowania; zachowano `_BaseEntity` i pola root |
+| `ZR_AINV_INV_H` | BDEF/BDO | Poprawiono ETag dzieci, aktywowano cały managed BO |
+| `ZC_AINV_INV_H` | BDEF/BDO | Aktywowano projection behavior dla trzech encji |
+| `ZAPI_AINV_INV_H_O4` | SRVD/SRV | Aktywowano ekspozycję trzech projekcji; binding zachowany |
+| `ZCL_AINV_RAP_COMP_TEST` | CLAS/OC + testclasses | Utworzona, zapisana i aktywna klasa regresji EML |
+
+Tworzenie wykonywano sekwencyjnie jako `DDLS/DF`, jawnie w `ZAINVOICER`, bez `additionalOptions.transportRequest`. Każdy obiekt odczytano przed zapisem, sprawdzono workspace URI i status transportu. Kontrole nowych CDS i klasy wykazały `not-locked` i pusty request.
+
+**Rozbieżność komunikatów transportowych:** create podawał „Transport requested … (backend assignment not verified)”. Odczyt `get_transport_objects` potwierdził istnienie pustych requestów `H01K900028`, `H01K900030`, `H01K900032` (opis `cds`) oraz `H01K900036` (opis `test`), każdy z jednym taskiem i 0 obiektów. Nie są przypisane do nowych obiektów według kontroli lock status. Nie ustalono w tej sesji czasu ani mechanizmu ich utworzenia; nie wybierano ich jawnie w parametrach, nie zwalniano i nie usuwano. Nie utożsamiać komunikatu wrappera z wymaganiem transportu lokalnego pakietu.
+
+### Poprawki wynikające z rzeczywistej aktywacji
+
+1. H01 odrzucił `@Semantics.unitOfMeasure: true` w view entity. Usunięto tę adnotację z interface/projection pozycji, pozostawiając `@Semantics.quantity.unitOfMeasure: 'UnitCode'`, pole jednostki DDIC oraz semantykę kwot/walut.
+2. H01 odrzucił jawny `provider contract TRANSACTIONAL_QUERY` w child z `redirected to parent`. Usunięto go z obu projekcji dzieci; dziedziczą kontrakt root, zgodnie z [SAP: PROVIDER CONTRACT](https://help.sap.com/docs/abap-cloud/abap-keywords/cds-ddl-provider-contract).
+3. H01 odrzucił `etag dependent by _Parent`, ponieważ dzieci mają pole `LocalLastChangedAt` o tej samej nazwie co pole ETag root. Dzieci otrzymały własny `etag master LocalLastChangedAt`; root nie zmienił ETag, lock ani numbering. `lock dependent` i `authorization dependent by _Parent` pozostały; nadal jeden BO, bez samodzielnego CREATE dzieci i bez draft.
+
+Po poprawkach aktywacja zakończyła się sukcesem. Ponowny odczyt `version=active` objął sześć CDS i oba BDEF. Końcowa lista inactive dla zakresu wykazała tylko trzy zastane DCL; CDS/BDEF/SRVD/klasa testowa nie pozostały inactive. Pierwsza aktywacja klasy pozostawiła część include'ów inactive; uruchomienie ABAP Unit dokończyło aktywację klasy, co potwierdziła pusta lista inactive dla jej nazwy.
+
+### Testy i wyniki
+
+| Warstwa / sprawdzenie | Wynik i ograniczenie |
+| --- | --- |
+| SAP live: aktywacja 6 CDS + 2 BDEF + SRVD | PASS; odczyty active i lista inactive potwierdzone |
+| Syntax diagnostics głównego BDEF po aktywacji | PASS, 0 diagnostyk; wcześniejsze wyniki przed aktywacją bywały nieodświeżone |
+| ATC `ZR_AINV_INV_H` BDEF | PASS, wariant `ABAP_CLOUD_DEVELOPMENT_DEFAULT`, 0 ustaleń; nie jest to ATC całego pakietu |
+| Klasa testowa / składnia / aktywacja | PASS; 4 metody testowe, poprawiono składnię EML DELETE na `DELETE FROM VALUE` |
+| EML deep create: header + 2 items + 1 reference; RBA | NIEZALICZONE: wykonanie całego zestawu przerwane dumpem, brak pełnych wyników poszczególnych testów |
+| EML update/delete dzieci, błędny rodzic, cascade delete root | NIEZALICZONE z tej samej przyczyny; testy przygotowane w aktywnej klasie |
+| Wykonanie ABAP Unit przez MCP | Błąd wrappera `Cannot read properties of undefined (reading 'toFixed')`; nie jest wynikiem PASS |
+| Diagnostyka backendu ABAP Unit | Dump `ACM_UNEXPECTED_VALUE` w `DELETE_ROOT_CASCADES`, klient 100: `No runtime data for CDS entity ZR_AINV_INV_I ... Access Control Existence: FALSE` przy `#MANDATORY` |
+| OData binding live / URL | PASS dla inspekcji ADT: published=true, binding V4, wersja 0001, NOT_RELEASED; brak zmiany bindingu/publikacji |
+| OData `$metadata` / `$expand` | NIEZWERYFIKOWANE: MCP odczytu obiektów odrzuca runtime URL jako `Invalid Object URL`; brak wyniku HTTP tych żądań |
+| Persystencja po commit, ETag przy równoległych zapisach i izolacja użytkowników | NIE WYKONANO |
+
+Testy używają konsumenckiego EML bez `IN LOCAL MODE`; setup tworzy syntetyczny bufor, teardown wykonuje `ROLLBACK ENTITIES`. Nie mają `COMMIT ENTITIES` ani trwałego fixture w tabelach. Nie osłabiano kontroli DCL, aby uzyskać zielone testy.
+
+### DCL i bezpieczeństwo — świadomie pozostawione
+
+Próba utworzenia `ZR_AINV_INV_REF` jako `DCLS/DL` zwróciła `CREATION_FAILED / Unsupported Media Type`; kontrola obiektu i inactive potwierdziła brak częściowej roli. **Użytkownik wybrał „Zostaw DCL do późniejszego uzupełnienia”.** Nie tworzono kolejnych ról, nie aktywowano ani nie zmieniano zastanych DCL:
+
+- istnieją inactive: `ZR_AINV_INV_H`, `ZC_AINV_INV_H`, `ZR_AINV_INV_I`;
+- brakuje: `ZR_AINV_INV_REF`, `ZC_AINV_INV_I`, `ZC_AINV_INV_REF`;
+- root DCL nadal `where TRUE`, metoda `GET_GLOBAL_AUTHORIZATIONS` nadal pusta; brak izolacji podatnika/użytkownika, API nie jest gotowe produkcyjnie.
+
+Aktywacja struktury nie oznacza działającego runtime danych przy brakującym DCL. ABAP-02 pozostaje nieukończone w zakresie testów i autoryzacji.
+
+### Porównanie z eksportem abapGit i pliki lokalne
+
+Nie edytowano `abap/src/` równolegle ze zmianami live i nie wykonywano eksportu abapGit, commita ani push. Lokalny HEAD `d3dedf4` zawiera starszy patch. Cztery aktywne źródła odpowiadają eksportowi po pominięciu whitespace i wielkości liter: root interface/projection, interface referencji i projection BDEF. Cztery różnią się zgodnie z poprawkami powyżej: `ZR_AINV_INV_I` DDLS, `ZC_AINV_INV_I` DDLS, `ZC_AINV_INV_REF` DDLS i `ZR_AINV_INV_H` BDEF. Klasa testowa jest nowa wyłącznie w SAP. SRVD odczytany z H01 ma ekspozycję tych samych trzech projekcji.
+
+Zmienione w tej kontynuacji pliki: `docs/STATUS.md`, `docs/ROADMAP.md`, `docs/README.md`, `docs/guides/ABAP_RAP_INVOICE_MODEL.md` oraz ten dziennik. Zachowano historię i wcześniejsze zmiany użytkownika. Modułów CAP/UI5/Node/Python/KSeF nie zmieniano.
+
+Narzędzia: MCP search/get source active/inactive, get by URI, workspace URI, transport status, create, replace, diagnostics, activate, ATC, create test include, ABAP Unit, analyze dumps oraz read-only transport objects. Polecenia lokalne: `git branch --show-current`, `git status --short`, `git log`, `Get-Content -Encoding utf8`, `Get-ChildItem`, `rg`, `git diff --stat`, `git -c core.whitespace=cr-at-eol diff --check`. Źródła SAP odczytywano i porównywano w pamięci, bez publikowania dumpu ani sekretów w repo.
+
+### Najmniejszy następny krok
+
+Końcowa walidacja lokalnej dokumentacji: `git -c core.whitespace=cr-at-eol diff --check` PASS (ostrzeżenia normalizacji LF/CRLF); skrypt Python sprawdził UTF-8, frontmatter, parzystość ogrodzeń kodu oraz 62 relatywne linki i kotwice w pięciu zmienionych plikach — PASS. `git status --short` potwierdził wyłącznie zmiany dokumentacji i zachowany zastany nieśledzony dziennik próby narzędzia.
+
+1. Po wznowieniu zakresu DCL naprawić tworzenie `DCLS/DL` w MCP albo osobno uzgodnić ręczne utworzenie; uzupełnić trzy brakujące role i aktywować komplet po porównaniu.
+2. Ponowić `ZCL_AINV_RAP_COMP_TEST`, uzyskać pełny raport ABAP Unit, następnie zweryfikować persystencję i uwierzytelnione OData `$metadata`/`$expand` pod odczytanym z ADT URL. Nadal wymagane testy readonly InvoiceUUID, ETag i autoryzacji.
+3. Po walidacji i osobnym zleceniu wykonać kontrolowany eksport abapGit. Nie importować obecnych lokalnych źródeł na nowszy H01 i nie wykonywać pull przy brudnym checkout.

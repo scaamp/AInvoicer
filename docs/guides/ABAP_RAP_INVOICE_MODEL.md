@@ -1,6 +1,6 @@
 ---
 title: "ABAP RAP — model faktur AInvoicer"
-date: 2026-10-24
+date: 2026-10-25
 type: guide
 status: aktywny
 tags: [ainvoicer, abap, rap, cds, odata]
@@ -14,7 +14,7 @@ tags: [ainvoicer, abap, rap, cds, odata]
 
 ABAP Environment jest wykorzystywany jako środowisko symulacyjne. Nie zakładaj tabel standardowych S/4HANA takich jak `ACDOCA`, `BKPF`, `BSEG`, `RBKP` czy `VBRK` ani rzeczywistych dokumentów FI/MM/SD. Poprzedni model `ZFI_ACDOCA` został porzucony jako docelowe źródło danych dla integracji CAP. Aktualny eksport ma własne tabele aplikacyjne.
 
-Opis bazowy wynika z plików `abap/src/` w commicie `39ab869` (`abapGit init`, 2026-10-24). Uzupełnienie kompozycji z 2026-10-24 jest lokalnym patchem źródeł. Żaden z tych stanów nie jest odczytem ani potwierdzeniem aktywności obiektów SAP.
+Opis bazowy wynika z plików `abap/src/` w commicie `39ab869` (`abapGit init`, 2026-10-24), a patch kompozycji z `d3dedf4`. **2026-10-25 potwierdzono live aktywację 6 CDS, obu BDEF oraz SRVD w H01 przez MCP.** Pełny wynik runtime pozostaje niepotwierdzony: testy EML przerwał brak aktywnego DCL, a DCL użytkownik odłożył. [Dowody sesji i porównanie](../journal/2026-10-24-abap-rap-composition.md#kontynuacja-live-przez-poprawione-mcp--2026-10-25).
 
 ## Tabele aplikacyjne
 
@@ -26,21 +26,23 @@ Opis bazowy wynika z plików `abap/src/` w commicie `39ab869` (`abapGit init`, 2
 
 Pliki tabel wskazują `SYSUUID_X16` jako typ kluczy UUID. Klucz nagłówka to `INVOICE_UUID`; klucz pozycji to `ITEM_UUID`; klucz referencji to `REF_UUID`. W tabelach pozycji i referencji `INVOICE_UUID` jest polem wymaganym, co wskazuje na logiczne powiązanie do nagłówka. Sam eksport tabeli nie dowodzi istnienia ani egzekwowania fizycznego klucza obcego.
 
-## Warstwy RAP w eksporcie
+## Warstwy RAP — stan live H01
 
 1. **Persistence:** root CDS `ZR_AINV_INV_H` czyta z tabeli `ZAINV_INV_H`.
 2. **Root entity:** `ZR_AINV_INV_H` udostępnia pola nagłówka, UUID jako klucz, semantykę kwot/waluty i audytu oraz kompozycje `_Items` i `_References`.
 3. **Child interface CDS:** `ZR_AINV_INV_I` i `ZR_AINV_INV_REF` czytają odpowiednio z tabel pozycji i referencji. Każdy ma `association to parent ZR_AINV_INV_H` po `InvoiceUUID`; ilość ma jednostkę `UnitCode`, a kwoty pozycji odnoszą się do `CurrencyCode`.
 4. **Projection:** `ZC_AINV_INV_H` zachowuje `_BaseEntity` i przekierowuje `_Items` oraz `_References` do projekcji dzieci jako `composition child`. Projekcje dzieci przekierowują `_Parent` do `ZC_AINV_INV_H` jako `parent`.
-5. **Behavior:** root pozostaje managed, z `InvoiceUUID` managed numbering, lock master i ETag `LocalLastChangedAt`. Root umożliwia create-by-association dla obu dzieci. Dzieci mapują tabele `ZAINV_INV_I`/`ZAINV_INV_REF`, używają managed UUID `ItemUUID`/`RefUUID`, lock/authorization/ETag dependent by `_Parent` i nie deklarują standardowego `create`. Dzieci mogą być aktualizowane i usuwane.
+5. **Behavior:** root pozostaje managed, z `InvoiceUUID` managed numbering, lock master i ETag `LocalLastChangedAt`. Root umożliwia create-by-association dla obu dzieci. Dzieci mapują tabele `ZAINV_INV_I`/`ZAINV_INV_REF`, używają managed UUID `ItemUUID`/`RefUUID`, lock/authorization dependent by `_Parent` i nie deklarują standardowego `create`. Każde dziecko ma własny `etag master LocalLastChangedAt`: H01 odrzucił ETag dependent przy identycznej nazwie pola audytowego jak w root. Dzieci mogą być aktualizowane i usuwane. Nie dodano draft.
 6. **DCL:** lokalny patch dodaje role dla obu encji interface i projekcji, dziedziczące warunki od rodzica przez `_Parent`. Nie zapewnia to izolacji, ponieważ istniejąca rola root `ZR_AINV_INV_H` ma `where TRUE`; także metoda global authorization w `ZBP_R_AINV_INV_H` jest pusta. Zewnętrzne użycie wymaga skutecznej polityki i testów autoryzacji.
-7. **Usługa:** istniejące `ZAPI_AINV_INV_H_O4` pozostaje bez zmian jako binding. Lokalny patch rozszerza istniejący service definition o projekcje Header, Item i Reference; dokładne nawigacje, entity sets i kontrakt OData potwierdza dopiero aktywacja oraz `$metadata` live.
+7. **Usługa:** zachowano binding `ZAPI_AINV_INV_H_O4`; aktywny SRVD eksponuje trzy projekcje. Odczyt bindingu H01: `published=true`, wersja `0001`, `NOT_RELEASED`. URL usługi odczytany z ADT: `/sap/opu/odata4/sap/zapi_ainv_inv_h_o4/srvd_a2x/sap/zapi_ainv_inv_h_o4/0001/`. Nie pobrano runtime `$metadata` ani `$expand`; MCP `get_object_by_uri` odrzuca URL OData jako `Invalid Object URL`.
+
+Projekcje dzieci dziedziczą provider contract od root; jawne `provider contract TRANSACTIONAL_QUERY` w child z `redirected to parent` jest niedozwolone. Widoki pozycji zachowują `Semantics.quantity.unitOfMeasure: 'UnitCode'`, ale usunięto niedozwolone w view entities `Semantics.unitOfMeasure: true`. Reguła dziedziczenia kontraktu: [SAP ABAP Keyword Documentation](https://help.sap.com/docs/abap-cloud/abap-keywords/cds-ddl-provider-contract).
 
 ## Zakres i ograniczenia potwierdzone w repo
 
 - Commit `39ab869` zawierał wyłącznie RAP nagłówka. Lokalny patch 2026-10-24 dodaje źródła CDS, BDEF, DCL i service definition dla kompozycji.
-- Patch nie zawiera serializowanych sidecarów metadata dla nowych obiektów CDS/DCL i nie został zapisany przez ADT/MCP ani zaimportowany/aktywowany przez abapGit. W ADT należy utworzyć lub porównać te obiekty, uruchomić aktywację i pozwolić abapGit wyeksportować pełne metadata.
-- Nie potwierdzono, że skorygowane nazwy i definicje pokrywają się z aktualnym stanem inactive/active w H01. Nie wolno nakładać patcha na nowsze źródła bez porównania w ADT.
+- Patch nie zawiera serializowanych sidecarów metadata nowych CDS/DCL. Zmiany live wykonano przez MCP, bez eksportu abapGit, commita i push. `abap/src/` nadal zawiera starsze wersje czterech źródeł: `ZR_AINV_INV_I` DDLS, `ZC_AINV_INV_I` DDLS, `ZC_AINV_INV_REF` DDLS i `ZR_AINV_INV_H` BDEF; klasa testowa istnieje wyłącznie w SAP. Po walidacji potrzebny kontrolowany eksport, po osobnym zleceniu.
+- Ponowny odczyt active potwierdził osiem źródeł CDS/BDEF; cztery pozostałe odpowiadają lokalnym źródłom po pominięciu whitespace i wielkości liter. Nie importować lokalnego patcha na nowszy stan SAP.
 - Nie twórz nazw entity setów, URI ani kontraktu OData na podstawie nazw obiektów źródłowych. Wymagają odczytu aktywnego bindingu i `$metadata` w docelowym SAP.
 - Metadane serializowanego bindingu zawierają `PUBLISHED=true`, ale wpis usługi wskazuje `RELEASE_STATE=NOT_RELEASED`. To rozbieżność eksportu, nie dowód publikacji lub dostępności runtime. Sprawdź rzeczywisty status w ADT.
 - Eksport ani lokalny patch nie potwierdzają autoryzowanego odczytu danych ani stanu aktywacji. DCL root `where TRUE` i pusta metoda global authorization nie są dowodem izolacji tenantów/użytkowników.
@@ -56,9 +58,11 @@ ABAP przechowuje symulacyjne dane nagłówków, pozycji i referencji oraz udost�
 
 Nie używaj bezpośredniego JDBC/SQL do bazy ABAP i nie zakładaj, że encje zdalne łączą się lokalnymi SQL JOIN-ami z CAP CDS.
 
-## Status patcha i wymagane weryfikacje
+## Status aktywacji i wymagane weryfikacje
 
-Patch jest propozycją do ręcznego zastosowania/review w Eclipse ADT. Nie jest gotowym, zweryfikowanym obiektem RAP. W kolejności zależności należy aktywować child interface CDS, root CDS, child projection CDS, root projection CDS, BDEF, DCL, service definition, a następnie sprawdzić istniejący binding. Jeśli wersja ABAP Cloud odrzuci składnię lub kontrakt ETag, poprawić ją na podstawie diagnostyki ADT przed publikacją.
+CDS/BDEF/SRVD są aktywne w H01. Utworzono i aktywowano `ZCL_AINV_RAP_COMP_TEST` z czterema testami: deep create/RBA, update/delete dzieci, odrzucenie CBA dla nieistniejącego rodzica i kasowanie kompozycji z root. Testy używają EML konsumenta bez `IN LOCAL MODE`, operują w buforze RAP i wykonują `ROLLBACK ENTITIES`, bez trwałego zapisu danych. Ich uruchomienie przerwał dump `ACM_UNEXPECTED_VALUE`: `ZR_AINV_INV_I`, `Access Control Existence: FALSE` przy `#MANDATORY`. Brak zaliczenia testów; błąd wrappera `toFixed` nie stanowi wyniku ABAP Unit.
+
+DCL pozostawiono do późniejszego uzupełnienia zgodnie z decyzją użytkownika. Istnieją nieaktywne `ZR_AINV_INV_H`, `ZC_AINV_INV_H`, `ZR_AINV_INV_I`; brakuje `ZR_AINV_INV_REF`, `ZC_AINV_INV_I`, `ZC_AINV_INV_REF`. Próba utworzenia pierwszej brakującej roli zwróciła `Unsupported Media Type`; brak częściowego obiektu potwierdzono odczytem i listą inactive. Nie osłabiono `#MANDATORY` ani nie aktywowano zastanych DCL. ATC głównego BDEF w wariancie `ABAP_CLOUD_DEVELOPMENT_DEFAULT`: 0 ustaleń; nie jest to pełne ATC pakietu ani test bezpieczeństwa.
 
 Po aktywacji wykonaj syntetyczne testy EML: utworzenie root z 2 pozycjami i 1 referencją przez create-by-association, READ BY ASSOCIATION, update/delete dzieci oraz odrzucenie próby zmiany `InvoiceUUID` lub podpięcia do nieistniejącego rodzica. Wymuś test nieautoryzowanego dostępu; obecna polityka `where TRUE` nie spełnia tego kryterium dla produkcji.
 

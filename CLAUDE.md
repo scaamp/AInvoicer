@@ -10,7 +10,7 @@ To jedyne źródło prawdy o architekturze, granicach komponentów, bezpieczeńs
 - Repo: `scaamp/AInvoicer`; gałąź rozwoju architektury: `java-cap-ksef`.
 - Cel: produkcyjnie zaprojektowana aplikacja SAP Fiori do faktur zakupowych/sprzedażowych i KSeF 2.0; najpierw E2E TEST.
 - **CAP Java + Spring Boot**: nowy centralny backend i właściciel procesu KSeF; **oficjalne Java SDK MF działa jako biblioteka w tej samej JVM**.
-- **ABAP Cloud/RAP**: utrzymuje symulacyjny model faktur `ZAINV_INV_H/I/REF`; obecny eksport RAP wystawia wyłącznie nagłówek przez service definition/binding `ZAPI_AINV_INV_H_O4`. Nie zakładaj tabel ani dokumentów S/4HANA.
+- **ABAP Cloud/RAP** (system H01 na BTP Trial, domyślny pakiet `ZAINVOICER` — szczegóły w AGENTS.md): utrzymuje symulacyjny model faktur `ZAINV_INV_H/I/REF`; obecny eksport RAP wystawia wyłącznie nagłówek przez service definition/binding `ZAPI_AINV_INV_H_O4`. Nie zakładaj tabel ani dokumentów S/4HANA.
 - **SAPUI5**: istniejący frontend; docelowo OData V4 z CAP.
 - **Node.js/Python**: zachowane dotychczasowe usługi AI.
 - **Baza CAP**: lokalnie H2 / SQLite na potrzeby developmentu; docelowo HANA Cloud do operacji, statusów i audytu, bez kopiowania całej tabeli SAP.
