@@ -1,6 +1,6 @@
 ---
 title: "Workflow abapGit w AInvoicer"
-date: 2026-10-25
+date: 2026-10-26
 type: guide
 status: aktywny
 tags: [ainvoicer, abap, abapgit, eclipse, git]
@@ -104,9 +104,15 @@ Nie publikuj Authorization, Cookie, CSRF, credentiali ani poufnych treści XML. 
 
 ### Zakres potwierdzenia
 
-Wcześniejsza macierz v4 obejmowała 23 typy: 20 utworzeń i 3 odmowy autoryzacji (DDLA, program, samodzielny include). Test akceptacyjny zainstalowanego v5 potwierdził **4/4** nowych obiektów: klasa i CDS w każdym z pakietów `ZAINVOICER` oraz `ZAINVOICER_DEV`; bez nowych transportów i bez aktywacji. Szczegóły, nazwy obiektów i pochodzenie dowodów: [dziennik aktualizacji instrukcji](../journal/2026-10-25-abapfs-v5-instructions.md).
+Wcześniejsza macierz v4 obejmowała 23 typy: 20 utworzeń i 3 odmowy autoryzacji (DDLA, program, samodzielny include). Test akceptacyjny zainstalowanego v5 potwierdził **4/4** nowych obiektów: klasa i CDS w każdym z pakietów `ZAINVOICER` oraz `ZAINVOICER_DEV`; bez nowych transportów i bez aktywacji. Szczegóły, nazwy obiektów i pochodzenie dowodów: [dziennik aktualizacji instrukcji](../journal/2026-10-26-abapfs-v5-instructions.md).
 
 Nie jest to ponowny pełny test 23 typów na v5, test ECC ani potwierdzenie działania biznesowych DCL/RAP/OData AInvoicer. W nowym systemie sprawdź możliwości i wymagania ponownie. Raport potencjalnych funkcji MCP na GitHub opisuje propozycje, nie dostępne narzędzia.
+
+### OData runtime a ADT i EML
+
+Narzędzia odczytu obiektów ADT nie są ogólnym klientem HTTP. Ich `Invalid Object URL` dla runtime OData nie jest odpowiedzią usługi. Ustal URL z bindingu; osobno sprawdź rzeczywisty status i treść uwierzytelnionego GET `$metadata`, encji oraz `$expand`. ADT, EML i HTTP OData potwierdzają różne warstwy; EML PASS nie potwierdza publikacji, uwierzytelnienia ani kontraktu HTTP.
+
+[Proponowany OData HTTP Executor](https://github.com/scaamp/abap-fs-creation-fix/blob/main/docs/potential-mcp-features.md#2-odata-http-executor) ma obsłużyć ten przypadek bez sterowania przeglądarką. MVP obejmuje odczyty pod zweryfikowanym adresem, właściwe uwierzytelnienie, status/body, limity odpowiedzi i stronicowanie. Nie jest dostępny w v5. Sesja ADT nie gwarantuje autoryzacji biznesowego OData; narzędzie nie może wymagać przekazania sekretów do modelu ani samodzielnie publikować usługi. Zapisy są osobnym zakresem. Gdy pozostaje przeglądarka, timeout przechwytywania okna jest ograniczeniem automatyzacji; odpowiedź bez poświadczeń lub strona logowania nie zastępuje testu uwierzytelnionego.
 
 ### CREATION_FAILED / SDDIC_ST_ADT_DDLS
 

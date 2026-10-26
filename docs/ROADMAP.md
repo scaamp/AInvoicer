@@ -1,6 +1,6 @@
 ---
 title: "AInvoicer — plan rozwoju"
-date: 2026-10-25
+date: 2026-10-26
 type: roadmap
 status: aktywny
 tags: [ainvoicer, roadmap, cap-java, ksef]
@@ -56,7 +56,8 @@ Własne API CDS/OData i CRUD nie wchodziły w Phase 1; ich sprawdzenie należy d
 - [x] Zapisano istniejące obiekty kompozycji według `d3dedf4` (2026-10-24); historia: [dziennik edycji](journal/2026-10-24-abap-rap-composition.md#edycja-istniejacych-obiektow-wedlug-d3dedf4--2026-10-24).
 - [x] ABAP-02 live (2026-10-25): utworzono przez poprawione MCP 3 brakujące DDLS, zachowano zastany `ZR_AINV_INV_I`; aktywowano 6 CDS, 2 BDEF i istniejący SRVD. Poprawki H01: brak niedozwolonego `Semantics.unitOfMeasure`, dziedziczenie provider contract w child projections i własny ETag dzieci. Root/binding zachowane. ATC głównego BDEF: 0 ustaleń. [Dowody i różnice z Git](journal/2026-10-24-abap-rap-composition.md#kontynuacja-live-przez-poprawione-mcp--2026-10-25).
 - [x] Próba możliwości tworzenia MCP w `ZAINVOICER_DEV` (2026-10-25): `CLAS/OC` utworzyła się, `TABL/DT`, `DDLS/DF` i `DTEL/DE` zwróciły `Unsupported Media Type`; brak częściowych obiektów po kontrolnym wyszukiwaniu. Kontrola statusu ujawniła przypisanie klasy do istniejącego requestu `H01K900018`, mimo odpowiedzi „local — no transport required”; nie zmieniano requestu ani nie aktywowano klasy. Szczegóły: [dziennik](journal/2026-10-25-abapfs-create-probe.md).
-- [x] ABAP FS 2.12.4 / fix 5: potwierdzono **4/4** nowych klas/CDS w obu pakietach Cloud, brak nowych requestów i poprawne przypisania SAP; uaktualniono instrukcje. `recordChanges=false` pomija selektor, a „Transport requested” wymaga odczytu przypisania. To nie jest pełny test typów ani test ECC. [Dowody i procedura](journal/2026-10-25-abapfs-v5-instructions.md).
+- [x] ABAP FS 2.12.4 / fix 5: potwierdzono **4/4** nowych klas/CDS w obu pakietach Cloud, brak nowych requestów i poprawne przypisania SAP; uaktualniono instrukcje. `recordChanges=false` pomija selektor, a „Transport requested” wymaga odczytu przypisania. To nie jest pełny test typów ani test ECC. [Dowody i procedura](journal/2026-10-26-abapfs-v5-instructions.md).
+- [ ] Uzgodnić wcześniejszą migawkę DCL/EML poniżej z nowszą relacją użytkownika (2026-10-26: 6 DCL aktywnych, EML 4/4 PASS, ATC 3 ról bez ustaleń); nie powtarzać tworzenia istniejących ról. Osobno pozostaje uwierzytelniony test HTTP OData. Ta sesja aktualizuje instrukcje, nie wykonuje nowych testów biznesowych.
 - [ ] Uzupełnić/aktywować biznesowe DCL — odłożone decyzją użytkownika. Historyczne `Unsupported Media Type` nie jest wynikiem testu v5 tych ról; istnieją 3 nieaktywne role, brakuje 3 pozostałych. Nie zmieniać `#MANDATORY` dla obejścia testów.
 - [ ] Zaliczyć EML create-by-association, READ BY ASSOCIATION, update/delete, walidację rodzica i test autoryzacji. Aktywna klasa `ZCL_AINV_RAP_COMP_TEST` ma 4 testy bufora RAP z rollback; uruchomienie przerwał dump `ACM_UNEXPECTED_VALUE` dla brakującego aktywnego DCL `ZR_AINV_INV_I`, a wrapper MCP zgłosił błąd `toFixed`.
 - [ ] Po zakończeniu walidacji i osobnym zleceniu wyeksportować stan SAP przez abapGit. Lokalny eksport nadal zawiera 4 starsze źródła CDS/BDEF i nie zawiera nowej klasy testowej; nie importować starego patcha do H01.

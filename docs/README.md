@@ -24,7 +24,7 @@ AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijan
 - [Dziennik: pierwszy eksport abapGit i model RAP faktur](journal/2026-10-24-abapgit-rap-initial-export.md).
 - [Dziennik: RAP Composition Header–Items–References](journal/2026-10-24-abap-rap-composition.md).
 - [Dziennik: próba tworzenia obiektów przez ABAP FS](journal/2026-10-25-abapfs-create-probe.md).
-- [Dziennik: ABAP FS v5 — aktualizacja instrukcji i wyniki testu akceptacyjnego](journal/2026-10-25-abapfs-v5-instructions.md).
+- [Dziennik: ABAP FS v5 — aktualizacja instrukcji i wyniki testu akceptacyjnego](journal/2026-10-26-abapfs-v5-instructions.md).
 - [Przewodnik: workflow abapGit w AInvoicer](guides/ABAPGIT_WORKFLOW.md).
 - [Przewodnik: model ABAP RAP faktur](guides/ABAP_RAP_INVOICE_MODEL.md).
 - [Dziennik: Project Skills — zakresy, wywołania i wyniki walidacji](journal/2026-10-23-project-skills.md).

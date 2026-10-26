@@ -41,6 +41,10 @@ Trzy stany kodu: (1) aktywne/nieaktywne źródło SAP (`H01_EN`, pakiet `ZAINVOI
 - Do diagnostyki v5 użyj `abapfs_get_creation_diagnostics`; przy potrzebie śladu `startLogging: true` włącza logowanie dla połączenia. Zachowaj oczyszczone Content-Type, body żądania, status i body odpowiedzi, o ile dostępne. Przywróć wcześniejszy stan logowania; `startLogging: false` go nie wyłącza. Sposób wyłączenia i ograniczenia opisuje [przewodnik](../../../docs/guides/ABAPGIT_WORKFLOW.md#abap-fs-v5--tworzenie-i-diagnostyka). Nie publikuj credentiali ani poufnych metadanych.
 - Wyniki v5 dla klasy/CDS oraz wcześniejsza macierz typów są dowodami o określonym zakresie, nie gwarancją wszystkich typów na każdym backendzie. Przy potwierdzonym braku możliwości MCP użyj ADT w zleconym zakresie; nie zmieniaj root CDS ani autoryzacji jako obejścia. Nowe funkcje z raportu propozycji na GitHub nie są zaimplementowanymi narzędziami.
 
+### Test runtime OData
+
+Do testu runtime OData ustal URL z bindingu i użyj faktycznie dostępnego narzędzia HTTP/OData z właściwym uwierzytelnieniem. Czytnik obiektów ADT może odrzucać ten URL; nie jest to wynik HTTP usługi. EML PASS nie zastępuje `$metadata`/`$expand`. OData HTTP Executor z raportu propozycji nie jest funkcją v5; przy braku narzędzia oznacz odczyt uwierzytelniony jako niezweryfikowany. Przeglądarka jest możliwym fallbackiem, ale jej timeout ani strona logowania nie potwierdzają kontraktu runtime.
+
 ### Tryb alternatywny: patch lokalny → kontrolowany import
 
 Gdy MCP nie obsługuje zapisu/aktywacji danego typu lub modelowanie wymaga Eclipse ADT, przygotuj niewielką zmianę w ADT albo lokalny patch kodu do review. Dopuszczalne pliki patcha to m.in. `*.clas.abap`, `*.ddls.asddls`, `*.bdef.asbdef`, `*.dcls.asdcls`; **nie edytuj automatycznie metadanych `*.tabl.xml`, `*.srvb.xml` czy `.abapgit.xml`**. Patch Git nie jest kodem aktywnym w SAP: po uzgodnieniu wykonaj Git commit/push, porównanie i bezpieczny abapGit Pull/import, następnie aktywację i test. Wstrzymaj import przy różnicy względem nowszej wersji SAP. Nigdy nie edytuj jednocześnie tego samego obiektu przez MCP i lokalnie; ustal jeden kierunek synchronizacji.

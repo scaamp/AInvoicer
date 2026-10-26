@@ -1,6 +1,6 @@
 ---
 title: "AInvoicer — aktualny stan"
-date: 2026-10-25
+date: 2026-10-26
 type: status
 status: w-trakcie
 tags: [ainvoicer, cap-java, status]
@@ -20,7 +20,7 @@ SAPUI5 → OData V4 → CAP Java + Spring Boot → Java SDK KSeF w jednej JVM. S
 
 ## Completed
 
-- 2026-10-25: instrukcje `AGENTS.md`, Skill ABAP/RAP i workflow abapGit zaktualizowano do zweryfikowanego ABAP FS **2.12.4 / fix 5**. Wcześniejszy test akceptacyjny tej sesji: klasa + CDS w obu pakietach Cloud, **4/4 PASS**, bez nowych requestów i aktywacji. Dwa obiekty lokalne bez transportu, dwa w `ZAINVOICER_DEV` z potwierdzonym przypisaniem do wcześniej zatwierdzonego requestu. [Dowody i ograniczenia](journal/2026-10-25-abapfs-v5-instructions.md). Nie oznacza to ukończenia biznesowych DCL ani testów RAP.
+- 2026-10-26: domknięto aktualizację `AGENTS.md`, Skilla ABAP/RAP i workflow abapGit do zweryfikowanego ABAP FS **2.12.4 / fix 5**. Test akceptacyjny z 2026-10-25: klasa + CDS w obu pakietach Cloud, **4/4 PASS**, bez nowych requestów i aktywacji. Dwa obiekty lokalne bez transportu, dwa w `ZAINVOICER_DEV` z potwierdzonym przypisaniem do wcześniej zatwierdzonego requestu. [Dowody i ograniczenia](journal/2026-10-26-abapfs-v5-instructions.md). Nie jest to test biznesowych DCL/RAP.
 - Istnieją `AGENTS.md`, `CLAUDE.md` i baza wiedzy `docs/`.
 - 2026-10-24: pierwszy eksport abapGit potwierdzony w `39ab869` na `java-cap-ksef`; `.abapgit.xml` kieruje pakiet `ZAINVOICER` do `/abap/src/` przy `FOLDER_LOGIC=FULL`. Repo zawiera trzy tabele symulacyjnego modelu i RAP wyłącznie dla nagłówka. Szczegóły i granice potwierdzenia: [workflow abapGit](guides/ABAPGIT_WORKFLOW.md), [model RAP](guides/ABAP_RAP_INVOICE_MODEL.md) i [dziennik](journal/2026-10-24-abapgit-rap-initial-export.md).
 - Utworzono trzy projektowe Skills w `.agents/skills/` i krótkie odwołania Claude w `.claude/skills/`: ABAP/RAP, CAP Java i KSeF. Codex CLI 0.164.0 potwierdził wszystkie trzy przez `skills/list` jako `enabled: true`, `scope: repo`, bez błędów ładowania. To potwierdza wykrywanie, nie automatyczny dobór przez model. Szczegóły i przykłady: [dziennik Skills](journal/2026-10-23-project-skills.md).
@@ -36,6 +36,7 @@ SAPUI5 → OData V4 → CAP Java + Spring Boot → Java SDK KSeF w jednej JVM. S
 
 ## In Progress
 
+- Nowsza relacja użytkownika (2026-10-26, wklejony raport innego Codexa): wszystkie 6 DCL aktywne, EML **4/4 PASS**, ATC 3 nowych ról: 0 ustaleń. W tej aktualizacji instrukcji nie powtarzano tych testów live. Poniższy opis odłożonych DCL/dumpu zachowuje wcześniejszą migawkę; wymaga uzgodnienia z nowym raportem przed kolejną zmianą biznesową. Uwierzytelnione HTTP `$metadata`/`$expand` nadal niepotwierdzone: czytnik ADT odrzucił URL, a automatyzacja przeglądarki miała timeout. Proponowany OData HTTP Executor adresuje tę lukę, ale nie jest zaimplementowany w v5.
 - SAP H01 — 2026-10-25: przez poprawione MCP utworzono `ZR_AINV_INV_REF`, `ZC_AINV_INV_I`, `ZC_AINV_INV_REF`; `ZR_AINV_INV_I` już istniał. Aktywne są wszystkie 6 CDS, oba BDEF oraz SRVD `ZAPI_AINV_INV_H_O4`. Usunięto niedozwolone `Semantics.unitOfMeasure` z widoków pozycji, jawny provider contract z projekcji dzieci i zastąpiono ETag dependent własnym `etag master LocalLastChangedAt` dzieci; root zachowuje ETag, numbering i lock master. ATC głównego BDEF: 0 ustaleń. Aktywna klasa `ZCL_AINV_RAP_COMP_TEST` zawiera 4 testy EML, lecz wykonanie przerwał dump braku aktywnego DCL; wrapper MCP dodatkowo zgłosił błąd `toFixed`. DCL odłożono na wyraźną decyzję użytkownika. Szczegóły: [kontynuacja live](journal/2026-10-24-abap-rap-composition.md#kontynuacja-live-przez-poprawione-mcp--2026-10-25).
 - Lokalna konsola H2 działa pod `/h2-console` w profilu `default`, z ograniczeniem dostępu H2 do localhost. Test połączenia konsoli do jawnego Spring datasource zwrócił `Test successful`; OData odczytuje tabelę, obecnie pustą po restarcie bazy in-memory. SQL z przeglądarki nie został jeszcze wykonany.
 - Phase 2 — model i odczyt `KsefInvoices` ukończone lokalnie. Pozostaje ustalenie backendowej ścieżki tworzącej relację i wymuszającej tę samą wartość NIP w warunkach H2, który nie ma FK dla asocjacji.
@@ -84,4 +85,4 @@ Dla narzędzi agentowych: w następnej sesji Claude Code uruchomić `/reload-ski
 
 ## Last Updated
 
-2026-10-25 (Europe/Warsaw), po aktywacji kompozycji ABAP-02 w H01 przez MCP; DCL odłożony decyzją użytkownika, testy EML przerwane brakiem DCL, OData runtime niepotwierdzone. Stan jest migawką; przed kolejną sesją porównaj go z kodem i Git.
+2026-10-26 (Europe/Warsaw): aktualizacja instrukcji ABAP FS v5 i odnotowanie nowszej relacji użytkownika o DCL/EML. Nie wykonywano nowych testów SAP w ramach tej aktualizacji; wcześniejsze migawki biznesowe wymagają porównania z nową relacją i aktualnym SAP. Uwierzytelnione OData runtime pozostaje niepotwierdzone.
