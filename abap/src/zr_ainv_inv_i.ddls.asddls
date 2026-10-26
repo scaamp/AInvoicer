@@ -2,7 +2,7 @@
 @Metadata.allowExtensions: true
 @EndUserText.label: 'AInvoicer Invoice Item'
 define view entity ZR_AINV_INV_I
-  as select from ZAINV_INV_I
+  as select from zainv_inv_i
   association to parent ZR_AINV_INV_H as _Parent
     on $projection.InvoiceUUID = _Parent.InvoiceUUID
 {
@@ -12,9 +12,7 @@ define view entity ZR_AINV_INV_I
       material_id as MaterialId,
       description as Description,
       @Semantics.quantity.unitOfMeasure: 'UnitCode'
-      quantity as Quantity,
-      @Semantics.unitOfMeasure: true
-      unit_code as UnitCode,
+      quantity as Quantity,      unit_code as UnitCode,
       @Semantics.amount.currencyCode: 'CurrencyCode'
       unit_price as UnitPrice,
       @Semantics.amount.currencyCode: 'CurrencyCode'

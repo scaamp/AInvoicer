@@ -3,7 +3,6 @@
 @EndUserText.label: 'AInvoicer Invoice Reference Projection'
 @AccessControl.authorizationCheck: #MANDATORY
 define view entity ZC_AINV_INV_REF
-  provider contract TRANSACTIONAL_QUERY
   as projection on ZR_AINV_INV_REF
 {
   key RefUUID,

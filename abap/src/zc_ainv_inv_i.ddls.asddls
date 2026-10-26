@@ -3,7 +3,6 @@
 @EndUserText.label: 'AInvoicer Invoice Item Projection'
 @AccessControl.authorizationCheck: #MANDATORY
 define view entity ZC_AINV_INV_I
-  provider contract TRANSACTIONAL_QUERY
   as projection on ZR_AINV_INV_I
 {
   key ItemUUID,
@@ -13,7 +12,6 @@ define view entity ZC_AINV_INV_I
       Description,
       @Semantics.quantity.unitOfMeasure: 'UnitCode'
       Quantity,
-      @Semantics.unitOfMeasure: true
       UnitCode,
       @Semantics.amount.currencyCode: 'CurrencyCode'
       UnitPrice,

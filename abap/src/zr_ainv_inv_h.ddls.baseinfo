@@ -6,7 +6,10 @@
 "ZAINV_INV_H"
 ],
 "ASSOCIATED":
-[],
+[
+"ZR_AINV_INV_I",
+"ZR_AINV_INV_REF"
+],
 "BASE":
 [],
 "ANNO_REF":

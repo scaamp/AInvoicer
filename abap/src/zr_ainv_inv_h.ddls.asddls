@@ -46,3 +46,4 @@ define root view entity ZR_AINV_INV_H
   _Items,
   _References
 }
+

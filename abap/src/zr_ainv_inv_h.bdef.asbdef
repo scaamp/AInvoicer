@@ -15,17 +15,13 @@ authorization master( global )
    LocalLastChangedBy,
    LocalLastChangedAt,
    LastChangedAt;
-
   field ( numbering : managed )
    InvoiceUUID;
-
-
   create;
   update;
   delete;
   association _Items { create; }
   association _References { create; }
-
   mapping for ZAINV_INV_H corresponding extensible
   {
     InvoiceUUID = INVOICE_UUID;
@@ -52,29 +48,23 @@ authorization master( global )
     LocalLastChangedAt = LOCAL_LAST_CHANGED_AT;
     LastChangedAt = LAST_CHANGED_AT;
   }
-
 }
-
 define behavior for ZR_AINV_INV_I alias ZrAinvInvI
 persistent table ZAINV_INV_I
 lock dependent by _Parent
 authorization dependent by _Parent
-etag dependent by _Parent
+etag master LocalLastChangedAt
 {
   update;
   delete;
-
   field ( readonly ) InvoiceUUID,
                      LocalCreatedBy,
                      LocalCreatedAt,
                      LocalLastChangedBy,
                      LocalLastChangedAt,
                      LastChangedAt;
-
   field ( readonly, numbering : managed ) ItemUUID;
-
   association _Parent;
-
   mapping for ZAINV_INV_I corresponding
   {
     ItemUUID = ITEM_UUID;
@@ -98,27 +88,22 @@ etag dependent by _Parent
     LastChangedAt = LAST_CHANGED_AT;
   }
 }
-
 define behavior for ZR_AINV_INV_REF alias ZrAinvInvRef
 persistent table ZAINV_INV_REF
 lock dependent by _Parent
 authorization dependent by _Parent
-etag dependent by _Parent
+etag master LocalLastChangedAt
 {
   update;
   delete;
-
   field ( readonly ) InvoiceUUID,
                      LocalCreatedBy,
                      LocalCreatedAt,
                      LocalLastChangedBy,
                      LocalLastChangedAt,
                      LastChangedAt;
-
   field ( readonly, numbering : managed ) RefUUID;
-
   association _Parent;
-
   mapping for ZAINV_INV_REF corresponding
   {
     RefUUID = REF_UUID;

@@ -70,3 +70,4 @@ define root view entity ZC_AINV_INV_H
   _Items : redirected to composition child ZC_AINV_INV_I,
   _References : redirected to composition child ZC_AINV_INV_REF
 }
+
