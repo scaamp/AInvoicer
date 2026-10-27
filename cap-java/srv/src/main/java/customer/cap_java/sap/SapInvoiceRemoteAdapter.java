@@ -8,13 +8,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import com.sap.cds.Result;
+import com.sap.cds.ql.Predicate;
 import com.sap.cds.ql.Select;
 import com.sap.cds.ql.cqn.CqnSelect;
 import com.sap.cds.services.cds.CqnService;
+import com.sap.cds.services.request.RequestContext;
+import com.sap.cds.services.runtime.CdsRuntime;
 
 /** Read-only adapter do zweryfikowanego RAP OData V4, wywoływany przez CAP Remote Service. */
 @Component
@@ -36,13 +40,32 @@ public class SapInvoiceRemoteAdapter {
 		"SourceFiscalYear", "SourceItemNo");
 
 	private final CqnService remote;
+	private final CdsRuntime runtime;
 
-	public SapInvoiceRemoteAdapter(@Qualifier("AinvoicerH01") CqnService remote) {
+	@Autowired
+	public SapInvoiceRemoteAdapter(@Qualifier("AinvoicerH01") CqnService remote, CdsRuntime runtime) {
 		this.remote = remote;
+		this.runtime = runtime;
 	}
 
-	/** Odczytuje nagłówki i oba zbiory dzieci osobnymi CQN; nie zapisuje ani nie lokalnie replikuje danych SAP. */
+	/** Konstruktor testowy: bez runtime, wywołania idą bezpośrednio do podanego serwisu. */
+	SapInvoiceRemoteAdapter(CqnService remote) {
+		this(remote, null);
+	}
+
+	/**
+	 * Odczytuje nagłówki i oba zbiory dzieci osobnymi CQN; nie zapisuje ani nie replikuje danych SAP.
+	 * Model zdalny wymaga internal-user, więc odczyt (np. z workera bez użytkownika) idzie w kontekście
+	 * systemowym; dane SAP nie są wtedy filtrowane per użytkownik CAP — autoryzację robi wywołujący.
+	 */
 	public List<SapInvoiceSnapshot> readInvoices() {
+		if (runtime == null) {
+			return doReadInvoices();
+		}
+		return runtime.requestContext().systemUser().run((RequestContext ctx) -> doReadInvoices());
+	}
+
+	private List<SapInvoiceSnapshot> doReadInvoices() {
 		List<Map<String, Object>> headers = rows(remote.run(select(HEADERS, HEADER_COLUMNS)));
 		if (headers.isEmpty()) {
 			return List.of();
@@ -67,8 +90,10 @@ public class SapInvoiceRemoteAdapter {
 	}
 
 	private CqnSelect selectChildren(String entity, List<String> columns, List<UUID> invoiceIds) {
-		return Select.from(entity).columns(columns.toArray(String[]::new))
-			.where(get("InvoiceUUID").in(invoiceIds));
+		// Łańcuch `eq ... or` zamiast `in` (OData 4.01) - nie zakładamy wsparcia `in` w RAP V4 H01.
+		Predicate filter = invoiceIds.stream().<Predicate>map(id -> get("InvoiceUUID").eq(id))
+			.reduce(Predicate::or).orElseThrow();
+		return Select.from(entity).columns(columns.toArray(String[]::new)).where(filter);
 	}
 
 	private List<Map<String, Object>> rows(Result result) {

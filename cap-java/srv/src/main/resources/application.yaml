@@ -14,6 +14,10 @@ spring:
     settings.web-allow-others: false
 cds:
   data-source.auto-config.enabled: false
+---
+# Bez profilu: Remote Service H01 obowiązuje w każdym środowisku (default, test, live, cf).
+# Destination AINV_H01 jest dostarczane przez środowisko (zmienna `destinations` lokalnie, BTP Destination Service na CF).
+cds:
   remote.services:
     AinvoicerH01:
       model: AinvoicerH01
@@ -21,6 +25,6 @@ cds:
       destination:
         name: AINV_H01
       http:
-        # Destination URL wskazuje origin H01; ścieżka została odczytana z aktywnego bindingu.
-        suffix: /sap/opu/odata4/sap/zapi_ainv_inv_h_o4/srvd_a2x/sap/zapi_ainv_inv_h_o4/0001/
-        service: ""
+        # Destination URL wskazuje wyłącznie origin H01. Pełna ścieżka usługi (z aktywnego bindingu) trafia do
+        # `service` - pusty `service` jest ignorowany i CAP dokłada nazwę serwisu CDS do URL.
+        service: sap/opu/odata4/sap/zapi_ainv_inv_h_o4/srvd_a2x/sap/zapi_ainv_inv_h_o4/0001

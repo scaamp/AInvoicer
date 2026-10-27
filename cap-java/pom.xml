@@ -23,6 +23,7 @@
 
 		<cds.install-node.downloadUrl>https://nodejs.org/dist/</cds.install-node.downloadUrl>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<ainv.excludedGroups>live-sap</ainv.excludedGroups>
 	</properties>
 
 	<modules>
@@ -107,6 +108,10 @@
 			<plugin>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>3.6.0</version>
+				<configuration>
+					<!-- Testy LIVE SAP (tag live-sap) są domyślnie wyłączone; uruchom: -Dainv.excludedGroups=none -->
+					<excludedGroups>${ainv.excludedGroups}</excludedGroups>
+				</configuration>
 			</plugin>
 
 			<!-- POM FLATTENING FOR CI FRIENDLY VERSIONS -->

@@ -62,3 +62,47 @@ Zweryfikować aktywny kontrakt OData V4 `ZAPI_AINV_INV_H_O4`, wykonać autoryzow
 Kontrakt runtime oraz odczyt autoryzowany H01 przez MCP są potwierdzone live: 4/9/6 z UUID. CDS CAP, wiring Remote Service/Destination, mapowanie CQN i test mock są gotowe. KRYTERIUM CAP LIVE NIEZALICZONE: aplikacja nie wykonała CQN przez SAP BTP Destination do H01. Blokuje brak zweryfikowanego hosta i mechanizmu uwierzytelnienia/Communication Arrangement dla tej aplikacji. Destination `AINV_H01` wymaga konfiguracji w rzeczywistym środowisku CAP; następnie trzeba wykonać ten sam odczyt przez `SapInvoiceRemoteAdapter` i porównać 4/9/6 oraz UUID.
 
 Analogicznie do RAP: zewnętrzny CDS service/entity opisuje kontrakt zbliżony rolą do definicji CDS konsumowanej zdalnie; `CqnService` jest klientem Remote Service i musi zostać jawnie wywołany przez adapter. Nie działa jak lokalny ABAP SQL ani nie uczestniczy automatycznie w lokalnej transakcji H2. CAP nie kopiuje danych do własnej persystencji w tym przepływie.
+
+## Krok 2 — test LIVE i weryfikacja URL / Basic Auth
+
+Kontekst (relacja użytkownika, niezależnie niezweryfikowana przez agenta): Communication Arrangement `ZCS_AINV_H01`, Destination BTP `AINV_H01`, użytkownik `AINV_CAP_USER`, bezpośredni HTTP GET → 200, 4 faktury.
+
+**Wynik końcowy: LIVE PASS (patrz „LIVE” niżej).** Wersja z początku kroku: agent nie miał wtedy poświadczeń.
+
+Zrobiono (lokalnie, bez mockowania `CqnService`):
+- `SapInvoiceRemoteAdapterHttpContractTest` — Spring Boot + prawdziwy CAP RemoteService + Cloud SDK Destination (zarejestrowane programowo, sztuczne dane) wskazujące lokalny serwer HTTP. Zapisane żądania wykazały błędy, które test z mockiem ukrywał:
+  1. URL: `…/0001/AinvoicerH01/ZC_AINV_INV_H` — nadmiarowy segment (pusty `http.service` ignorowany). Poprawka: `http.service` = pełna ścieżka bindingu; wynik `…/0001/ZC_AINV_INV_H`.
+  2. `@requires: 'internal-user'` → „Not authenticated” przy odczycie poza żądaniem użytkownika. Poprawka: adapter wykonuje odczyt w `requestContext().systemUser()`; wywołujący odpowiada za autoryzację.
+  3. Filtr dzieci generował `InvoiceUUID in (…)` (OData 4.01). Brak dowodu wsparcia w RAP V4 H01 → `eq … or`. Uwaga: przy dużej liczbie faktur URL urośnie; wtedy paginacja/`$expand`.
+  4. `cds.remote.services` było w profilu `default`, więc w profilu `test` serwis był lokalny i zwracał pusto. Przeniesiono do dokumentu bez profilu.
+  Po poprawkach: ścieżka poprawna, każde żądanie niesie `Authorization: Basic base64(user:pass)` (dane sztuczne).
+- Zmienna `destinations`: sprawdzono na fałszywym hoście, że działają klucze `name`, `url`, `username`, `password` (opcjonalnie `authentication: BasicAuthentication`) i powstaje nagłówek Basic.
+- `SapInvoiceRemoteAdapterLiveTest` — `@Tag("live-sap")`, `@EnabledIfEnvironmentVariable(AINV_H01_LIVE=true)`; asercje 4 nagłówki, 9 pozycji, 6 referencji, unikalne UUID, zgodność `InvoiceUUID` dzieci. Surefire domyślnie wyłącza grupę (`ainv.excludedGroups=live-sap`).
+
+### Uruchomienie LIVE (PowerShell, hasło nie trafia do repo ani historii)
+
+```powershell
+$pw = Read-Host "AINV_CAP_USER password" -AsSecureString
+$plain = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($pw))
+$env:destinations = (@(@{ name='AINV_H01'; url='https://<HOST-H01-origin>'; username='AINV_CAP_USER'; password=$plain }) | ConvertTo-Json -Compress -AsArray)
+$env:AINV_H01_LIVE = 'true'
+cd cap-java
+mvn -pl srv -am verify '-Dcds.cds.skipVersionCheck=true' '-Dainv.excludedGroups=none' '-Dtest=SapInvoiceRemoteAdapterLiveTest' '-Dsurefire.failIfNoSpecifiedTests=false'
+Remove-Item Env:destinations, Env:AINV_H01_LIVE
+```
+
+`url` = sam origin (schemat + host), bez ścieżki usługi. Wymaga PowerShell 7 dla `-AsArray` (w 5.1 zapakuj jednoelementową tablicę ręcznie: `'[' + … + ']'`).
+
+### Testy
+`mvn clean verify -Dcds.cds.skipVersionCheck=true` — 23 testy PASS (19 OData, 1 H2, 1 mock adaptera, 1 HTTP kontrakt, 1 autoryzacja zdalnego modelu); test LIVE wyłączony. Nie było commitów ani pushy.
+
+Ryzyka: nieznana obsługa `$filter … or` oraz `$select` przez RAP w H01 (na razie tylko test lokalny); `systemUser()` omija autoryzację CAP dla odczytu SAP.
+
+### LIVE — wynik (19:38–19:4x, Europe/Warsaw)
+
+- Próba 1: `BUILD FAILURE`, `ODataDeserializationException: Unable to read OData 4.0 response` przy HTTP 200. Surowa odpowiedź `curl` (Basic Auth) miała `content-type: text/html` i skrypt przekierowujący do `…authentication.eu20.hana.ondemand.com/oauth/authorize` – host `*.abap-web.eu20…` to wejście przeglądarkowe (IAS/XSUAA), nie przyjmuje Basic Auth.
+- Poprawka: `H01_URL` = `https://<uuid>.abap.eu20.hana.ondemand.com`. `curl` zwrócił `application/json` z danymi; poprzednia uwaga w tym dzienniku sugerująca `abap-web` była błędna.
+- Próba 2: `SapInvoiceRemoteAdapterLiveTest` – Tests run: 1, Failures: 0, Errors: 0; `BUILD SUCCESS`. Asercje: 4 nagłówki, 9 pozycji, 6 referencji, 4 unikalne UUID, `InvoiceUUID` dzieci = rodzic. To rzeczywiste wywołanie CAP RemoteService (bez mocka `CqnService`).
+- Narzędzia: `cap-java/run-live-h01.ps1` (bez sekretów) czyta niewersjonowany `cap-java/.env.live` (`.env*` w `.gitignore`).
+- Incydent: podczas diagnostyki błąd powłoki wypisał linię `.env.live` z hasłem `AINV_CAP_USER` do logu sesji agenta. Zalecana rotacja hasła i aktualizacja `.env.live`.
+
