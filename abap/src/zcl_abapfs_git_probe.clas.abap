@@ -1,0 +1,9 @@
+CLASS zcl_abapfs_git_probe DEFINITION
+  PUBLIC
+  FINAL
+  CREATE PRIVATE.
+ENDCLASS.
+
+CLASS zcl_abapfs_git_probe IMPLEMENTATION.
+ENDCLASS.
+
