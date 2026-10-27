@@ -12,7 +12,7 @@ Aktualny stan rozwoju CAP Java i KSeF, roadmapa, dziennik oraz decyzje architekt
 The application enables:
 
 - Connecting SAPUI5 frontend with ABAP RAP and OData v4 backend
-- Simulating invoice data in the custom ABAP tables `ZAINV_INV_H`, `ZAINV_INV_I`, and `ZAINV_INV_REF` (current RAP service exposes only the header)
+- Simulating invoice data in the custom ABAP tables `ZAINV_INV_H`, `ZAINV_INV_I`, and `ZAINV_INV_REF` (runtime RAP OData V4 confirmed Header/Items/References; local abapGit export may lag the live H01 state)
 - Scanning and analyzing invoices with AI (OCR + NLP)
 - Smart filtering using natural language queries
 - Tracking AI queries and prompts with Langfuse
@@ -75,7 +75,7 @@ The application allows users to convert any text (e.g., AI-generated responses) 
 
 ## 📚 Additional Topics Covered
 
-- 🧾 Custom ABAP invoice simulation model (`ZAINV_INV_H/I/REF`); current RAP projection covers the header only
+- 🧾 Custom ABAP invoice simulation model (`ZAINV_INV_H/I/REF`); runtime RAP OData V4 confirmed Header/Items/References; local abapGit export may lag the live H01 state
 - 🧠 Prompt engineering with predefined rules and examples
 - 🧮 `$top` simulation in UI5 via model slicing
 - 🧪 Postman endpoint testing
@@ -114,7 +114,7 @@ The application allows users to convert any text (e.g., AI-generated responses) 
 Aplikacja umożliwia:
 
 - Łączenie SAPUI5 z ABAP RAP i OData v4
-- Symulacja danych faktur w tabelach ABAP `ZAINV_INV_H`, `ZAINV_INV_I` i `ZAINV_INV_REF` (obecny serwis RAP wystawia tylko nagłówek)
+- Symulacja danych faktur w tabelach ABAP `ZAINV_INV_H`, `ZAINV_INV_I` i `ZAINV_INV_REF` (runtime OData V4 potwierdził Header/Items/References; lokalny eksport abapGit może być starszy od H01)
 - Skanowanie i analizę faktur z użyciem AI (OCR + NLP)
 - Inteligentne filtrowanie danych z użyciem języka naturalnego
 - Monitorowanie zapytań i promptów z wykorzystaniem Langfuse
@@ -169,7 +169,7 @@ Aplikacja umożliwia konwersję dowolnego tekstu (np. odpowiedzi AI) na głos o 
 
 ## 📚 Additional Topics Covered
 
-- 🧾 Własny model symulacyjnych faktur ABAP (`ZAINV_INV_H/I/REF`); obecna projekcja RAP obejmuje tylko nagłówek
+- 🧾 Własny model symulacyjnych faktur ABAP (`ZAINV_INV_H/I/REF`); runtime OData V4 potwierdził Header/Items/References, a lokalny eksport abapGit może być starszy od H01
 - 🧠 Prompt engineering z predefiniowanymi regułami i przykładami
 - 🧮 Symulacja `$top` w UI5 przez model slicing
 - 🧪 Testowanie endpointów z Postmanem

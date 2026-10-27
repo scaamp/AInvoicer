@@ -14,7 +14,7 @@ tags: [ainvoicer, abap, rap, cds, odata]
 
 ABAP Environment jest wykorzystywany jako środowisko symulacyjne. Nie zakładaj tabel standardowych S/4HANA takich jak `ACDOCA`, `BKPF`, `BSEG`, `RBKP` czy `VBRK` ani rzeczywistych dokumentów FI/MM/SD. Poprzedni model `ZFI_ACDOCA` został porzucony jako docelowe źródło danych dla integracji CAP. Aktualny eksport ma własne tabele aplikacyjne.
 
-Opis bazowy wynika z plików `abap/src/` w commicie `39ab869` (`abapGit init`, 2026-10-24), a patch kompozycji z `d3dedf4`. **2026-10-25 potwierdzono live aktywację 6 CDS, obu BDEF oraz SRVD w H01 przez MCP.** Pełny wynik runtime pozostaje niepotwierdzony: testy EML przerwał brak aktywnego DCL, a DCL użytkownik odłożył. [Dowody sesji i porównanie](../journal/2026-10-24-abap-rap-composition.md#kontynuacja-live-przez-poprawione-mcp--2026-10-25).
+Opis bazowy wynika z plików `abap/src/` w commicie `39ab869` (`abapGit init`, 2026-10-24), a patch kompozycji z `d3dedf4`. **2026-10-25 potwierdzono live aktywację 6 CDS, obu BDEF oraz SRVD w H01 przez MCP.** Runtime OData V4 potwierdzono 2026-10-27: `$metadata` oraz autoryzowany `$expand` zwróciły Header/Items/References, 4/9/6 i zgodne UUID. Raport użytkownika z 2026-10-26 podaje 6 DCL aktywnych, EML 4/4 PASS i ATC 3 nowych DCL: 0 ustaleń; wyników tych nie powtarzano w tym audycie. [Dowody sesji i porównanie](../journal/2026-10-24-abap-rap-composition.md#kontynuacja-live-przez-poprawione-mcp--2026-10-25).
 
 ## Tabele aplikacyjne
 
@@ -34,7 +34,7 @@ Pliki tabel wskazują `SYSUUID_X16` jako typ kluczy UUID. Klucz nagłówka to `I
 4. **Projection:** `ZC_AINV_INV_H` zachowuje `_BaseEntity` i przekierowuje `_Items` oraz `_References` do projekcji dzieci jako `composition child`. Projekcje dzieci przekierowują `_Parent` do `ZC_AINV_INV_H` jako `parent`.
 5. **Behavior:** root pozostaje managed, z `InvoiceUUID` managed numbering, lock master i ETag `LocalLastChangedAt`. Root umożliwia create-by-association dla obu dzieci. Dzieci mapują tabele `ZAINV_INV_I`/`ZAINV_INV_REF`, używają managed UUID `ItemUUID`/`RefUUID`, lock/authorization dependent by `_Parent` i nie deklarują standardowego `create`. Każde dziecko ma własny `etag master LocalLastChangedAt`: H01 odrzucił ETag dependent przy identycznej nazwie pola audytowego jak w root. Dzieci mogą być aktualizowane i usuwane. Nie dodano draft.
 6. **DCL:** lokalny patch dodaje role dla obu encji interface i projekcji, dziedziczące warunki od rodzica przez `_Parent`. Nie zapewnia to izolacji, ponieważ istniejąca rola root `ZR_AINV_INV_H` ma `where TRUE`; także metoda global authorization w `ZBP_R_AINV_INV_H` jest pusta. Zewnętrzne użycie wymaga skutecznej polityki i testów autoryzacji.
-7. **Usługa:** zachowano binding `ZAPI_AINV_INV_H_O4`; runtime MCP read-only 2026-10-27 potwierdził aktywną publikację, wersję `0001`, protokół OData V4, `$metadata` HTTP 200, entity sets trzech projekcji i nawigacje `_Items` / `_References`. Odczyt autoryzowany z `$expand` potwierdził 4 nagłówki, 9 pozycji, 6 referencji i UUID zgodne z seedem. Dostęp działał przez istniejący same-origin OAuth kontekst ABAP FS; nie ustalono hosta ani konfiguracji BTP Destination/Communication Arrangement CAP.
+7. **Usługa:** zachowano binding `ZAPI_AINV_INV_H_O4`; runtime MCP read-only 2026-10-27 potwierdził aktywną publikację, wersję `0001`, protokół OData V4, `$metadata` HTTP 200, entity sets trzech projekcji i nawigacje `_Items` / `_References`. Odczyt autoryzowany z `$expand` potwierdził 4 nagłówki, 9 pozycji, 6 referencji i UUID zgodne z seedem. Dostęp działał przez istniejący same-origin OAuth kontekst ABAP FS. Osobny live test CAP użył prawdziwego H01 hosta i lokalnej env Destination; CAP na Cloud Foundry z bound Destination Service nie został przetestowany.
 
 Projekcje dzieci dziedziczą provider contract od root; jawne `provider contract TRANSACTIONAL_QUERY` w child z `redirected to parent` jest niedozwolone. Widoki pozycji zachowują `Semantics.quantity.unitOfMeasure: 'UnitCode'`, ale usunięto niedozwolone w view entities `Semantics.unitOfMeasure: true`. Reguła dziedziczenia kontraktu: [SAP ABAP Keyword Documentation](https://help.sap.com/docs/abap-cloud/abap-keywords/cds-ddl-provider-contract).
 
@@ -54,27 +54,28 @@ Model ma wspierać wartości procesu źródłowego `FI_AP`, `FI_AR`, `MM_IV` i `
 
 ## Granica ABAP i CAP Java
 
-ABAP przechowuje symulacyjne dane nagłówków, pozycji i referencji oraz udostępnia je przez API RAP, gdy odpowiednie encje zostaną zaimplementowane i opublikowane. CAP Java ma konsumować zweryfikowany, autoryzowany Remote OData V4 przez CAP Java Remote Services/Destination. CAP pozostaje właścicielem operacji KSeF, statusów procesu, idempotencji, korelacji, audytu i integracji z oficjalnym Java SDK MF.
+ABAP przechowuje symulacyjne dane nagłówków, pozycji i referencji. Runtime OData V4 potwierdził wystawienie Header/Items/References; lokalny eksport abapGit jest starszym snapshotem i nie zastępuje stanu live H01. CAP Java ma konsumować zweryfikowany, autoryzowany Remote OData V4 przez CAP Java Remote Services/Destination. CAP pozostaje właścicielem operacji KSeF, statusów procesu, idempotencji, korelacji, audytu i integracji z oficjalnym Java SDK MF.
 
 Nie używaj bezpośredniego JDBC/SQL do bazy ABAP i nie zakładaj, że encje zdalne łączą się lokalnymi SQL JOIN-ami z CAP CDS.
 
-## Status aktywacji i wymagane weryfikacje
+## Status aktywacji, testów i bezpieczeństwa
 
-CDS/BDEF/SRVD są aktywne w H01. Utworzono i aktywowano `ZCL_AINV_RAP_COMP_TEST` z czterema testami: deep create/RBA, update/delete dzieci, odrzucenie CBA dla nieistniejącego rodzica i kasowanie kompozycji z root. Testy używają EML konsumenta bez `IN LOCAL MODE`, operują w buforze RAP i wykonują `ROLLBACK ENTITIES`, bez trwałego zapisu danych. Ich uruchomienie przerwał dump `ACM_UNEXPECTED_VALUE`: `ZR_AINV_INV_I`, `Access Control Existence: FALSE` przy `#MANDATORY`. Brak zaliczenia testów; błąd wrappera `toFixed` nie stanowi wyniku ABAP Unit.
+- **Runtime OData H01 — LIVE PASS w potwierdzonym zakresie (2026-10-27):** `$metadata` HTTP 200, entity sets Header/Items/References, nawigacje `_Items`/`_References`, autoryzowany `$expand` 4/9/6 oraz zgodne UUID. Potwierdza endpoint i dane w danym kontekście uwierzytelnienia; nie jest testem izolacji DCL ani CAP na Cloud Foundry.
+- **DCL i EML — raport wcześniejszej sesji (2026-10-26), niepowtórzony w audycie:** użytkownik przekazał wynik: 6 DCL aktywnych, `ZCL_AINV_RAP_COMP_TEST` 4/4 ABAP Unit PASS, ATC 3 nowych DCL: 0 ustaleń. Raport jest późniejszy niż dump `ACM_UNEXPECTED_VALUE` z 2026-10-25, wynikający z braku aktywnego DCL `ZR_AINV_INV_I`. Dump pozostaje problemem historycznym.
+- **Ograniczenie dowodu:** lokalne `abap/src/` nie zostało zsynchronizowane po wszystkich zmianach live. Root DCL snapshot ma `where TRUE`, a `GET_GLOBAL_AUTHORIZATIONS` w eksporcie jest pusta. Nie wnioskuj z tego snapshotu o aktywnym stanie H01; nie deklaruj też skutecznej izolacji ani autoryzacji zapisu bez odczytu aktywnych reguł i testów negatywnych.
+- **ATC:** raport 0 ustaleń dotyczy trzech nowych DCL; wcześniejsze 0 ustaleń głównego BDEF to osobny zakres. Nie jest to pełne ATC pakietu ani test bezpieczeństwa.
+- **RAP UPDATE przez CAP:** NOT IMPLEMENTED; model i adapter CAP są read-only.
+- **CAP na Cloud Foundry + bound Destination Service:** NOT TESTED; lokalny CAP LIVE z env `destinations` nie potwierdza tego wdrożenia.
 
-DCL pozostawiono do późniejszego uzupełnienia zgodnie z decyzją użytkownika. Istnieją nieaktywne `ZR_AINV_INV_H`, `ZC_AINV_INV_H`, `ZR_AINV_INV_I`; brakuje `ZR_AINV_INV_REF`, `ZC_AINV_INV_I`, `ZC_AINV_INV_REF`. Próba utworzenia pierwszej brakującej roli zwróciła `Unsupported Media Type`; brak częściowego obiektu potwierdzono odczytem i listą inactive. Nie osłabiono `#MANDATORY` ani nie aktywowano zastanych DCL. ATC głównego BDEF w wariancie `ABAP_CLOUD_DEVELOPMENT_DEFAULT`: 0 ustaleń; nie jest to pełne ATC pakietu ani test bezpieczeństwa.
+Historyczne błędy tworzenia DCL (`Unsupported Media Type`) i testów EML (`ACM_UNEXPECTED_VALUE`, błąd wrappera `toFixed`) pozostają w [dzienniku kompozycji RAP](../journal/2026-10-24-abap-rap-composition.md) oraz [dzienniku ABAP FS v5](../journal/2026-10-26-abapfs-v5-instructions.md).
 
-Po aktywacji wykonaj syntetyczne testy EML: utworzenie root z 2 pozycjami i 1 referencją przez create-by-association, READ BY ASSOCIATION, update/delete dzieci oraz odrzucenie próby zmiany `InvoiceUUID` lub podpięcia do nieistniejącego rodzica. Wymuś test nieautoryzowanego dostępu; obecna polityka `where TRUE` nie spełnia tego kryterium dla produkcji.
+## Pozostałe weryfikacje
 
-W ADT sprawdź `$metadata` i `$expand` istniejącego bindingu OData V4; nie zakładaj URI ani nazw entity sets z lokalnych nazw CDS. Ustal też aktywny status, publikację/release oraz sposób uwierzytelniania.
-
-## Wymagane weryfikacje przed integracją CAP
-
-1. W SAP ADT sprawdź aktywne wersje tabel, CDS, behavior, DCL, service definition i binding.
-2. Ustal rzeczywisty status publikacji/release, adres usługi i wymagany sposób uwierzytelniania.
-3. Pobierz `$metadata`; potwierdź entity sets, klucze, typy, nullable, pola, nawigacje i operacje. Runtime `$metadata` oraz nawigacje zostały potwierdzone przez MCP 2026-10-27; surowy EDMX nie został udostępniony.
-4. Porównaj lokalny patch dzieci z aktywnym i nieaktywnym stanem H01; nie nakładaj go na zmiany nowsze od eksportu `39ab869`.
-5. Autoryzowany read live 4/9/6 przez MCP wykonano 2026-10-27. Pozostaje osobny test odczytu przez CAP Remote Service po skonfigurowaniu BTP Destination/Communication Arrangement; mock CAP nie zastępuje tego testu.
+1. Przy kolejnej zmianie SAP sprawdzić w H01 aktualne active DCL, role i `GET_GLOBAL_AUTHORIZATIONS`; przetestować autoryzowane i nieautoryzowane odczyty/zapisy. `where TRUE` w eksporcie nie zapewnia izolacji.
+2. Jeżeli wymagane, niezależnie powtórzyć ABAP Unit `ZCL_AINV_RAP_COMP_TEST` i ATC odpowiednim wariantem w H01. Raport 4/4 pozostaje relacją użytkownika z 2026-10-26.
+3. Zaktualizować lokalny snapshot przez kontrolowany eksport abapGit po zatwierdzeniu zakresu; nie importować starszych plików do H01.
+4. CAP → RAP UPDATE nie jest zaimplementowane; przed implementacją uzgodnić kontrakt i autoryzację.
+5. CAP na Cloud Foundry z bound Destination Service pozostaje nieprzetestowany.
 
 ## Powiązane źródła
 

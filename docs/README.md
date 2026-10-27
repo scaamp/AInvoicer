@@ -57,7 +57,7 @@ ABAP Environment utrzymuje w tym scenariuszu symulacyjne dane faktur, a CAP ma b
 
 | Katalog | Rola |
 | --- | --- |
-| `abap/` | Lokalny eksport abapGit, starszy od poprawek live H01 z 2026-10-25. CDS/BDEF/SRVD kompozycji aktywne; DCL odłożony, testy EML przerwane brakiem DCL, OData runtime niepotwierdzone. Szczegóły w przewodniku RAP. |
+| `abap/` | Lokalny eksport abapGit jest starszy od późniejszych zmian live H01. Runtime RAP OData V4 Header/Items/References i dane 4/9/6 potwierdzono 2026-10-27. Raport użytkownika z 2026-10-26 podaje 6 DCL aktywnych i EML 4/4 PASS, ale nie powtórzono go w audycie. Eksport Git ma root DCL `where TRUE` i nie dowodzi izolacji/autoryzacji. Szczegóły w przewodniku RAP. |
 | `sapui5/ainvoicer/` | Istniejący frontend SAPUI5 |
 | `node/`, `python/` | Istniejące funkcje AI |
 | `cap-java/` | Rozpoczęty backend CAP Java + Spring Boot |

@@ -51,4 +51,4 @@ CAP utrzymuje własne operacje i metadane KSeF. Akcja OData zapisuje operację, 
 
 ## Status
 
-Zaakceptowany — zapis istniejącej decyzji opisanej w `AGENTS.md`, nie nowa migracja architektury. Implementacja rozpoczęta na `java-cap-ksef`; na dzień 2026-10-23 istnieje szkielet CAP, a SAP Remote Service, SDK i E2E CAP pozostają do wykonania. Bieżące dowody: [STATUS](../STATUS.md); plan: [ROADMAP](../ROADMAP.md).
+Zaakceptowany — zapis istniejącej decyzji opisanej w `AGENTS.md`, nie nowa migracja architektury. Implementacja trwa na `java-cap-ksef`. CAP Domain Model i SAP Remote Service READ są zaimplementowane; lokalny CAP → SAP H01 przez env Destination ma LIVE PASS (2026-10-27). CAP na CF z bound Destination Service nie został przetestowany. KSeF SDK i E2E w CAP pozostają do wykonania. Bieżące dowody: [STATUS](../STATUS.md); plan: [ROADMAP](../ROADMAP.md).
