@@ -48,9 +48,14 @@ Własne API CDS/OData i CRUD nie wchodziły w Phase 1; ich sprawdzenie należy d
 
 ## Phase 3 — SAP Remote Integration
 
+- [x] CAP-03 live H01 preview (2026-10-27): aktywny binding OData V4 `ZAPI_AINV_INV_H_O4` / `0001`; `$metadata` HTTP 200 i encje/nawigacje potwierdzone. Autoryzowany read z `$expand=_Items,_References` zwrócił 4/9/6 i UUID zgodne z seedem. To odczyt przez MCP OAuth, nie przez CAP.
+- [x] Dodano CDS model zewnętrzny, CAP Remote Service Destination `AINV_H01`, read-only adapter CQN, test kontraktu adaptera i blokadę publicznego dostępu do zewnętrznego modelu; `mvn clean verify -Dcds.cds.skipVersionCheck=true` PASS (22 testy).
+- [ ] Import surowego EDMX i sprawdzenie pełnych właściwości CSDL — MCP udostępnił znormalizowany opis runtime `$metadata`, bez surowego XML.
+- [ ] Skonfigurować rzeczywisty BTP Destination/Communication Arrangement i autoryzację CAP→H01; wykonać live odczyt 4/9/6 przez CAP. Nie deklarować LIVE PASS przed tym testem.
+
 - [x] Bootstrap Git/abapGit dla pakietu `ZAINVOICER`: branch `java-cap-ksef`, `.abapgit.xml` wskazuje `/abap/src/`, Folder Logic `FULL`; pierwszy eksport potwierdzony commitem `39ab869`.
 - [x] Inspekcja repo wykazała symulacyjny model tabel `ZAINV_INV_H`, `ZAINV_INV_I`, `ZAINV_INV_REF` i service definition/binding `ZAPI_AINV_INV_H_O4`.
-- [ ] W SAP ADT potwierdzić aktywny service definition/binding, stan publikacji/release, adres, `$metadata`, encje i autoryzację. W pliku bindingu jest rozbieżność `PUBLISHED=true` / `RELEASE_STATE=NOT_RELEASED`; eksport nie rozstrzyga runtime.
+- [x] Weryfikacja runtime przez read-only MCP H01 (2026-10-27): aktywny binding `ZAPI_AINV_INV_H_O4`, wersja `0001`, published=true; `$metadata` HTTP 200, entity sets i nawigacje potwierdzone. Autoryzowany OData `$expand` zwrócił 4/9/6 i oryginalne UUID. MCP nie zwrócił surowego EDMX ani hosta dla konfiguracji CAP Destination.
 - [x] Przygotowano lokalny patch źródeł root/child CDS, behavior, DCL i service definition dla kompozycji Header–Items–References; niepotwierdzony w SAP i bez serializowanych sidecarów nowych obiektów.
 - [x] Diagnostyka tylko do odczytu potwierdziła `recordChanges=false` / `ZLOCAL` dla `ZAINVOICER`; usunięto błędny wymóg transportu. Ustalono poprawny typ tworzenia `DDLS/DF` i odtworzono historyczny komunikat deserializacji. W tamtym etapie nie naprawiano generatora MCP; późniejszy wynik v5 opisano niżej.
 - [x] Zapisano istniejące obiekty kompozycji według `d3dedf4` (2026-10-24); historia: [dziennik edycji](journal/2026-10-24-abap-rap-composition.md#edycja-istniejacych-obiektow-wedlug-d3dedf4--2026-10-24).
@@ -59,15 +64,15 @@ Własne API CDS/OData i CRUD nie wchodziły w Phase 1; ich sprawdzenie należy d
 - [x] ABAP FS 2.12.4 / fix 5: potwierdzono **4/4** nowych klas/CDS w obu pakietach Cloud, brak nowych requestów i poprawne przypisania SAP; uaktualniono instrukcje. `recordChanges=false` pomija selektor, a „Transport requested” wymaga odczytu przypisania. To nie jest pełny test typów ani test ECC. [Dowody i procedura](journal/2026-10-26-abapfs-v5-instructions.md).
 - [x] ABAP-04 — utworzono i aktywowano `ZCL_AINV_TEST_DATA` w H01. Deep EML obejmuje FI_AP, FI_AR, MM_IV i SD_BILL z 9 pozycjami oraz 6 referencjami; diagnostyka bez błędów, ATC bez błędów/ostrzeżeń. [Dziennik](journal/2026-10-26-abap-04-test-data-seed.md).
 - [x] ABAP-04 — użytkownik potwierdził H01 Trial i przekazał log uruchomienia; niezależny ABAP SQL SELECT z CDS potwierdził 4 nagłówki, 9 pozycji, 6 referencji, powiązania po UUID, PLN i zgodność sum.
-- [ ] ABAP-04 — uwierzytelnić odczyt runtime OData `$expand=_Items,_References` oraz wykonać sekwencyjny rerun i potwierdzić brak duplikatów. Brak blokady dla równoległych uruchomień pozostaje ograniczeniem aktywnego modelu.
-- [ ] Uzgodnić wcześniejszą migawkę DCL/EML poniżej z nowszą relacją użytkownika (2026-10-26: 6 DCL aktywnych, EML 4/4 PASS, ATC 3 ról bez ustaleń); nie powtarzać tworzenia istniejących ról. Osobno pozostaje uwierzytelniony test HTTP OData. Ta sesja aktualizuje instrukcje, nie wykonuje nowych testów biznesowych.
+- [x] ABAP-04 — uwierzytelniony runtime OData `$expand=_Items,_References` przez MCP potwierdził 4/9/6 oraz UUID (2026-10-27; szczegóły w [CAP-03](journal/2026-10-27-cap-03-sap-remote-integration.md)).
+- [ ] ABAP-04 — wykonać sekwencyjny rerun i potwierdzić brak duplikatów. Brak blokady dla równoległych uruchomień pozostaje ograniczeniem aktywnego modelu.
+- [ ] Uzgodnić wcześniejszą migawkę DCL/EML poniżej z nowszą relacją użytkownika (2026-10-26: 6 DCL aktywnych, EML 4/4 PASS, ATC 3 ról bez ustaleń); nie powtarzać tworzenia istniejących ról. Runtime HTTP OData został sprawdzony 2026-10-27, ale nie potwierdza skuteczności DCL/izolacji użytkowników.
 - [ ] Uzupełnić/aktywować biznesowe DCL — odłożone decyzją użytkownika. Historyczne `Unsupported Media Type` nie jest wynikiem testu v5 tych ról; istnieją 3 nieaktywne role, brakuje 3 pozostałych. Nie zmieniać `#MANDATORY` dla obejścia testów.
 - [ ] Zaliczyć EML create-by-association, READ BY ASSOCIATION, update/delete, walidację rodzica i test autoryzacji. Aktywna klasa `ZCL_AINV_RAP_COMP_TEST` ma 4 testy bufora RAP z rollback; uruchomienie przerwał dump `ACM_UNEXPECTED_VALUE` dla brakującego aktywnego DCL `ZR_AINV_INV_I`, a wrapper MCP zgłosił błąd `toFixed`.
 - [ ] Po zakończeniu walidacji i osobnym zleceniu wyeksportować stan SAP przez abapGit. Lokalny eksport nadal zawiera 4 starsze źródła CDS/BDEF i nie zawiera nowej klasy testowej; nie importować starego patcha do H01.
-- [ ] Wykonać test `$metadata`, `$expand` oraz autoryzowany odczyt syntetycznej faktury z SAP; osobno zapisać wynik statyczny i live.
-- [ ] Import kontraktu RAP OData V4, konfiguracja CAP Java Remote Service.
-- [ ] Destination / uwierzytelnienie zgodne z faktyczną konfiguracją SAP/BTP.
-- [ ] Test adaptera oraz autoryzowany odczyt syntetycznych danych faktury z SAP; osobne wyniki mock i live.
+- [x] Wykonać runtime `$metadata`, `$expand` i autoryzowany odczyt syntetycznych danych z SAP przez MCP; wynik live oddzielono od testów CAP/mocks w [CAP-03](journal/2026-10-27-cap-03-sap-remote-integration.md).
+- [x] Dodać model zdalny CAP CDS na podstawie runtime kontraktu, konfigurację CAP Java Remote Service i read-only adapter CQN. To model opracowany z normalizowanych metadanych, nie import surowego EDMX.
+- [ ] Skonfigurować rzeczywisty BTP Destination/Communication Arrangement i autoryzację CAP→H01, a potem wykonać odczyt live przez CAP (oddzielnie od potwierdzonego odczytu MCP i testu mock).
 
 ABAP Environment jest tu źródłem symulacyjnych danych aplikacyjnych; nie zakładaj standardowych tabel/dokumentów S/4HANA ani modelu `ZFI_ACDOCA`. Bez bezpośredniego SQL do bazy ABAP i bez pozornych JOIN-ów z lokalną bazą CAP. Szczegóły: [model RAP](guides/ABAP_RAP_INVOICE_MODEL.md) i [workflow abapGit](guides/ABAPGIT_WORKFLOW.md).
 

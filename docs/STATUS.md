@@ -1,6 +1,6 @@
 ---
 title: "AInvoicer — aktualny stan"
-date: 2026-10-26
+date: 2026-10-27
 type: status
 status: w-trakcie
 tags: [ainvoicer, cap-java, status]
@@ -8,11 +8,13 @@ tags: [ainvoicer, cap-java, status]
 
 # Stan projektu
 
+[Dziennik CAP-03 — integracja SAP H01](journal/2026-10-27-cap-03-sap-remote-integration.md)
+
 [Project Home](README.md) · [Roadmapa](ROADMAP.md) · [Workflow abapGit](guides/ABAPGIT_WORKFLOW.md) · [Model RAP faktur](guides/ABAP_RAP_INVOICE_MODEL.md) · [Dziennik próby tworzenia ABAP FS](journal/2026-10-25-abapfs-create-probe.md) · [Dziennik kompozycji RAP](journal/2026-10-24-abap-rap-composition.md) · [Dziennik pierwszego eksportu](journal/2026-10-24-abapgit-rap-initial-export.md) · [Dziennik bootstrapu](journal/2026-10-23-cap-java-bootstrap.md) · [Weryfikacja Phase 1](journal/2026-10-24-cap-java-bootstrap-verification.md) · [Model KsefOperations](journal/2026-10-24-ksef-operations-model.md) · [Usługa i CRUD OData](journal/2026-10-24-ksef-service-definition.md) · [Walidacja i autoryzacja KsefOperations](journal/2026-10-24-ksef-operations-validation-authorization.md)
 
 ## Current Phase
 
-Phase 2 — CAP Domain Model. `KsefOperations`, `KsefInvoices` i `KsefService` działają przez OData V4/H2. Faktury są tylko do odczytu dla `KsefOperator` w zakresie `taxpayerNips`; pola statusu i numeru KSeF są tylko do odczytu, referencje XML/UPO i nawigacja do faktury są wyłączone z publicznego kontraktu. Testy integracyjne Spring Security + CAP + OData + H2 potwierdzają filtrację oraz blokadę zapisu. H2 nie generuje fizycznego FK dla tej asocjacji, dlatego backendowa ścieżka zapisująca relację musi sprawdzić zgodność NIP. Nie obejmuje to IAS/XSUAA, SAP Remote Service ani KSeF.
+Phase 3 — SAP Remote Integration (częściowo). Model CAP domeny działa przez OData V4/H2. Zweryfikowano aktywny binding H01 i autoryzowany runtime `$metadata` oraz `$expand`: 4 nagłówki, 9 pozycji, 6 referencji. Dodano model zdalny CDS, konfigurację CAP Remote Service/Destination i adapter CQN read-only; testy CAP/H2, kontraktu adaptera oraz blokady publicznego dostępu do zdalnego modelu przechodzą. Nie wykonano odczytu przez CAP z Destination SAP BTP: nie potwierdzono hosta/Communication Arrangement ani konfiguracji Destination dla aplikacji. Szczegóły: [CAP-03](journal/2026-10-27-cap-03-sap-remote-integration.md). IAS/XSUAA i KSeF pozostają poza zakresem.
 
 ## Architecture
 
@@ -20,6 +22,7 @@ SAPUI5 → OData V4 → CAP Java + Spring Boot → Java SDK KSeF w jednej JVM. S
 
 ## Completed
 
+- 2026-10-27: CAP-03 — aktywny binding `ZAPI_AINV_INV_H_O4`, wersja `0001`, opublikowany (`published=true`), odpowiedział na `$metadata` HTTP 200. Runtime kontrakt zawiera entity sets `ZC_AINV_INV_H`, `ZC_AINV_INV_I`, `ZC_AINV_INV_REF`, klucze UUID i nawigacje `_Items`, `_References`. Autoryzowany podgląd OData V4 zwrócił 4/9/6, bez kolejnych stron; UUID z danych zachowują wartości seeda. W CAP dodano zdalny model CDS, konfigurację Destination `AINV_H01`, adapter CQN, test kontraktu oraz test autoryzacji endpointu zewnętrznego. Pełny `mvn clean verify -Dcds.cds.skipVersionCheck=true`: 22 testy PASS. CAP→BTP Destination→H01 nie było testowane; MCP dostarczył znormalizowany opis `$metadata`, nie surowy EDMX. [Dziennik CAP-03](journal/2026-10-27-cap-03-sap-remote-integration.md).
 - 2026-10-26: domknięto aktualizację `AGENTS.md`, Skilla ABAP/RAP i workflow abapGit do zweryfikowanego ABAP FS **2.12.4 / fix 5**. Test akceptacyjny z 2026-10-25: klasa + CDS w obu pakietach Cloud, **4/4 PASS**, bez nowych requestów i aktywacji. Dwa obiekty lokalne bez transportu, dwa w `ZAINVOICER_DEV` z potwierdzonym przypisaniem do wcześniej zatwierdzonego requestu. [Dowody i ograniczenia](journal/2026-10-26-abapfs-v5-instructions.md). Nie jest to test biznesowych DCL/RAP.
 - 2026-10-26: ABAP-04 — klasa `ZCL_AINV_TEST_DATA` aktywowana w H01 / `ZAINVOICER`. Użytkownik potwierdził H01 Trial i przekazał log uruchomienia: 4 UUID nagłówków, 9 pozycji, 6 referencji i komunikat po `COMMIT ENTITIES`. Następnie własnym ABAP SQL odczytem CDS `ZR_AINV_INV_H`, `ZR_AINV_INV_I`, `ZR_AINV_INV_REF` potwierdzono 4 nagłówki, pozycje 2/3/2/2, referencje 1/1/2/2, powiązania po InvoiceUUID, walutę PLN i zgodność sum. Rerun oraz HTTP OData `$expand` pozostają do sprawdzenia. [Dziennik ABAP-04](journal/2026-10-26-abap-04-test-data-seed.md).
 - Istnieją `AGENTS.md`, `CLAUDE.md` i baza wiedzy `docs/`.
@@ -37,9 +40,11 @@ SAPUI5 → OData V4 → CAP Java + Spring Boot → Java SDK KSeF w jednej JVM. S
 
 ## In Progress
 
-- ABAP-04: log użytkownika potwierdza wynik EML, a niezależny SELECT z CDS potwierdził trwałe rekordy i relacje Header → Items/References: 4/9/6. Runtime OData `$expand` i rerun nie zostały wykonane. Kontrola numerów pomija cały seed przy znalezieniu choć jednego numeru, więc częściowy zestaw wymaga ręcznego uzgodnienia. Nie zabezpiecza przed równoległymi uruchomieniami; `InvoiceNumber` nie ma ograniczenia UNIQUE.
+- CAP-03: kod Remote Service i adapter jest gotowy; adapter sprawdzono na kontrolowanym `CqnService`, nie na live Destination. Brakuje potwierdzonego hosta i uwierzytelnienia Destination/Communication Arrangement dla procesu CAP. Odczyt H01 przez MCP OAuth preview jest osobnym wynikiem live OData. Narzędzie MCP nie zwróciło surowego EDMX; CDS opracowano z runtime metadanych, więc nie należy tego opisywać jako import pliku EDMX.
 
-- Nowsza relacja użytkownika (2026-10-26, wklejony raport innego Codexa): wszystkie 6 DCL aktywne, EML **4/4 PASS**, ATC 3 nowych ról: 0 ustaleń. W tej aktualizacji instrukcji nie powtarzano tych testów live. Poniższy opis odłożonych DCL/dumpu zachowuje wcześniejszą migawkę; wymaga uzgodnienia z nowym raportem przed kolejną zmianą biznesową. Uwierzytelnione HTTP `$metadata`/`$expand` nadal niepotwierdzone: czytnik ADT odrzucił URL, a automatyzacja przeglądarki miała timeout. Proponowany OData HTTP Executor adresuje tę lukę, ale nie jest zaimplementowany w v5.
+- ABAP-04: log użytkownika potwierdza wynik EML, niezależny SELECT z CDS i runtime OData `$expand` potwierdziły trwałe rekordy Header → Items/References: 4/9/6. Sekwencyjny rerun nie został wykonany. Kontrola numerów pomija cały seed przy znalezieniu choć jednego numeru, więc częściowy zestaw wymaga ręcznego uzgodnienia. Nie zabezpiecza przed równoległymi uruchomieniami; `InvoiceNumber` nie ma ograniczenia UNIQUE.
+
+- Nowsza relacja użytkownika (2026-10-26, wklejony raport innego Codexa): wszystkie 6 DCL aktywne, EML **4/4 PASS**, ATC 3 nowych ról: 0 ustaleń. Te testy live nie były powtarzane w CAP-03. Wcześniejsza migawka DCL/dumpu wymaga uzgodnienia z nowszym raportem przed kolejną zmianą biznesową. Uwierzytelnione HTTP `$metadata`/`$expand` zostały później potwierdzone 2026-10-27; test nie potwierdza skuteczności DCL.
 - SAP H01 — 2026-10-25: przez poprawione MCP utworzono `ZR_AINV_INV_REF`, `ZC_AINV_INV_I`, `ZC_AINV_INV_REF`; `ZR_AINV_INV_I` już istniał. Aktywne są wszystkie 6 CDS, oba BDEF oraz SRVD `ZAPI_AINV_INV_H_O4`. Usunięto niedozwolone `Semantics.unitOfMeasure` z widoków pozycji, jawny provider contract z projekcji dzieci i zastąpiono ETag dependent własnym `etag master LocalLastChangedAt` dzieci; root zachowuje ETag, numbering i lock master. ATC głównego BDEF: 0 ustaleń. Aktywna klasa `ZCL_AINV_RAP_COMP_TEST` zawiera 4 testy EML, lecz wykonanie przerwał dump braku aktywnego DCL; wrapper MCP dodatkowo zgłosił błąd `toFixed`. DCL odłożono na wyraźną decyzję użytkownika. Szczegóły: [kontynuacja live](journal/2026-10-24-abap-rap-composition.md#kontynuacja-live-przez-poprawione-mcp--2026-10-25).
 - Lokalna konsola H2 działa pod `/h2-console` w profilu `default`, z ograniczeniem dostępu H2 do localhost. Test połączenia konsoli do jawnego Spring datasource zwrócił `Test successful`; OData odczytuje tabelę, obecnie pustą po restarcie bazy in-memory. SQL z przeglądarki nie został jeszcze wykonany.
 - Phase 2 — model i odczyt `KsefInvoices` ukończone lokalnie. Pozostaje ustalenie backendowej ścieżki tworzącej relację i wymuszającej tę samą wartość NIP w warunkach H2, który nie ma FK dla asocjacji.
@@ -50,16 +55,20 @@ SAPUI5 → OData V4 → CAP Java + Spring Boot → Java SDK KSeF w jednej JVM. S
 
 ## Blockers
 
-- ABAP-02: brak aktywnych DCL dzieci przy `authorizationCheck: #MANDATORY` blokuje EML; dump `ACM_UNEXPECTED_VALUE` wskazał `ZR_AINV_INV_I`, `Access Control Existence: FALSE`. W poprzedniej próbie `DCLS/DL` zwracało `Unsupported Media Type`; nie jest to bieżący test v5. Użytkownik odłożył biznesowe DCL; istniejące DCL root/projection/item pozostawiono inactive, trzech pozostałych brakuje. Nie osłabiano autoryzacji. OData `$metadata`/`$expand` niepotwierdzone: narzędzie odczytu obiektów odrzuca runtime URL jako `Invalid Object URL`.
+- CAP-03 LIVE przez CAP: brak zweryfikowanej konfiguracji SAP BTP Destination/Communication Arrangement dla aplikacji CAP (host i metoda uwierzytelnienia). H01 MCP podgląd działa przez istniejący same-origin ADT OAuth i nie udostępnia tych ustawień. Wymagane jest skonfigurowanie `AINV_H01` w środowisku CAP oraz autoryzowany test CQN z CAP; bez tego brak LIVE PASS CAP→H01. Surowy EDMX nie został zwrócony przez narzędzie metadanych.
+
+- ABAP-02: w migawce z 2026-10-25 brak aktywnych DCL dzieci przy `authorizationCheck: #MANDATORY` blokował EML; dump `ACM_UNEXPECTED_VALUE` wskazał `ZR_AINV_INV_I`, `Access Control Existence: FALSE`. Nowsza relacja użytkownika z 2026-10-26 podaje 6 DCL aktywnych i EML 4/4 PASS; przed następną zmianą biznesową porównać z bieżącym SAP. Runtime `$metadata` i `$expand` zostały potwierdzone 2026-10-27, ale test nie ocenia izolacji DCL/tenantów.
 - SAP RAP / ABAP FS: historyczny `Unsupported Media Type` i myląca informacja „local” z [próby starszej wersji](journal/2026-10-25-abapfs-create-probe.md) nie są aktualnym ogólnym blokerem v5. Test v5 potwierdził tworzenie klasy/CDS i transporty w obu pakietach Cloud. Dalsze zmiany biznesowe nadal wymagają sprawdzenia aktualnego pakietu/requestu i zakresu zadania; nie ponawiać historycznych prób w ciemno. Nie potwierdzono pełnego testu 23 typów na v5 ani ECC.
-- Poprzedni `NoSuchFileException: srv/target/classes/application.yaml` nie odtworzono. Zwykły Maven przebieg zatrzymuje się na weryfikacji wersji CDS przez proces potomny (`spawn EPERM`); build z `-Dcds.cds.skipVersionCheck=true` przeszedł.
+- Poprzedni `NoSuchFileException: srv/target/classes/application.yaml` nie odtworzono. Zwykłe `mvn clean verify` zatrzymuje się przed testami, bo kontrola `cds version` zgłasza `Required @sap/cds-dk not installed`, mimo że raportuje lokalne `@sap/cds-dk 10.2.0`; `-Dcds.cds.skipVersionCheck=true` pozwala kontynuować i pełny build/test przechodzi.
 
 ## Next Steps
 
-0. Dokończyć ABAP-04: zweryfikować zapisy przez uwierzytelniony RAP/OData `$expand=_Items,_References`, a następnie wykonać sekwencyjny rerun i potwierdzić pominięcie istniejących numerów bez duplikatów.
-1. Dodać zaufaną ścieżkę aplikacyjną do łączenia operacji z fakturą, walidującą zgodność NIP przed zapisem; nie udostępniać powiązania przez publiczne OData.
-2. Po wznowieniu zakresu DCL utworzyć brakujące role `ZR_AINV_INV_REF`, `ZC_AINV_INV_I`, `ZC_AINV_INV_REF`, porównać i aktywować wszystkie wymagane DCL; następnie uruchomić `ZCL_AINV_RAP_COMP_TEST`. DCL pozostaje obecnie odłożony decyzją użytkownika.
-3. Przetestować autoryzowane OData `$metadata`/`$expand` pod adresem odczytanym z bindingu; sprawdzić izolację i zapis/persystencję. Dopiero po walidacji oraz osobnym zleceniu wyeksportować zmiany abapGit; bez automatycznego pull przy brudnym checkout.
+0. CAP-03: uzyskać host i metodę uwierzytelnienia CAP→H01, skonfigurować Destination `AINV_H01`, uruchomić adapter z CAP i potwierdzić live 4/9/6 oraz UUID. Pobrać surowy EDMX z runtime HTTP, jeżeli będzie dostępny.
+
+2. Dokończyć ABAP-04: wykonać sekwencyjny rerun i potwierdzić pominięcie istniejących numerów bez duplikatów; runtime RAP/OData `$expand` jest potwierdzony 2026-10-27.
+3. Dodać zaufaną ścieżkę aplikacyjną do łączenia operacji z fakturą, walidującą zgodność NIP przed zapisem; nie udostępniać powiązania przez publiczne OData.
+4. Po wznowieniu zakresu DCL porównać bieżące role w SAP z relacją użytkownika, uruchomić wymagane testy izolacji oraz `ZCL_AINV_RAP_COMP_TEST`; DCL pozostaje odłożony decyzją użytkownika.
+5. Po walidacji i osobnym zleceniu wyeksportować zmiany abapGit; bez automatycznego pull przy brudnym checkout.
 
 Dla narzędzi agentowych: w następnej sesji Claude Code uruchomić `/reload-skills`, sprawdzić trzy komendy `/ainvoicer-*` i odczyt kanonicznych plików; osobno potwierdzić automatyczny dobór w czterech scenariuszach z dziennika.
 

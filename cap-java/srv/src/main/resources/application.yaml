@@ -14,3 +14,13 @@ spring:
     settings.web-allow-others: false
 cds:
   data-source.auto-config.enabled: false
+  remote.services:
+    AinvoicerH01:
+      model: AinvoicerH01
+      type: odata-v4
+      destination:
+        name: AINV_H01
+      http:
+        # Destination URL wskazuje origin H01; ścieżka została odczytana z aktywnego bindingu.
+        suffix: /sap/opu/odata4/sap/zapi_ainv_inv_h_o4/srvd_a2x/sap/zapi_ainv_inv_h_o4/0001/
+        service: ""

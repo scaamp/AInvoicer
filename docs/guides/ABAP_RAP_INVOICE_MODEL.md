@@ -34,7 +34,7 @@ Pliki tabel wskazują `SYSUUID_X16` jako typ kluczy UUID. Klucz nagłówka to `I
 4. **Projection:** `ZC_AINV_INV_H` zachowuje `_BaseEntity` i przekierowuje `_Items` oraz `_References` do projekcji dzieci jako `composition child`. Projekcje dzieci przekierowują `_Parent` do `ZC_AINV_INV_H` jako `parent`.
 5. **Behavior:** root pozostaje managed, z `InvoiceUUID` managed numbering, lock master i ETag `LocalLastChangedAt`. Root umożliwia create-by-association dla obu dzieci. Dzieci mapują tabele `ZAINV_INV_I`/`ZAINV_INV_REF`, używają managed UUID `ItemUUID`/`RefUUID`, lock/authorization dependent by `_Parent` i nie deklarują standardowego `create`. Każde dziecko ma własny `etag master LocalLastChangedAt`: H01 odrzucił ETag dependent przy identycznej nazwie pola audytowego jak w root. Dzieci mogą być aktualizowane i usuwane. Nie dodano draft.
 6. **DCL:** lokalny patch dodaje role dla obu encji interface i projekcji, dziedziczące warunki od rodzica przez `_Parent`. Nie zapewnia to izolacji, ponieważ istniejąca rola root `ZR_AINV_INV_H` ma `where TRUE`; także metoda global authorization w `ZBP_R_AINV_INV_H` jest pusta. Zewnętrzne użycie wymaga skutecznej polityki i testów autoryzacji.
-7. **Usługa:** zachowano binding `ZAPI_AINV_INV_H_O4`; aktywny SRVD eksponuje trzy projekcje. Odczyt bindingu H01: `published=true`, wersja `0001`, `NOT_RELEASED`. URL usługi odczytany z ADT: `/sap/opu/odata4/sap/zapi_ainv_inv_h_o4/srvd_a2x/sap/zapi_ainv_inv_h_o4/0001/`. Nie pobrano runtime `$metadata` ani `$expand`; MCP `get_object_by_uri` odrzuca URL OData jako `Invalid Object URL`.
+7. **Usługa:** zachowano binding `ZAPI_AINV_INV_H_O4`; runtime MCP read-only 2026-10-27 potwierdził aktywną publikację, wersję `0001`, protokół OData V4, `$metadata` HTTP 200, entity sets trzech projekcji i nawigacje `_Items` / `_References`. Odczyt autoryzowany z `$expand` potwierdził 4 nagłówki, 9 pozycji, 6 referencji i UUID zgodne z seedem. Dostęp działał przez istniejący same-origin OAuth kontekst ABAP FS; nie ustalono hosta ani konfiguracji BTP Destination/Communication Arrangement CAP.
 
 Projekcje dzieci dziedziczą provider contract od root; jawne `provider contract TRANSACTIONAL_QUERY` w child z `redirected to parent` jest niedozwolone. Widoki pozycji zachowują `Semantics.quantity.unitOfMeasure: 'UnitCode'`, ale usunięto niedozwolone w view entities `Semantics.unitOfMeasure: true`. Reguła dziedziczenia kontraktu: [SAP ABAP Keyword Documentation](https://help.sap.com/docs/abap-cloud/abap-keywords/cds-ddl-provider-contract).
 
@@ -72,9 +72,9 @@ W ADT sprawdź `$metadata` i `$expand` istniejącego bindingu OData V4; nie zak�
 
 1. W SAP ADT sprawdź aktywne wersje tabel, CDS, behavior, DCL, service definition i binding.
 2. Ustal rzeczywisty status publikacji/release, adres usługi i wymagany sposób uwierzytelniania.
-3. Pobierz `$metadata`; potwierdź entity sets, klucze, typy, nullable, pola, nawigacje i operacje.
+3. Pobierz `$metadata`; potwierdź entity sets, klucze, typy, nullable, pola, nawigacje i operacje. Runtime `$metadata` oraz nawigacje zostały potwierdzone przez MCP 2026-10-27; surowy EDMX nie został udostępniony.
 4. Porównaj lokalny patch dzieci z aktywnym i nieaktywnym stanem H01; nie nakładaj go na zmiany nowsze od eksportu `39ab869`.
-5. Wykonaj autoryzowany odczyt syntetycznych danych, a dopiero potem skonfiguruj CAP Remote Service. Wyniki inspekcji repo, mocków i testu live zapisuj osobno.
+5. Autoryzowany read live 4/9/6 przez MCP wykonano 2026-10-27. Pozostaje osobny test odczytu przez CAP Remote Service po skonfigurowaniu BTP Destination/Communication Arrangement; mock CAP nie zastępuje tego testu.
 
 ## Powiązane źródła
 

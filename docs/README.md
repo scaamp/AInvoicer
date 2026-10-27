@@ -14,6 +14,7 @@ AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijan
 
 - [STATUS — aktualny stan i najbliższe kroki](STATUS.md).
 - [ROADMAP — plan rozwoju](ROADMAP.md).
+- [Dziennik: CAP-03 — integracja SAP H01](journal/2026-10-27-cap-03-sap-remote-integration.md).
 - [Dziennik: bootstrap CAP Java i utworzenie bazy wiedzy](journal/2026-10-23-cap-java-bootstrap.md).
 - [Dziennik: weryfikacja Phase 1 CAP Java Bootstrap](journal/2026-10-24-cap-java-bootstrap-verification.md).
 - [Dziennik: minimalny model CDS KsefOperations](journal/2026-10-24-ksef-operations-model.md).
