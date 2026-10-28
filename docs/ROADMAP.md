@@ -1,6 +1,6 @@
 ---
 title: "AInvoicer — plan rozwoju"
-date: 2026-10-27
+date: 2026-10-28
 type: roadmap
 status: aktywny
 tags: [ainvoicer, roadmap, cap-java, ksef]
@@ -50,9 +50,13 @@ Własne API CDS/OData i CRUD nie wchodziły w Phase 1; ich sprawdzenie należy d
 
 Statusy wskazują środowisko i zakres dowodu: lokalny CAP LIVE nie oznacza CAP na Cloud Foundry.
 
+- [x] **CAP-04B (2026-10-28): SAP RAP `ApplyKsefResult` aktywna w H01.** OUTBOUND/TEST, cztery readonly pola, CAS po blokadzie, wyniki idempotencji/konfliktów, odrębne prawa akcji i CRUD. EML 18/18, prototyp blokowania 7/7 (w tym root enqueue między sesjami), ATC dziesięciu obiektów kontraktu 0 ustaleń, surowy runtime EDMX HTTP200. Uprawnienie bez nadania. Bez HTTP WRITE/commit i pełnego testu dwóch równoległych zapisów. [Dowody](journal/2026-10-28-cap-04b-rap-write-contract.md), [ADR-0002](decisions/ADR-0002-sap-ksef-result-write-contract.md).
+- [ ] **CAP-04C — NIE ROZPOCZĘTO:** CAP Java Write Adapter, interpretacja `Outcome`, precyzyjna wersja, trwały worker/outbox, retry i historia.
+- [ ] **CAP-04D — WYMAGA OSOBNEJ ZGODY:** ograniczone nadanie ACTVT16/NIP/CompanyCode, HTTP WRITE na uzgodnionych danych, persisted ETag/no-op, testy prawdziwym principalem i pełne równoległe zapisy akcji.
 - [x] CAP-03 live H01 preview (2026-10-27): aktywny binding OData V4 `ZAPI_AINV_INV_H_O4` / `0001`; `$metadata` HTTP 200 i encje/nawigacje potwierdzone. Autoryzowany read z `$expand=_Items,_References` zwrócił 4/9/6 i UUID zgodne z seedem. To odczyt przez MCP OAuth, nie przez CAP.
 - [x] Dodano CDS model zewnętrzny, CAP Remote Service Destination `AINV_H01`, read-only adapter CQN, test kontraktu adaptera i blokadę publicznego dostępu do zewnętrznego modelu; `mvn clean verify -Dcds.cds.skipVersionCheck=true` PASS (22 testy).
-- [ ] Import surowego EDMX i sprawdzenie pełnych właściwości CSDL — MCP udostępnił znormalizowany opis runtime `$metadata`, bez surowego XML.
+- [x] CAP-04B: odczyt rzeczywistego surowego EDMX przez HTTP GET; akcja publiczna, parametry, wynik i readonly pól potwierdzone. Nie importowano modelu do CAP.
+- [ ] Import/aktualizacja modelu CAP z pełnego EDMX w zakresie CAP-04C; istniejący adapter pozostaje read-only.
 - [x] CAP-03 krok 2 (2026-10-27): lokalny test HTTP (fałszywy serwer, **nie LIVE**) przez prawdziwy CAP RemoteService + Cloud SDK Destination potwierdził poprawny URL i Basic Authentication; naprawiono 3 błędy (dodatkowy segment `AinvoicerH01/` w URL, `@requires: internal-user` blokujące odczyt bez użytkownika, filtr `in`). Dodano opcjonalny test LIVE (`@Tag("live-sap")`, domyślnie wyłączony).
 - [x] **CAP → SAP H01 READ: LIVE PASS (2026-10-27), lokalny proces CAP + lokalna Destination.** `SapInvoiceRemoteAdapterLiveTest`: 1 test, 0 failures, 0 errors, `BUILD SUCCESS`; 4 nagłówki, 9 pozycji, 6 referencji, UUID zgodne. Destination przekazano przez env `destinations` z Basic Auth. To nie jest CAP na CF ani BTP Destination Service. Historia pierwszego IAS redirectu i błędów technicznych pozostaje w [dzienniku](journal/2026-10-27-cap-03-sap-remote-integration.md).
 
@@ -70,13 +74,13 @@ Statusy wskazują środowisko i zakres dowodu: lokalny CAP LIVE nie oznacza CAP 
 - [x] ABAP-04 — uwierzytelniony runtime OData `$expand=_Items,_References` przez MCP potwierdził 4/9/6 oraz UUID (2026-10-27; szczegóły w [CAP-03](journal/2026-10-27-cap-03-sap-remote-integration.md)).
 - [ ] ABAP-04 — wykonać sekwencyjny rerun i potwierdzić brak duplikatów. Brak blokady dla równoległych uruchomień pozostaje ograniczeniem aktywnego modelu.
 - [x] DCL/EML — **wynik według raportu użytkownika z 2026-10-26, niepowtórzony w tym audycie:** 6 DCL aktywnych; `ZCL_AINV_RAP_COMP_TEST` 4/4 ABAP Unit PASS; ATC trzech nowych DCL: 0 ustaleń. Historyczny dump `ACM_UNEXPECTED_VALUE`, brakujące role i `Unsupported Media Type` pozostają w dziennikach jako wcześniejszy stan/problemy.
-- [ ] **NOT TESTED:** ponownie sprawdzić live bieżący stan DCL/EML i ATC w H01 przed zmianą biznesową. Runtime `$metadata`/`$expand` 4/9/6 nie testuje izolacji użytkowników/podatników.
-- [ ] **NOT VERIFIED:** określić i przetestować politykę izolacji DCL oraz global authorization dla zapisu. Eksport ma root DCL `where TRUE`, a `GET_GLOBAL_AUTHORIZATIONS` jest pusta; nie deklarować bezpieczeństwa na podstawie samej aktywacji DCL.
-- [ ] Po zakończeniu walidacji i osobnym zleceniu wyeksportować stan SAP przez abapGit. Lokalny eksport nadal zawiera 4 starsze źródła CDS/BDEF i nie zawiera nowej klasy testowej; nie importować starego patcha do H01.
+- [x] CAP-04B: odczyt live DCL i implementacji przed zmianą; wdrożono i przetestowano global/instance authorization oraz prechecks zapisu. Szczegółowy zakres testów EML/ATC w dzienniku; historycznego testu kompozycji nie odtwarzano.
+- [ ] **NOT VERIFIED:** polityka izolacji odczytu DCL per NIP. Root `where TRUE` pozostawiono; aktywacja DCL i testy zapisu nie potwierdzają izolacji odczytu.
+- [ ] Po osobnym zleceniu wyeksportować stan SAP przez abapGit. Lokalny snapshot jest starszy od aktywnego CAP-04B i obiektów autoryzacji/prototypów; nie importować starszego patcha do H01.
 - [x] Wykonać runtime `$metadata`, `$expand` i autoryzowany odczyt syntetycznych danych z SAP przez MCP; wynik live oddzielono od testów CAP/mocks w [CAP-03](journal/2026-10-27-cap-03-sap-remote-integration.md).
 - [x] Dodać model zdalny CAP CDS na podstawie runtime kontraktu, konfigurację CAP Java Remote Service i read-only adapter CQN. To model opracowany z normalizowanych metadanych, nie import surowego EDMX.
 - [ ] **NOT TESTED:** zweryfikować CAP → SAP H01 READ po wdrożeniu CAP na Cloud Foundry z przypiętą Destination Service. Lokalny test z env `destinations` tego nie potwierdza.
-- [ ] **NOT IMPLEMENTED:** CAP → RAP UPDATE; obecny model i adapter są read-only.
+- [ ] **NOT IMPLEMENTED:** wywołanie zapisu CAP → RAP (CAP-04C); istniejący model i adapter CAP są read-only, mimo aktywnej akcji SAP CAP-04B.
 
 ABAP Environment jest tu źródłem symulacyjnych danych aplikacyjnych; nie zakładaj standardowych tabel/dokumentów S/4HANA ani modelu `ZFI_ACDOCA`. Bez bezpośredniego SQL do bazy ABAP i bez pozornych JOIN-ów z lokalną bazą CAP. Szczegóły: [model RAP](guides/ABAP_RAP_INVOICE_MODEL.md) i [workflow abapGit](guides/ABAPGIT_WORKFLOW.md).
 

@@ -14,6 +14,8 @@ AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijan
 
 - [STATUS — aktualny stan i najbliższe kroki](STATUS.md).
 - [ROADMAP — plan rozwoju](ROADMAP.md).
+- [Dziennik: CAP-04B — kontrakt zapisu wyniku KSeF w SAP RAP](journal/2026-10-28-cap-04b-rap-write-contract.md).
+- [ADR-0002 — statyczna akcja z blokowaną akcją instancyjną, CAS i autoryzacja](decisions/ADR-0002-sap-ksef-result-write-contract.md).
 - [Dziennik: CAP-03 — integracja SAP H01](journal/2026-10-27-cap-03-sap-remote-integration.md).
 - [Dziennik: bootstrap CAP Java i utworzenie bazy wiedzy](journal/2026-10-23-cap-java-bootstrap.md).
 - [Dziennik: weryfikacja Phase 1 CAP Java Bootstrap](journal/2026-10-24-cap-java-bootstrap-verification.md).
@@ -57,7 +59,7 @@ ABAP Environment utrzymuje w tym scenariuszu symulacyjne dane faktur, a CAP ma b
 
 | Katalog | Rola |
 | --- | --- |
-| `abap/` | Lokalny eksport abapGit jest starszy od późniejszych zmian live H01. Runtime RAP OData V4 Header/Items/References i dane 4/9/6 potwierdzono 2026-10-27. Raport użytkownika z 2026-10-26 podaje 6 DCL aktywnych i EML 4/4 PASS, ale nie powtórzono go w audycie. Eksport Git ma root DCL `where TRUE` i nie dowodzi izolacji/autoryzacji. Szczegóły w przewodniku RAP. |
+| `abap/` | Eksport abapGit jest starszy od live H01. CAP-04B (2026-10-28): aktywna akcja `ApplyKsefResult`, readonly pól i autoryzacja zapisu, EML 18/18, prototyp 7/7, ATC kontraktu 0 ustaleń, runtime EDMX HTTP200. Bez HTTP WRITE/commit i bez nadania prawa. Root DCL `where TRUE` nie zapewnia izolacji odczytu. Szczegóły w przewodniku i dzienniku CAP-04B. |
 | `sapui5/ainvoicer/` | Istniejący frontend SAPUI5 |
 | `node/`, `python/` | Istniejące funkcje AI |
 | `cap-java/` | Rozpoczęty backend CAP Java + Spring Boot |

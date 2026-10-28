@@ -1,6 +1,6 @@
 ---
 title: "AInvoicer — aktualny stan"
-date: 2026-10-27
+date: 2026-10-28
 type: status
 status: w-trakcie
 tags: [ainvoicer, cap-java, status]
@@ -8,13 +8,15 @@ tags: [ainvoicer, cap-java, status]
 
 # Stan projektu
 
-[Dziennik CAP-03 — integracja SAP H01](journal/2026-10-27-cap-03-sap-remote-integration.md)
+[Dziennik CAP-04B — kontrakt zapisu RAP](journal/2026-10-28-cap-04b-rap-write-contract.md) · [ADR-0002](decisions/ADR-0002-sap-ksef-result-write-contract.md) · [Dziennik CAP-03 — integracja SAP H01](journal/2026-10-27-cap-03-sap-remote-integration.md)
 
 [Project Home](README.md) · [Roadmapa](ROADMAP.md) · [Workflow abapGit](guides/ABAPGIT_WORKFLOW.md) · [Model RAP faktur](guides/ABAP_RAP_INVOICE_MODEL.md) · [Dziennik próby tworzenia ABAP FS](journal/2026-10-25-abapfs-create-probe.md) · [Dziennik kompozycji RAP](journal/2026-10-24-abap-rap-composition.md) · [Dziennik pierwszego eksportu](journal/2026-10-24-abapgit-rap-initial-export.md) · [Dziennik bootstrapu](journal/2026-10-23-cap-java-bootstrap.md) · [Weryfikacja Phase 1](journal/2026-10-24-cap-java-bootstrap-verification.md) · [Model KsefOperations](journal/2026-10-24-ksef-operations-model.md) · [Usługa i CRUD OData](journal/2026-10-24-ksef-service-definition.md) · [Walidacja i autoryzacja KsefOperations](journal/2026-10-24-ksef-operations-validation-authorization.md)
 
 ## Current Phase
 
-Phase 3 — SAP Remote Integration: CAP → SAP H01 READ ma **LIVE PASS** w procesie lokalnym z Destination przez env `destinations`; `SapInvoiceRemoteAdapterLiveTest` odczytał 4 nagłówki, 9 pozycji, 6 referencji i zgodność UUID. Runtime OData V4 H01 (`$metadata`, `$expand`) także ma wcześniejsze potwierdzenie live. To nie potwierdza CAP na Cloud Foundry z Destination Service. CAP → RAP UPDATE pozostaje **NOT IMPLEMENTED**. Szczegóły: [CAP-03](journal/2026-10-27-cap-03-sap-remote-integration.md).
+Phase 3 — SAP Remote Integration: **CAP-04B zaimplementowany i aktywny w H01** — `ApplyKsefResult`, OUTBOUND/TEST, readonly pól wyniku i odrębne prawa akcji/CRUD. EML 18/18, prototyp blokowania 7/7 (w tym rzeczywisty root w odrębnej sesji), ATC dziesięciu obiektów kontraktu bez ustaleń, rzeczywisty EDMX HTTP200. Nowe uprawnienie pozostaje bez nadania. Nie testowano HTTP WRITE, commit/ETag ani dwóch równoległych zapisów akcji. CAP-04C adapter/worker/outbox i CAP-04D nie rozpoczęte. [Dowody i ograniczenia CAP-04B](journal/2026-10-28-cap-04b-rap-write-contract.md).
+
+CAP → SAP H01 READ ma wcześniejsze **LIVE PASS** w procesie lokalnym z Destination przez env `destinations`: 4 nagłówki, 9 pozycji, 6 referencji i zgodne UUID. Nie powtarzano testu Java w CAP-04B. CAP na Cloud Foundry z Destination Service pozostaje nieprzetestowany; model i adapter CAP nadal są read-only. Szczegóły: [CAP-03](journal/2026-10-27-cap-03-sap-remote-integration.md).
 
 ## Architecture
 
@@ -22,6 +24,7 @@ SAPUI5 → OData V4 → CAP Java + Spring Boot → Java SDK KSeF w jednej JVM. S
 
 ## Completed
 
+- 2026-10-28: **CAP-04B — live SAP RAP contract.** Cztery pola nagłówka, akcja statyczna z wewnętrzną blokowaną akcją instancyjną, CAS po blokadzie, jawne konflikty/no-op, global + instance authorization i prechecks CRUD. Testy z kontrolowaną polityką praw i rollback, bez nadania principalom. Rzeczywisty read-only EDMX potwierdzony; istniejące 4 nagłówki bez wyników KSeF i bez zmiany ETag. Źródła wyłącznie live SAP, jeszcze bez eksportu abapGit. [Dziennik](journal/2026-10-28-cap-04b-rap-write-contract.md), [ADR-0002](decisions/ADR-0002-sap-ksef-result-write-contract.md).
 - 2026-10-27: **CAP → SAP H01 READ: LIVE PASS w lokalnym procesie CAP.** `SapInvoiceRemoteAdapterLiveTest`: 1 test, 0 failures, 0 errors, `BUILD SUCCESS`; 4 nagłówki, 9 pozycji, 6 referencji i zgodność `InvoiceUUID`. Destination była dostarczona lokalnie przez env `destinations`. Cloud Foundry + bound Destination Service pozostaje NOT TESTED, CAP → RAP UPDATE — NOT IMPLEMENTED. Pierwsza próba z hostem `abap-web` zwróciła HTML/IAS redirect; poprawny host OData zadziałał z Basic Auth. Szczegóły: [dziennik CAP-03](journal/2026-10-27-cap-03-sap-remote-integration.md).
 - 2026-10-27: CAP-03 krok 2 — lokalny test HTTP kontraktu wykrył i naprawił dodatkowy segment URL, blokadę `@requires: internal-user` oraz filtr `in`; poprawiono `http.service` i przeniesiono `cds.remote.services` poza profil `default`. Historyczne usterki i naprawy: [dziennik CAP-03](journal/2026-10-27-cap-03-sap-remote-integration.md#krok-2--test-live-i-weryfikacja-url--basic-auth).
 - 2026-10-27: CAP-03 — aktywny binding `ZAPI_AINV_INV_H_O4`, wersja `0001`, opublikowany (`published=true`), odpowiedział na `$metadata` HTTP 200. Runtime kontrakt zawiera entity sets `ZC_AINV_INV_H`, `ZC_AINV_INV_I`, `ZC_AINV_INV_REF`, klucze UUID i nawigacje `_Items`, `_References`. Autoryzowany podgląd OData V4 zwrócił 4/9/6, bez kolejnych stron; UUID z danych zachowują wartości seeda. W CAP dodano zdalny model CDS, konfigurację Destination `AINV_H01`, adapter CQN, test kontraktu oraz test autoryzacji endpointu zewnętrznego. Pełny `mvn clean verify -Dcds.cds.skipVersionCheck=true`: 22 testy PASS. CAP→BTP Destination→H01 nie było testowane; MCP dostarczył znormalizowany opis `$metadata`, nie surowy EDMX. [Dziennik CAP-03](journal/2026-10-27-cap-03-sap-remote-integration.md).
@@ -47,24 +50,25 @@ SAPUI5 → OData V4 → CAP Java + Spring Boot → Java SDK KSeF w jednej JVM. S
 - **CAP na Cloud Foundry + bound Destination Service — NOT TESTED.** Lokalna env Destination nie stanowi dowodu dla Destination Service na CF.
 - **CAP → RAP UPDATE — NOT IMPLEMENTED.** Zewnętrzny model i adapter CAP są read-only.
 - **KSeF Java SDK i E2E KSeF w CAP — NOT IMPLEMENTED.** Weryfikacja źródeł/POM nie wykazała zależności ani adaptera SDK; istniejący eksperyment z osobnej gałęzi nie zalicza integracji CAP.
-- Surowy EDMX nie został udostępniony; model CDS opracowano na podstawie znormalizowanego runtime `$metadata`.
+- Model CAP CDS opracowano wcześniej na podstawie znormalizowanych metadanych. 2026-10-28 odczytano rzeczywisty surowy EDMX przez HTTP GET i sprawdzono akcję oraz readonly; nie zapisano/importowano go do CAP.
 - **DCL / EML — raport użytkownika z 2026-10-26, niepowtórzony w tym audycie:** 6 DCL aktywnych, `ZCL_AINV_RAP_COMP_TEST` 4/4 ABAP Unit PASS, ATC trzech nowych DCL: 0 ustaleń. Lokalny `abap/src/` to starszy snapshot i root DCL w nim ma `where TRUE`; nie dowodzi aktywnego stanu H01 ani izolacji danych.
-- Skuteczność biznesowej izolacji DCL i autoryzacja zapisu przez `GET_GLOBAL_AUTHORIZATIONS` wymagają osobnej weryfikacji. Aktywność DCL nie jest dowodem poprawnej autoryzacji.
+- CAP-04B wdrożył global + instance authorization i prechecks zapisu; testy EML odmów PASS z kontrolowaną polityką. Nowe prawo `Z_AINV_KSF` bez nadania; dotychczasowi konsumenci zapisujący potrzebują 01/02/06 i zakresu, akcja wyłącznie 16. DCL root `where TRUE` nie zapewnia izolacji odczytu per NIP; nie zmieniano go.
+- Pełne dwa równoległe zapisy akcji, persisted no-op/ETag oraz uprawnienia rzeczywistego communication user pozostają niezweryfikowane. Nie wykonano HTTP WRITE; te testy wymagają osobnego zlecenia CAP-04D.
 - Historyczne błędy URL, IAS redirect, `@requires`, OData `in`, profilu YAML, `ACM_UNEXPECTED_VALUE` i MCP `Unsupported Media Type` pozostają w dziennikach jako wcześniejsze problemy; nowsze wyniki rozwiązują je tylko w opisanym zakresie.
 
 ## Blockers
 
-- ABAP-02: historyczny dump `ACM_UNEXPECTED_VALUE` z 2026-10-25 został późniejszym raportem użytkownika z 2026-10-26 zastąpiony raportem 6 aktywnych DCL i EML 4/4 PASS; nie weryfikowano ponownie live w tym audycie. Root DCL snapshot ma `where TRUE`, a `GET_GLOBAL_AUTHORIZATIONS` jest pusta; izolacja i autoryzacja zapisu pozostają do sprawdzenia.
+- Przed uruchomieniem zapisu komunikacyjnego: jawny zakres NIP/CompanyCode, nadanie ACTVT16 przez właściwy communication scenario/arrangement i realne testy principalem. Użytkownik zdecydował o pozostawieniu prawa bez nadania w CAP-04B. Bez niego standardowy zapis i akcja są odmawiane. Izolacja odczytu DCL pozostaje osobnym zagadnieniem.
 
 - SAP RAP / ABAP FS: historyczny `Unsupported Media Type` i myląca informacja „local” z [próby starszej wersji](journal/2026-10-25-abapfs-create-probe.md) nie są aktualnym ogólnym blokerem v5. Test v5 potwierdził tworzenie klasy/CDS i transporty w obu pakietach Cloud. Dalsze zmiany biznesowe nadal wymagają sprawdzenia aktualnego pakietu/requestu i zakresu zadania; nie ponawiać historycznych prób w ciemno. Nie potwierdzono pełnego testu 23 typów na v5 ani ECC.
 - Poprzedni `NoSuchFileException: srv/target/classes/application.yaml` nie odtworzono. Zwykłe `mvn clean verify` zatrzymuje się przed testami, bo kontrola `cds version` zgłasza `Required @sap/cds-dk not installed`, mimo że raportuje lokalne `@sap/cds-dk 10.2.0`; `-Dcds.cds.skipVersionCheck=true` pozwala kontynuować i pełny build/test przechodzi.
 
 ## Next Steps
 
-1. Dokończyć ABAP-04: wykonać sekwencyjny rerun i potwierdzić pominięcie istniejących numerów bez duplikatów; runtime RAP/OData `$expand` jest potwierdzony 2026-10-27.
-2. Dodać zaufaną ścieżkę aplikacyjną do łączenia operacji z fakturą, walidującą zgodność NIP przed zapisem; nie udostępniać powiązania przez publiczne OData.
-3. Przed kolejną zmianą biznesową porównać bieżące role DCL w SAP z raportem użytkownika i ocenić politykę izolacji oraz `GET_GLOBAL_AUTHORIZATIONS`; w razie potrzeby powtórzyć `ZCL_AINV_RAP_COMP_TEST`.
-4. Po walidacji i osobnym zleceniu wyeksportować zmiany abapGit; bez automatycznego pull przy brudnym checkout.
+1. Po osobnym zleceniu przejrzeć i wyeksportować aktywne zmiany H01 przez abapGit; nie importować starszego snapshotu Git do SAP.
+2. CAP-04C po zleceniu: CAP Java Write Adapter, interpretacja `Outcome`, precyzyjna wersja, trwały worker/outbox i historia. Nie rozpoczęto w CAP-04B.
+3. CAP-04D po osobnej zgodzie: ograniczone nadanie, HTTP WRITE na uzgodnionych danych, commit/ETag/no-op, autoryzacja rzeczywistym principalem i pełne dwa równoległe wywołania akcji.
+4. Osobne zaległości: izolacja odczytu DCL, sekwencyjny rerun seeda, zaufane wiązanie operacji z fakturą w CAP oraz test wdrożenia na Cloud Foundry.
 
 Dla narzędzi agentowych: w następnej sesji Claude Code uruchomić `/reload-skills`, sprawdzić trzy komendy `/ainvoicer-*` i odczyt kanonicznych plików; osobno potwierdzić automatyczny dobór w czterech scenariuszach z dziennika.
 
@@ -72,6 +76,7 @@ Dla narzędzi agentowych: w następnej sesji Claude Code uruchomić `/reload-ski
 
 | Sprawdzenie | Ostatni dowód / ograniczenie |
 | --- | --- |
+| CAP-04B SAP contract | 2026-10-28: aktywacja/syntax PASS, ATC `ABAP_CLOUD_DEVELOPMENT_DEFAULT` 10 obiektów finalnie 0 ustaleń, EML 18/18, prototyp 7/7, rzeczywisty EDMX HTTP200. Polityka testowa, rollback; root enqueue między sesjami PASS. Bez HTTP WRITE/commit, persisted no-op/ETag i pełnego testu równoległych zapisów. Prawo bez nadania; [szczegóły](journal/2026-10-28-cap-04b-rap-write-contract.md). |
 | CAP → SAP H01 READ | LIVE PASS według dziennika 2026-10-27: `SapInvoiceRemoteAdapterLiveTest`, lokalny CAP process + env `destinations`, Basic Auth; 1/1, 0 failures/errors, 4/9/6 i UUID zgodne. Nie powtarzano w audycie. Cloud Foundry + bound Destination Service: NOT TESTED. |
 | ABAP-04 seed danych | 2026-10-26/27: raport użytkownika i późniejszy runtime OData potwierdziły 4 nagłówki, 9 pozycji, 6 referencji, UUID i powiązania. Sekwencyjny rerun niezweryfikowany; brak unikalności InvoiceNumber pozostaje. |
 | ABAP-02 / RAP composition | 2026-10-25: aktywacja CDS/BDEF/SRVD i ATC głównego BDEF PASS. Raport użytkownika 2026-10-26: 6 DCL aktywnych, EML 4/4 PASS, ATC 3 nowych DCL bez ustaleń; niepowtórzone w tym audycie. Runtime OData 4/9/6 potwierdzono odrębnie 2026-10-27. Izolacja DCL i autoryzacja zapisu niezweryfikowane. |
@@ -96,4 +101,4 @@ Dla narzędzi agentowych: w następnej sesji Claude Code uruchomić `/reload-ski
 
 ## Last Updated
 
-2026-10-27 (Europe/Warsaw): uzgodniono CAP-03 i RAP z dziennikiem CAP-03 oraz raportem użytkownika z 2026-10-26 o DCL/EML. Audyt nie uruchamiał testów CAP ani SAP. Wyniki DCL/EML pochodzą z relacji użytkownika; CAP LIVE PASS jest udokumentowany w dzienniku z 2026-10-27.
+2026-10-28 (Europe/Warsaw): implementacja i testy CAP-04B live H01 przez ABAP FS MCP 2.13.3. Potwierdzone zakresy oraz luki opisano w dzienniku i ADR-0002. Bez eksportu SAP, commit/push, zmian CAP/UI5/Node/Python, HTTP WRITE i wywołań KSeF. CAP-04C/04D nie rozpoczęto.
