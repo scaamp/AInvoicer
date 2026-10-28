@@ -24,13 +24,15 @@ import com.sap.cds.services.runtime.CdsRuntime;
 @Component
 public class SapInvoiceRemoteAdapter {
 
-	private static final String HEADERS = "AinvoicerH01.ZC_AINV_INV_H";
-	private static final String ITEMS = "AinvoicerH01.ZC_AINV_INV_I";
-	private static final String REFERENCES = "AinvoicerH01.ZC_AINV_INV_REF";
+	static final String MODEL = "com.sap.gateway.srvd_a2x.zapi_ainv_inv_h_o4.v0001";
+	static final String HEADERS = MODEL + ".ZC_AINV_INV_H";
+	private static final String ITEMS = MODEL + ".ZC_AINV_INV_I";
+	private static final String REFERENCES = MODEL + ".ZC_AINV_INV_REF";
 
 	private static final List<String> HEADER_COLUMNS = List.of(
 		"InvoiceUUID", "InvoiceNumber", "OriginProcess", "Direction", "InvoiceKind", "InvoiceStatus",
-		"CompanyCode", "IssueDate", "PostingDate", "DueDate", "SellerNip", "SellerName", "BuyerNip",
+		"CompanyCode", "LocalLastChangedAt", "KsefNumber", "KsefEnvironment", "KsefRecordedAt", "KsefWriteRequestId",
+		"IssueDate", "PostingDate", "DueDate", "SellerNip", "SellerName", "BuyerNip",
 		"BuyerName", "NetAmount", "TaxAmount", "GrossAmount", "CurrencyCode");
 	private static final List<String> ITEM_COLUMNS = List.of(
 		"ItemUUID", "InvoiceUUID", "ItemNo", "MaterialId", "Description", "Quantity", "UnitCode",

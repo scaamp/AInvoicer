@@ -18,7 +18,7 @@ Opis bazowy wynika z plików `abap/src/` w commicie `39ab869` (`abapGit init`, 2
 
 ## Tabele aplikacyjne
 
-**Aktualizacja live H01, CAP-04B (2026-10-28):** `ZAINV_INV_H` zawiera dodatkowo `KsefNumber` CHAR50, `KsefEnvironment` CHAR4, `KsefRecordedAt` timestamp i `KsefWriteRequestId` UUID. Pola są wystawione w root interface/projection, readonly dla standardowego CREATE/UPDATE i zapisywane przez `ApplyKsefResult`. `InvoiceStatus` pozostaje niezależny. Zmiany wykonano wyłącznie w SAP, bez eksportu abapGit. Poniższa tabela opisuje wcześniejszy eksport.
+**Aktualizacja CAP-04B (2026-10-28):** `ZAINV_INV_H` zawiera dodatkowo `KsefNumber` CHAR50, `KsefEnvironment` CHAR4, `KsefRecordedAt` timestamp i `KsefWriteRequestId` UUID. Pola są wystawione w root interface/projection, readonly dla standardowego CREATE/UPDATE i zapisywane przez `ApplyKsefResult`. `InvoiceStatus` pozostaje niezależny. Po zgodzie użytkownika wyeksportowano je z SAP w `525e48d`. Poniższa tabela opisuje wcześniejszy eksport bazowy.
 
 | Tabela | Odpowiedzialność i pola widoczne w eksporcie |
 | --- | --- |
@@ -42,7 +42,7 @@ Projekcje dzieci dziedziczą provider contract od root; jawne `provider contract
 
 ## Zakres i ograniczenia potwierdzone w repo
 
-**Stan po CAP-04B:** szczegółowe listy starszych plików poniżej odnoszą się do wcześniejszej kompozycji. Obecnie H01 jest dalej przed Git: nowa akcja, cztery pola, implementacja/testy, typy i obiekty autoryzacji oraz prototypy nie zostały wyeksportowane. Nie odtwarzaj live SAP z lokalnego snapshotu. Pełna lista obiektów: [dziennik CAP-04B](../journal/2026-10-28-cap-04b-rap-write-contract.md).
+**Stan po publikacji CAP-04B:** szczegółowe listy starszych plików poniżej odnoszą się do wcześniejszej kompozycji. `525e48d` zawiera 31 plików kontraktu, testów, autoryzacji i prototypów z H01; remote refs/status potwierdzone. Zastany scenariusz komunikacyjny i niezwiązane usunięcia pominięto. Pełna lista obiektów: [dziennik CAP-04B](../journal/2026-10-28-cap-04b-rap-write-contract.md). Nie wykonano importu Git → SAP.
 
 - Commit `39ab869` zawierał wyłącznie RAP nagłówka. Lokalny patch 2026-10-24 dodaje źródła CDS, BDEF, DCL i service definition dla kompozycji.
 - Patch nie zawiera serializowanych sidecarów metadata nowych CDS/DCL. Zmiany live wykonano przez MCP, bez eksportu abapGit, commita i push. `abap/src/` nadal zawiera starsze wersje czterech źródeł: `ZR_AINV_INV_I` DDLS, `ZC_AINV_INV_I` DDLS, `ZC_AINV_INV_REF` DDLS i `ZR_AINV_INV_H` BDEF; klasa testowa istnieje wyłącznie w SAP. Po walidacji potrzebny kontrolowany eksport, po osobnym zleceniu.
@@ -72,11 +72,13 @@ W H01 potwierdzono aktywację/syntax, 18/18 testów kontraktu EML, 7/7 prototypu
 
 ## Wcześniejsze potwierdzenia kompozycji i odczytu
 
+**CAP-04C:** model CAP zaimportowano z rzeczywistego EDMX H01 z zachowaniem namespace i ochrony `internal-user`. Dodano Write Adapter i persistent outbox/worker; lokalny kontrakt HTTP, transakcje i restart potwierdzone, regresja LIVE READ 4/9/6 PASS. Transport WRITE jest wyłączony, prawo SAP bez nadania. [Dowody CAP-04C](../journal/2026-10-28-cap-04c-sap-result-writeback.md).
+
 - **Runtime OData H01 — LIVE PASS w potwierdzonym zakresie (2026-10-27):** `$metadata` HTTP 200, entity sets Header/Items/References, nawigacje `_Items`/`_References`, autoryzowany `$expand` 4/9/6 oraz zgodne UUID. Potwierdza endpoint i dane w danym kontekście uwierzytelnienia; nie jest testem izolacji DCL ani CAP na Cloud Foundry.
 - **DCL i EML — raport wcześniejszej sesji (2026-10-26), niepowtórzony w audycie:** użytkownik przekazał wynik: 6 DCL aktywnych, `ZCL_AINV_RAP_COMP_TEST` 4/4 ABAP Unit PASS, ATC 3 nowych DCL: 0 ustaleń. Raport jest późniejszy niż dump `ACM_UNEXPECTED_VALUE` z 2026-10-25, wynikający z braku aktywnego DCL `ZR_AINV_INV_I`. Dump pozostaje problemem historycznym.
 - **Ograniczenie dowodu:** lokalne `abap/src/` nie zostało zsynchronizowane po wszystkich zmianach live. Root DCL snapshot ma `where TRUE`, a `GET_GLOBAL_AUTHORIZATIONS` w eksporcie jest pusta. Nie wnioskuj z tego snapshotu o aktywnym stanie H01; nie deklaruj też skutecznej izolacji ani autoryzacji zapisu bez odczytu aktywnych reguł i testów negatywnych.
 - **ATC:** raport 0 ustaleń dotyczy trzech nowych DCL; wcześniejsze 0 ustaleń głównego BDEF to osobny zakres. Nie jest to pełne ATC pakietu ani test bezpieczeństwa.
-- **RAP UPDATE przez CAP:** NOT IMPLEMENTED; model i adapter CAP są read-only.
+- **CAP → RAP action:** adapter i worker CAP-04C zaimplementowane, transport WRITE OFF. Brak HTTP WRITE w H01; to zakres CAP-04D. Standardowy PATCH nie jest używany.
 - **CAP na Cloud Foundry + bound Destination Service:** NOT TESTED; lokalny CAP LIVE z env `destinations` nie potwierdza tego wdrożenia.
 
 Historyczne błędy tworzenia DCL (`Unsupported Media Type`) i testów EML (`ACM_UNEXPECTED_VALUE`, błąd wrappera `toFixed`) pozostają w [dzienniku kompozycji RAP](../journal/2026-10-24-abap-rap-composition.md) oraz [dzienniku ABAP FS v5](../journal/2026-10-26-abapfs-v5-instructions.md).
@@ -86,7 +88,7 @@ Historyczne błędy tworzenia DCL (`Unsupported Media Type`) i testów EML (`ACM
 1. Przy kolejnej zmianie SAP sprawdzić w H01 aktualne active DCL, role i `GET_GLOBAL_AUTHORIZATIONS`; przetestować autoryzowane i nieautoryzowane odczyty/zapisy. `where TRUE` w eksporcie nie zapewnia izolacji.
 2. Jeżeli wymagane, niezależnie powtórzyć ABAP Unit `ZCL_AINV_RAP_COMP_TEST` i ATC odpowiednim wariantem w H01. Raport 4/4 pozostaje relacją użytkownika z 2026-10-26.
 3. Zaktualizować lokalny snapshot przez kontrolowany eksport abapGit po zatwierdzeniu zakresu; nie importować starszych plików do H01.
-4. SAP action CAP-04B jest aktywna; CAP → RAP Write Adapter pozostaje niezaimplementowany (CAP-04C). HTTP WRITE/commit/ETag i pełne testy współbieżnych zapisów wymagają osobnej zgody CAP-04D.
+4. SAP action CAP-04B i CAP Write Adapter/worker CAP-04C są zaimplementowane; HTTP WRITE/commit/ETag i pełne testy współbieżnych zapisów wymagają osobnej zgody CAP-04D.
 5. CAP na Cloud Foundry z bound Destination Service pozostaje nieprzetestowany.
 
 ## Powiązane źródła

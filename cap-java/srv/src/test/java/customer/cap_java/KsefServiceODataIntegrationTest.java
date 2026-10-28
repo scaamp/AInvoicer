@@ -86,6 +86,9 @@ class KsefServiceODataIntegrationTest {
 		assertFalse(response.body().contains("upoStorageRef"));
 		assertFalse(response.body().contains("NavigationProperty Name=\"invoice\""));
 		assertFalse(response.body().contains("invoice_ID"));
+		assertFalse(response.body().contains("SapResultWrites"));
+		assertFalse(response.body().contains("SapResultWriteHistory"));
+		assertFalse(response.body().contains("ApplyKsefResult"));
 	}
 
 	@Test
@@ -204,6 +207,7 @@ class KsefServiceODataIntegrationTest {
 	void createOverwritesClientStatusAndTrimsIdempotencyKey() throws Exception {
 		Map<String, Object> data = operation(NIP_A, "SEND_INVOICE");
 		data.put("status", "ACCEPTED");
+		data.put("environment", "PROD");
 		data.put("idempotencyKey", "  " + data.get("idempotencyKey") + "  ");
 		ODataResponse response = create("operator-a", "test-a", data);
 		assertTrue(response.is2xxSuccessful(), () -> "CREATE failed: HTTP " + response.status() + " " + response.getBody());
@@ -211,6 +215,7 @@ class KsefServiceODataIntegrationTest {
 		JsonNode entity = response.getBody();
 		assertNotNull(entity);
 		assertEquals("NEW", entity.path("status").asText());
+		assertEquals("TEST", entity.path("environment").asText());
 		assertFalse(entity.path("idempotencyKey").asText().startsWith(" "));
 	}
 

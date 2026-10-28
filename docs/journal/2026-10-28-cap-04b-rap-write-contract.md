@@ -58,6 +58,7 @@ Pozostawiono wariant statyczny z wewnętrzną akcją instancyjną, ponieważ poz
 | DTEL | `ZAINV_NIP`, `ZAINV_BUK` | Własne typy CHAR10 / CHAR4 dla pól autoryzacji |
 | AUTH | `ZAINV_NIP`, `ZAINV_BUK` | Pola autoryzacji zakresu |
 | SUSO | `Z_AINV_KSF` | `ACTVT` + NIP + CompanyCode |
+| SIA3 | `Z_AINV_KSF` | Towarzyszące mapowanie aktywności; potwierdzone w serializacji abapGit, bez nadania użytkownikowi |
 | DDLS / BDEF / CLAS | `ZR_AINV_LOCK_PROBE` (dwa typy), `ZBP_AINV_LOCK_PROBE` | Niepublikowany prototyp kolejności blokowania |
 | CLAS | `ZCL_AINV_LOCK_TASK` | Test rzeczywistej blokady root w odrębnej sesji |
 
@@ -171,3 +172,7 @@ CAP-04B zaimplementowany i aktywny w H01, z potwierdzeniem EML, ATC i read-only 
 - [SAP — Authorization Basics, ABAP Environment](https://help.sap.com/docs/sap-btp-abap-environment/abap-environment/authorization-basics): własne obiekty, global/instance, kontekst i nadania komunikacyjne.
 - [SAP — Access Management](https://help.sap.com/docs/abap-cloud/abap-cloud-background-concepts-and-overview/conceptual-background-access-management): odrębne ścieżki business i communication user.
 - [SAP — Editing Authorization Default Values](https://help.sap.com/docs/btp/sap-business-technology-platform/editing-default-authorization-values): synchronizacja own context z wartościami domyślnymi bindingu.
+
+## Kontynuacja — eksport po zgodzie użytkownika
+
+Po zakończeniu powyższej implementacji użytkownik zlecił commit/push i przejście do CAP-04C. Dokumentację opublikowano jako `8de662f`. Po przeglądzie oraz osobnym zatwierdzeniu konkretnego review MCP wyeksportowano **31 plików** SAP jako `525e48d`. Potwierdzono remote refs, brak różnic CAP-04B w statusie abapGit oraz lokalny fast-forward. Wykluczono zastany scenariusz komunikacyjny i usunięcia niezwiązanej klasy. Nie wykonywano abapGit Pull do SAP. [Dalsze prace CAP-04C](2026-10-28-cap-04c-sap-result-writeback.md).

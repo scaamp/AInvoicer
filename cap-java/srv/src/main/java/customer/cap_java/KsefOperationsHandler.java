@@ -50,6 +50,7 @@ public class KsefOperationsHandler implements EventHandler {
 
 			// Status jest polem tylko do odczytu; stan początkowy nadaje wyłącznie serwer.
 			operation.setStatus("NEW");
+			operation.setEnvironment("TEST");
 		}
 	}
 

@@ -14,6 +14,8 @@ AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijan
 
 - [STATUS — aktualny stan i najbliższe kroki](STATUS.md).
 - [ROADMAP — plan rozwoju](ROADMAP.md).
+- [Dziennik: CAP-04C — eksport SAP i trwały writeback CAP → SAP](journal/2026-10-28-cap-04c-sap-result-writeback.md).
+- [ADR-0003 — persistent outbox, niezmienny payload i rozstrzygnięcia zapisu](decisions/ADR-0003-cap-sap-result-writeback.md).
 - [Dziennik: CAP-04B — kontrakt zapisu wyniku KSeF w SAP RAP](journal/2026-10-28-cap-04b-rap-write-contract.md).
 - [ADR-0002 — statyczna akcja z blokowaną akcją instancyjną, CAS i autoryzacja](decisions/ADR-0002-sap-ksef-result-write-contract.md).
 - [Dziennik: CAP-03 — integracja SAP H01](journal/2026-10-27-cap-03-sap-remote-integration.md).
@@ -59,10 +61,10 @@ ABAP Environment utrzymuje w tym scenariuszu symulacyjne dane faktur, a CAP ma b
 
 | Katalog | Rola |
 | --- | --- |
-| `abap/` | Eksport abapGit jest starszy od live H01. CAP-04B (2026-10-28): aktywna akcja `ApplyKsefResult`, readonly pól i autoryzacja zapisu, EML 18/18, prototyp 7/7, ATC kontraktu 0 ustaleń, runtime EDMX HTTP200. Bez HTTP WRITE/commit i bez nadania prawa. Root DCL `where TRUE` nie zapewnia izolacji odczytu. Szczegóły w przewodniku i dzienniku CAP-04B. |
+| `abap/` | CAP-04B wyeksportowano z H01 w `525e48d`: akcja `ApplyKsefResult`, readonly pól, autoryzacja, testy/prototypy i metadata. Bez HTTP WRITE i bez nadania prawa. Root DCL `where TRUE` nie zapewnia izolacji odczytu. Pominięto zastane zmiany spoza zakresu. |
 | `sapui5/ainvoicer/` | Istniejący frontend SAPUI5 |
 | `node/`, `python/` | Istniejące funkcje AI |
-| `cap-java/` | Rozpoczęty backend CAP Java + Spring Boot |
+| `cap-java/` | CAP Java + Spring Boot; READ H01 LIVE PASS, CAP-04C Write Adapter i persistent outbox zweryfikowane lokalnie. Transport WRITE domyślnie OFF, KSeF SDK niezaimplementowany. |
 | `docs/` | Wspólna baza wiedzy dla ludzi i agentów |
 
 ## Zasady dokumentowania

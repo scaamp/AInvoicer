@@ -67,6 +67,7 @@ class SapInvoiceRemoteAdapterHttpContractTest {
 		assertEquals("56b09c12-4ee5-1fd1-b4ac-56570f4d14c8", invoices.get(0).header().get("InvoiceUUID").toString());
 		assertEquals(1, invoices.get(0).items().size());
 		assertEquals(1, invoices.get(0).references().size());
+		assertEquals(new java.math.BigDecimal("123.45"), invoices.get(0).header().get("NetAmount"));
 
 		assertTrue(REQUESTS.size() >= 3, () -> "unexpected requests: " + REQUESTS);
 		assertTrue(REQUESTS.get(0).startsWith("GET " + SERVICE_PATH + "ZC_AINV_INV_H"), () -> REQUESTS.toString());
@@ -84,7 +85,7 @@ class SapInvoiceRemoteAdapterHttpContractTest {
 		String uuid = "56b09c12-4ee5-1fd1-b4ac-56570f4d14c8";
 		String body;
 		if (path.endsWith("ZC_AINV_INV_H")) {
-			body = "{\"value\":[{\"InvoiceUUID\":\"" + uuid + "\",\"InvoiceNumber\":\"X\"}]}";
+			body = "{\"value\":[{\"InvoiceUUID\":\"" + uuid + "\",\"InvoiceNumber\":\"X\",\"NetAmount\":123.45}]}";
 		} else if (path.endsWith("ZC_AINV_INV_I")) {
 			body = "{\"value\":[{\"ItemUUID\":\"56b09c12-4ee5-1fd1-b4ac-56570f4d94c8\",\"InvoiceUUID\":\"" + uuid + "\"}]}";
 		} else if (path.endsWith("ZC_AINV_INV_REF")) {

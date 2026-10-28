@@ -28,6 +28,12 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Publiczny typ błędu HTTP pozwala odczytać Retry-After bez parsowania komunikatów. -->
+		<dependency>
+			<groupId>com.sap.cloud.sdk.datamodel</groupId>
+			<artifactId>odata-client</artifactId>
+		</dependency>
+
 		<!-- Integracja SAP Cloud SDK z SAP BTP Destination Service na Cloud Foundry. -->
 		<dependency>
 			<groupId>com.sap.cloud.sdk.cloudplatform</groupId>

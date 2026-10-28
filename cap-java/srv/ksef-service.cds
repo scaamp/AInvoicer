@@ -16,6 +16,7 @@ service KsefService {
 
 // Status i dane zwracane przez KSeF może zmieniać wyłącznie logika serwerowa.
 annotate KsefService.KsefOperations with {
+  environment     @readonly;
   status          @readonly;
   referenceNumber @readonly;
   ksefNumber      @readonly;
