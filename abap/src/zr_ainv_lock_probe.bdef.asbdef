@@ -1,0 +1,11 @@
+unmanaged implementation in class ZBP_AINV_LOCK_PROBE unique;
+strict ( 2 );
+define behavior for ZR_AINV_LOCK_PROBE alias Probe
+lock master
+authorization master ( global )
+{
+  field ( readonly ) InvoiceUUID, LocalLastChangedAt;
+  action Direct;
+  static action ViaStatic;
+  internal action Inner;
+}

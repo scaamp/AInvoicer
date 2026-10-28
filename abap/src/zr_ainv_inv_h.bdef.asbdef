@@ -1,15 +1,20 @@
 managed implementation in class ZBP_R_AINV_INV_H unique;
 strict ( 2 );
 extensible;
+define own authorization context { 'Z_AINV_KSF'; }
 define behavior for ZR_AINV_INV_H alias ZrAinvInvH
 persistent table ZAINV_INV_H
 extensible
 etag master LocalLastChangedAt
 lock master
-authorization master( global )
+authorization master( global, instance )
 {
   field ( readonly )
    InvoiceUUID,
+   KsefNumber,
+   KsefEnvironment,
+   KsefRecordedAt,
+   KsefWriteRequestId,
    LocalCreatedBy,
    LocalCreatedAt,
    LocalLastChangedBy,
@@ -17,9 +22,11 @@ authorization master( global )
    LastChangedAt;
   field ( numbering : managed )
    InvoiceUUID;
-  create;
-  update;
+  create ( precheck );
+  update ( precheck );
   delete;
+  static action ApplyKsefResult parameter ZA_AINV_KSF_REQ result [1] ZA_AINV_KSF_RES;
+  internal action ApplyKsefLocked parameter ZA_AINV_KSF_REQ result [1] ZA_AINV_KSF_RES;
   association _Items { create; }
   association _References { create; }
   mapping for ZAINV_INV_H corresponding extensible
@@ -30,6 +37,10 @@ authorization master( global )
     Direction = DIRECTION;
     InvoiceKind = INVOICE_KIND;
     InvoiceStatus = INVOICE_STATUS;
+    KsefNumber = KSEF_NUMBER;
+    KsefEnvironment = KSEF_ENVIRONMENT;
+    KsefRecordedAt = KSEF_RECORDED_AT;
+    KsefWriteRequestId = KSEF_WRITE_REQUEST_ID;
     CompanyCode = COMPANY_CODE;
     IssueDate = ISSUE_DATE;
     PostingDate = POSTING_DATE;
