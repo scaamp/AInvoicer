@@ -12,11 +12,19 @@ AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijan
 
 ## Od czego zacząć
 
+- [CAP-05 — audyt implementacji Claude Code, poprawki i macierz akceptacji](audits/2026-10-29-cap-05-implementation-review.md).
+- [Dziennik CAP-05](journal/2026-10-29-cap-05-integration-review.md) · [ADR-0005](decisions/ADR-0005-rap-business-status-cap-integration-status.md) · [RAP UI: patch i blokery ADT/IAM](patches/cap05-rap-ui/README.md).
+- [Agent A — oficjalny SDK KSeF i auth TEST w CAP](journal/2026-10-29-agent-a-ksef-sdk.md).
+- [Integracja KSeF Java SDK](guides/KSEF_JAVA_SDK_INTEGRATION.md) i [runbook TEST](guides/KSEF_TEST_RUNBOOK.md).
+- [ADR-0004 — SDK MF, checkpointy i rekoncyliacja](decisions/ADR-0004-ksef-test-sdk-workflow.md).
+
 - [STATUS — aktualny stan i najbliższe kroki](STATUS.md).
 - [ROADMAP — plan rozwoju](ROADMAP.md).
 - [Dziennik: CAP-04C — eksport SAP i trwały writeback CAP → SAP](journal/2026-10-28-cap-04c-sap-result-writeback.md).
 - [ADR-0003 — persistent outbox, niezmienny payload i rozstrzygnięcia zapisu](decisions/ADR-0003-cap-sap-result-writeback.md) (aktualizacja hardening 2026-10-29).
 - [Dziennik: Agent C — kokpit SAPUI5 faktur KSeF](journal/2026-10-29-agent-c-ui5.md) · [Przewodnik: SAPUI5 KSeF Cockpit](guides/SAPUI5_KSEF_COCKPIT.md).
+- [Dziennik: Agent B — komponent FA(3): generator, XSD, snapshot](journal/2026-10-29-agent-b-fa3.md).
+- [Przewodnik: generowanie i walidacja XML FA(3)](guides/FA3_XML_GENERATION.md).
 - [Dziennik: CAP-04 Hardening — claim/finalize, recovery, integralność](journal/2026-10-29-cap-04-hardening.md).
 - [Kontynuacja: Hardening Fix 2 i CAP-04D readiness — CAS resume, odmowa CRUD, timeout/lease](journal/2026-10-29-cap-04-hardening.md#kontynuacja--hardening-fix-2-i-cap-04d-readiness).
 - [Szkic testu SAP CBA poza zakresem — BLOCKED / NOT VERIFIED](patches/cap-04-cba-scope-test.md).
@@ -47,7 +55,8 @@ Ten spis jest indeksem dzienników i decyzji. Przy dodaniu nowego wpisu dodaj tu
 ## Docelowa architektura
 
 ```text
-SAPUI5 / Fiori ── OData V4 ──► CAP Java + Spring Boot (jedna JVM)
+SAPUI5 / Fiori ── OData V4 ──► RAP UI (lista, szczegóły, wynik biznesowy; BLOCKED)
+        └─────── OData V4 ──► CAP Java + Spring Boot (akcje/monitoring, jedna JVM)
                                ├── CDS / Event Handlers / proces KSeF
                                ├── H2 lokalnie → SAP HANA Cloud docelowo
                                ├── Remote Service / Destination / OAuth2
@@ -69,7 +78,7 @@ ABAP Environment utrzymuje w tym scenariuszu symulacyjne dane faktur, a CAP ma b
 | `abap/` | CAP-04B wyeksportowano z H01 w `525e48d`: akcja `ApplyKsefResult`, readonly pól, autoryzacja, testy/prototypy i metadata. Bez HTTP WRITE i bez nadania prawa. Root DCL `where TRUE` nie zapewnia izolacji odczytu. Pominięto zastane zmiany spoza zakresu. |
 | `sapui5/ainvoicer/` | Istniejący frontend SAPUI5 |
 | `node/`, `python/` | Istniejące funkcje AI |
-| `cap-java/` | CAP Java + Spring Boot; READ H01 LIVE PASS, CAP-04C Write Adapter i persistent outbox zweryfikowane lokalnie. Transport WRITE domyślnie OFF, KSeF SDK niezaimplementowany. |
+| `cap-java/` | CAP Java + Spring Boot; READ H01 LIVE PASS, writeback lokalnie przetestowany i domyślnie OFF. `feature/ksef-auth`: SDK MF, LIVE auth i jedna syntetyczna faktura TEST z numerem/UPO; generator B zintegrowany lokalnie, 141 testów PASS. Pełny H01 → KSeF nadal oczekuje. |
 | `docs/` | Wspólna baza wiedzy dla ludzi i agentów |
 
 ## Zasady dokumentowania

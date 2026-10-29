@@ -3,7 +3,9 @@ sap.ui.define([
 ], function (KsefInvoiceMapper) {
     "use strict";
 
-    var Mode = Object.freeze({ MOCK: "mock", CAP: "cap" });
+    var Mode = Object.freeze({ MOCK: "mock", CAP: "cap", RAP: "rap" });
+    /** Twardy limit strony: UI nigdy nie pobiera całej listy faktur ani całej historii operacji. */
+    var MAX_PAGE = 200;
 
     var ErrorCode = Object.freeze({
         BACKEND_MISSING: "BACKEND_MISSING",
@@ -42,18 +44,44 @@ sap.ui.define([
         });
     }
 
+    /** Wiersz CAP InvoiceIntegrationStatus → kształt operacji używany przez mapper (jak KsefOperations). */
+    function fromIntegrationStatus(oRow) {
+        return {
+            ID: oRow.operationId,
+            sapDocumentRef: oRow.invoiceUUID,
+            operationType: oRow.operationType,
+            status: oRow.integrationStatus,
+            environment: oRow.environment,
+            referenceNumber: oRow.ksefReference || "",
+            ksefNumber: oRow.ksefNumber || "",
+            errorCode: oRow.errorCode || "",
+            submissionState: oRow.submissionState || "",
+            upoAvailable: !!oRow.upoAvailable,
+            writebackState: oRow.writebackState || "",
+            writebackOutcome: oRow.writebackOutcome || "",
+            createdAt: oRow.createdAt,
+            modifiedAt: oRow.modifiedAt
+        };
+    }
+
     /**
-     * Adapter źródeł danych kokpitu KSeF.
+     * Adapter źródeł danych kokpitu KSeF (ADR-0005).
      *  - mock: lokalne pliki JSON o kształcie RAP ZC_AINV_INV_H (+_Items/_References) i CAP KsefOperations.
-     *  - cap:  CAP Java OData V4 (KsefService). Lista faktur wymaga endpointu z luki G-01.
+     *  - rap:  lista/szczegóły z named OData V4 model "rap" (usługa RAP UI, paging/filter/sort po stronie
+     *          serwera), stan integracji z CAP KsefService.InvoiceIntegrationStatus wyłącznie dla UUID
+     *          widocznej strony, akcje (requestSend) przez CAP. CAP nie jest proxy listy faktur.
+     *  - cap:  dawny wariant „wszystko przez CAP” (G-01) — pozostawiony tylko dla zgodności testów.
      * Adapter nigdy nie łączy się z KSeF API ani nie przechowuje tokenów; uwierzytelnienie zapewnia
      * sesja aplikacji (approuter / XSUAA) — przeglądarka nie widzi poświadczeń SAP ani JWT KSeF.
      */
-    function KsefDataAdapter(oConfig, fnFetch) {
+    function KsefDataAdapter(oConfig, fnFetch, oRapModel) {
         this._oConfig = oConfig || {};
-        this._sMode = this._oConfig.dataMode === Mode.CAP ? Mode.CAP : Mode.MOCK;
+        this._sMode = this._oConfig.dataMode === Mode.CAP ? Mode.CAP
+            : this._oConfig.dataMode === Mode.RAP ? Mode.RAP : Mode.MOCK;
         this._fnFetch = fnFetch || (typeof fetch === "function" ? fetch.bind(window) : null);
+        this._oRapModel = oRapModel || null;
         this._oMockCache = null;
+        this._oLastPage = null;
     }
 
     KsefDataAdapter.Mode = Mode;
@@ -71,7 +99,7 @@ sap.ui.define([
         var oCaps = this._oConfig.capabilities || {};
         var oCap = this._oConfig.cap || {};
         var oActions = oCap.actions || {};
-        var bCap = this._sMode === Mode.CAP;
+        var bCap = this._sMode === Mode.CAP || this._sMode === Mode.RAP;
         return {
             readOperations: true,
             sendInvoice: bCap && !!oCaps.sendInvoice && !!oActions.send,
@@ -84,23 +112,27 @@ sap.ui.define([
 
     // ---------------------------------------------------------------- odczyt
 
-    /** @returns {Promise<object[]>} wiersze modelu widoku (nagłówek RAP + najnowsza operacja CAP) */
-    KsefDataAdapter.prototype.loadInvoices = function () {
+    /** @returns {?{skip: number, top: number, count: ?number, hasMore: boolean, integrationError: ?string}} */
+    KsefDataAdapter.prototype.getLastPage = function () {
+        return this._oLastPage;
+    };
+
+    /**
+     * @param {object} [oQuery] tylko tryb rap: { filters: sap.ui.model.Filter[], sorters: sap.ui.model.Sorter[],
+     *   skip: number, top: number } — przekazywane do RAP jako $filter/$orderby/$skip/$top
+     * @returns {Promise<object[]>} wiersze modelu widoku (nagłówek RAP + próby SEND z CAP)
+     */
+    KsefDataAdapter.prototype.loadInvoices = function (oQuery) {
+        if (this._sMode === Mode.RAP) {
+            return this._loadRapPage(oQuery || {});
+        }
         if (this._sMode === Mode.MOCK) {
             return this._loadMock(true).then(function (oData) {
                 return KsefInvoiceMapper.toInvoiceRows(oData.headers, oData.operations);
             });
         }
-        var sListUrl = (this._oConfig.cap || {}).invoiceListUrl;
-        if (!sListUrl) {
-            return backendMissing("G-01");
-        }
-        return Promise.all([
-            this._getJson(sListUrl),
-            this._getJson(this._capUrl("KsefOperations?$orderby=createdAt desc"))
-        ]).then(function (aResults) {
-            return KsefInvoiceMapper.toInvoiceRows(aResults[0].value || [], aResults[1].value || []);
-        });
+        // Dawny tryb cap nie może stać się proxy listy SAP ani pobierać nieograniczonych operacji.
+        return backendMissing("G-01");
     };
 
     /** @returns {Promise<object>} wiersz z pozycjami i referencjami (_Items/_References) */
@@ -109,6 +141,9 @@ sap.ui.define([
             assertUuid(sInvoiceUUID);
         } catch (oError) {
             return Promise.reject(oError);
+        }
+        if (this._sMode === Mode.RAP) {
+            return this._loadRapDetails(sInvoiceUUID);
         }
         if (this._sMode === Mode.MOCK) {
             return this._loadMock(false).then(function (oData) {
@@ -122,16 +157,7 @@ sap.ui.define([
                 return KsefInvoiceMapper.toInvoiceRow(oHeader, aOps);
             });
         }
-        var sDetailsUrl = (this._oConfig.cap || {}).invoiceDetailsUrl;
-        if (!sDetailsUrl) {
-            return backendMissing("G-10");
-        }
-        return Promise.all([
-            this._getJson(sDetailsUrl.replace("{InvoiceUUID}", encodeURIComponent(sInvoiceUUID))),
-            this.loadOperations(sInvoiceUUID)
-        ]).then(function (aResults) {
-            return KsefInvoiceMapper.toInvoiceRow(aResults[0], aResults[1]);
-        });
+        return backendMissing("G-10");
     };
 
     /** Historia operacji CAP dla faktury (najnowsze pierwsze). Odczyt — nie wywołuje KSeF. */
@@ -146,6 +172,11 @@ sap.ui.define([
                 return KsefInvoiceMapper.groupOperationsByInvoice(oData.operations)[sInvoiceUUID.toLowerCase()] || [];
             });
         }
+        if (this._sMode === Mode.RAP) {
+            return this._loadIntegrationStatus([sInvoiceUUID]).then(function (aOperations) {
+                return aOperations.slice().sort(KsefInvoiceMapper.compareOperationsDesc);
+            });
+        }
         // sapDocumentRef to String(120) w CAP; wartość jest zwalidowanym UUID, więc literał jest bezpieczny.
         var sQuery = "KsefOperations?$filter=sapDocumentRef eq '" + sInvoiceUUID.toLowerCase() + "'&$orderby=createdAt desc";
         return this._getJson(this._capUrl(sQuery)).then(function (oBody) {
@@ -156,8 +187,10 @@ sap.ui.define([
     // ---------------------------------------------------------------- akcje
 
     /**
-     * Zlecenie wysyłki przez CAP (luka G-02). Zwraca wyłącznie wynik serwera — zwykle operację w stanie NEW/QUEUED.
-     * UI nie interpretuje przyjęcia zlecenia jako przyjęcia faktury przez KSeF.
+     * Zlecenie wysyłki: CAP action KsefService.requestSend(invoiceUUID). Jedynym wejściem jest UUID —
+     * NIP, środowisko, XML i klucz idempotencji wyznacza serwer. Zwraca wyłącznie wynik serwera
+     * (operationId + QUEUED); UI nie interpretuje przyjęcia zlecenia jako przyjęcia przez KSeF.
+     * Brak automatycznego ponowienia: 409 z serwera oznacza aktywną/przyjętą/nieznaną próbę.
      */
     KsefDataAdapter.prototype.requestSend = function (sInvoiceUUID) {
         if (!this.getCapabilities().sendInvoice) {
@@ -169,7 +202,7 @@ sap.ui.define([
             return Promise.reject(oError);
         }
         var sPath = this._oConfig.cap.actions.send.replace("{InvoiceUUID}", encodeURIComponent(sInvoiceUUID));
-        return this._postJson(this._capUrl(sPath), {});
+        return this._postJson(this._capUrl(sPath), { invoiceUUID: sInvoiceUUID.toLowerCase() });
     };
 
     KsefDataAdapter.prototype.requestSync = function () {
@@ -206,6 +239,105 @@ sap.ui.define([
         }
         assertUuid(sInvoiceUUID);
         return this._capUrl(this._oConfig.cap.actions[sKind].replace("{InvoiceUUID}", encodeURIComponent(sInvoiceUUID)));
+    };
+
+    // ---------------------------------------------------------------- tryb rap
+
+    /** Jedna strona z RAP (serwerowe $filter/$orderby/$skip/$top/$count), potem stan CAP tej strony. */
+    KsefDataAdapter.prototype._loadRapPage = function (oQuery) {
+        if (!this._oRapModel) {
+            return backendMissing("RAP-UI");
+        }
+        var oRap = this._oConfig.rap || {};
+        var iSkip = Math.max(0, oQuery.skip || 0);
+        var iTop = Math.min(Math.max(1, oQuery.top || oRap.pageSize || 50), MAX_PAGE);
+        var oBinding = this._oRapModel.bindList("/" + (oRap.entitySet || "Invoices"), null,
+            oQuery.sorters || [], oQuery.filters || [], { $count: true });
+        var that = this;
+        var aHeaders;
+        var iCount = null;
+        return oBinding.requestContexts(iSkip, iTop).then(function (aContexts) {
+            aHeaders = aContexts.map(function (oContext) {
+                return oContext.getObject();
+            });
+            return oBinding.getHeaderContext().requestProperty("$count").catch(function () {
+                return null;
+            });
+        }).then(function (vCount) {
+            iCount = typeof vCount === "number" ? vCount : null;
+            var aUUIDs = aHeaders.map(function (oHeader) {
+                return oHeader.InvoiceUUID;
+            });
+            return that._loadIntegrationStatus(aUUIDs).then(function (aOperations) {
+                return { operations: aOperations, available: true, error: null };
+            }, function (oError) {
+                // CAP niedostępny: pokazujemy dane SAP, ale stan integracji jest nieznany → Send zablokowany.
+                return { operations: [], available: false, error: (oError && oError.message) || String(oError) };
+            });
+        }).then(function (oIntegration) {
+            that._oLastPage = {
+                skip: iSkip,
+                top: iTop,
+                count: iCount,
+                hasMore: iCount !== null ? iSkip + aHeaders.length < iCount : aHeaders.length === iTop,
+                integrationError: oIntegration.error
+            };
+            return KsefInvoiceMapper.toInvoiceRows(aHeaders, oIntegration.operations, oIntegration.available);
+        }).finally(function () {
+            oBinding.destroy();
+        });
+    };
+
+    /** Nagłówek z _Items/_References z RAP i historia z CAP; błąd CAP nie ukrywa danych SAP. */
+    KsefDataAdapter.prototype._loadRapDetails = function (sInvoiceUUID) {
+        if (!this._oRapModel) {
+            return backendMissing("RAP-UI");
+        }
+        var oRap = this._oConfig.rap || {};
+        // Edm.Guid w kluczu OData V4 jest literałem bez cudzysłowów; UUID został zwalidowany.
+        var oBinding = this._oRapModel.bindContext("/" + (oRap.entitySet || "Invoices") + "(" + sInvoiceUUID.toLowerCase() + ")",
+            null, { $expand: "_Items,_References" });
+        var that = this;
+        return oBinding.requestObject().then(function (oHeader) {
+            if (!oHeader) {
+                throw adapterError(ErrorCode.HTTP, "Invoice not found", { status: 404 });
+            }
+            return that._loadIntegrationStatus([sInvoiceUUID]).then(function (aOperations) {
+                return KsefInvoiceMapper.toInvoiceRow(oHeader, aOperations, true);
+            }, function () {
+                return KsefInvoiceMapper.toInvoiceRow(oHeader, [], false);
+            });
+        }).finally(function () {
+            oBinding.destroy();
+        });
+    };
+
+    /**
+     * Stan integracji CAP wyłącznie dla podanych (widocznych) UUID; bez danych finansowych SAP.
+     * Łańcuch `eq ... or` (bez `in`) — ten sam bezpieczny podzbiór OData co w CAP → RAP.
+     */
+    KsefDataAdapter.prototype._loadIntegrationStatus = function (aUUIDs) {
+        var aValid = (aUUIDs || []).filter(function (sUuid) {
+            return UUID_PATTERN.test(String(sUuid || ""));
+        }).slice(0, MAX_PAGE);
+        if (!aValid.length) {
+            return Promise.resolve([]);
+        }
+        var sFilter = aValid.map(function (sUuid) {
+            return "invoiceUUID eq '" + sUuid.toLowerCase() + "'";
+        }).join(" or ");
+        var sPath = ((this._oConfig.cap || {}).integrationStatus || "InvoiceIntegrationStatus")
+            + "?$filter=" + encodeURIComponent(sFilter) + "&$top=" + MAX_PAGE
+            + "&$count=true&$orderby=createdAt desc,operationId";
+        return this._getJson(this._capUrl(sPath)).then(function (oBody) {
+            // Uciętej historii nie wolno interpretować jako braku aktywnej/przyjętej próby SEND.
+            // Pobieramy ograniczoną partię; nadmiar bezpiecznie wyłącza Send na stronie.
+            if (oBody["@odata.nextLink"] || Number(oBody["@odata.count"]) > (oBody.value || []).length
+                    || (oBody.value || []).length >= MAX_PAGE && oBody["@odata.count"] === undefined) {
+                throw adapterError(ErrorCode.PARSE, "CAP_INTEGRATION_HISTORY_INCOMPLETE");
+            }
+            return (oBody.value || []).map(fromIntegrationStatus);
+        });
     };
 
     // ---------------------------------------------------------------- pomocnicze

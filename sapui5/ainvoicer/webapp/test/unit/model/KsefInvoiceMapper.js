@@ -85,7 +85,7 @@ sap.ui.define([
             [header(), header({ InvoiceUUID: "55ac244b-67e8-596f-a22f-7f20c57197cb", InvoiceNumber: "OTHER" })],
             [operation({ sapDocumentRef: UUID.toUpperCase(), status: "ACCEPTED", ksefNumber: "K-1" }), operation({ sapDocumentRef: null })]);
         assert.strictEqual(aRows.length, 2);
-        assert.strictEqual(aRows[0].KsefStatus, "ACCEPTED");
+        assert.strictEqual(aRows[0].KsefStatus, "ACCEPTED_SAP_SYNC", "CAP ACCEPTED without RAP number = SAP synchronization");
         assert.strictEqual(aRows[0].KsefNumber, "K-1", "CAP KSeF number used when SAP has none yet");
         assert.strictEqual(aRows[1].KsefStatus, "NO_OPERATION", "operation without sapDocumentRef is not attached");
     });

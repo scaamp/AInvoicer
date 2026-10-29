@@ -9,6 +9,8 @@ type KsefDirection : String enum {
 
 entity KsefInvoices : cuid, managed {
   taxpayerNip    : String(10) not null;
+  // Brak zakresu w historycznym rekordzie oznacza brak publicznego dostępu (fail closed).
+  companyCode    : String(4);
   direction      : KsefDirection not null;
   sapDocumentRef : String(120);
   invoiceNumber  : String(100);
@@ -38,13 +40,31 @@ entity KsefInvoiceSnapshots : cuid, managed {
   // SHA-256 (hex) dokładnych bajtów XML FA(3) przekazanych do wysyłki.
   xmlSha256          : String(64) not null;
   xmlByteLength      : Integer not null;
+  // Pochodzenie danych migawki. SAP_RAP = CAP sam odczytał fakturę z RAP Remote OData (requestSend);
+  // UNVERIFIED = dane dostarczone inną drogą (np. syntetyczny fixture SDK). Writeback do RAP
+  // jest dozwolony wyłącznie dla SAP_RAP (ADR-0005).
+  source             : String(20) not null default 'UNVERIFIED';
 }
 
 annotate KsefInvoiceSnapshots with @assert.unique.document: [invoiceUUID, environment, taxpayerNip, xmlSha256];
 
+// Atomowa rezerwacja wysyłki: klucz główny (invoiceUUID, environment) gwarantuje w bazie co najwyżej
+// jedną aktywną próbę SEND na fakturę i środowisko (H2 i HANA, bez SQL specyficznego dla dialektu).
+// Kolejna próba po potwierdzonym odrzuceniu przepina wiersz warunkowym UPDATE (CAS po operationId
+// i attempt). Wiersz nigdy nie jest usuwany, więc restart ani ponowienie HTTP jej nie omija.
+entity KsefSendReservations : managed {
+  key invoiceUUID : UUID;
+  key environment : String(4);
+      taxpayerNip : String(10) not null;
+      companyCode : String(4) not null;
+      operationId : UUID not null;
+      attempt     : Integer not null default 1;
+}
+
 entity KsefOperations : cuid, managed {
   sapDocumentRef  : String(120);
   taxpayerNip     : String(10) not null;
+  companyCode     : String(4);
   direction       : KsefDirection not null;
   environment     : String(4) not null default 'TEST';
   operationType   : String(40) not null;
@@ -60,9 +80,46 @@ entity KsefOperations : cuid, managed {
   // przez KSeF przy akceptacji. Ustawia wyłącznie zaufany producent; brak publikacji w OData.
   snapshot         : Association to one KsefInvoiceSnapshots;
   confirmedXmlSha256 : String(64);
+  // Nawigacje tylko do odczytu (bez kolumn FK): zlecenie KSeF i writeback SAP mają ID = ID operacji.
+  // Publikowane wyłącznie przez read-only projekcję KsefService.InvoiceIntegrationStatus.
+  submission       : Association to one KsefSubmissions on submission.ID = $self.ID;
+  writeback        : Association to one SapResultWrites on writeback.ID = $self.ID;
 }
 
 annotate KsefOperations with @assert.unique.idempotency: [taxpayerNip, idempotencyKey];
+
+// Wewnętrzne zlecenie KSeF TEST. ID = istniejąca operacja; XML/UPO pozostają w magazynie.
+// Znacznik etapu jest commitowany PRZED każdym efektem. Restart w OPENING/SENDING/CLOSING
+// wymaga odczytowej rekoncyliacji; klucze AES i JWT nigdy nie trafiają do persystencji.
+entity KsefSubmissions : managed {
+  key ID             : UUID;
+  snapshotId         : UUID not null;
+  taxpayerNip        : String(10) not null;
+  state              : String(40) not null default 'PREPARED';
+  xmlStorageRef      : String(500) not null;
+  xmlSha256          : String(64) not null;
+  sessionReference   : String(100);
+  invoiceReference   : String(100);
+  ksefNumber         : String(50);
+  upoStorageRef      : String(500);
+  closeAttempted     : Boolean not null default false;
+  closeConfirmed     : Boolean not null default false;
+  claimToken         : UUID;
+  leaseUntil         : Timestamp;
+  readAttempts       : Integer not null default 0;
+  retryNotBefore     : Timestamp;
+  lastCode           : String(100);
+}
+
+// Jedna migawka nie może być wysłana ponownie pod nowym kluczem operacji.
+annotate KsefSubmissions with @assert.unique.snapshot: [snapshotId];
+
+entity KsefSubmissionHistory : cuid {
+  submissionId : UUID not null;
+  occurredAt   : Timestamp not null;
+  state        : String(40) not null;
+  code         : String(100);
+}
 
 // Wyłącznie wewnętrzna persystencja writeback; brak projekcji w publicznym OData.
 // ID = UUID potwierdzonej operacji, zarazem stabilny RAP WriteRequestId.

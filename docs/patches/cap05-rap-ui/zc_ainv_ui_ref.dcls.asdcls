@@ -1,0 +1,7 @@
+@EndUserText.label: 'AInvoicer UI reference read scope'
+@MappingRole: true
+define role ZC_AINV_UI_REF {
+  grant select on ZC_AINV_UI_REF
+    where inheriting conditions from entity ZC_AINV_UI_H
+      replacing { root with _Header };
+}

@@ -139,6 +139,12 @@ Nie powtarzać teraz dużego sprintu SDK/FA(3). Najkrótsza ścieżka do używal
 - **H01 / CAP-04D:** osobno przetestować rzeczywistego communication usera i RAP `ApplyKsefResult` na wyznaczonej syntetycznej fakturze; NIE robić z tego warunku rozpoczęcia G-01.
 - **Następnie:** dokument storage na HANA/CF, odbiór zakupów, monitoring/recovery i dalsze mapowanie FI/MM/SD.
 
+## Aktualizacja CAP-05 — stan integracji po audycie
+
+Historyczny plan G-01 jako proxy CAP powyżej został zastąpiony zaakceptowanym [ADR-0005](../decisions/ADR-0005-rap-business-status-cap-integration-status.md): lista/szczegóły z osobnej usługi RAP UI, CAP wyłącznie akcje/statusy. [Raport implementacji](../audits/2026-10-29-cap-05-implementation-review.md) i [dziennik](../journal/2026-10-29-cap-05-integration-review.md) są aktualnym przekazaniem.
+
+`feature/cap-05-integration` @ `2e0ee37`: auth A (z kodem B) już scalono w `f49153b`; runner C `732fa14` przeniesiono jako `0cd7440`. Nie scalano B ponownie. Audyt Codex uzupełnia zastane niezacommitowane UI5 oraz naprawia luki backendu, bez nowych commitów/push, bez agentów równoległych, bez zmian innych worktrees. RAP UI/IAM i kontrolowany LIVE E2E pozostają BLOCKED / osobne działania zgodnie z raportem.
+
 ## 8. Checklista przyszłego multi-agent sprintu
 
 1. Ustal jeden integracyjny branch, bazowy SHA, wyłącznego właściciela POM i kontraktów oraz granice dla każdego agenta.

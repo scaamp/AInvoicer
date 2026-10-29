@@ -40,8 +40,8 @@ Własne API CDS/OData i CRUD nie wchodziły w Phase 1; ich sprawdzenie należy d
 - [x] Minimalny Java `@Before` handler CREATE: NIP z sumą kontrolną, direction, katalog operationType, wymagany idempotencyKey (trim) i status `NEW`.
 - [x] Lokalna weryfikacja `$metadata`, OData i persystencji H2; walidacja domenowa oraz autoryzacja per NIP są potwierdzone testami integracyjnymi.
 - [x] Trwała encja operacji i unikalny idempotency key `(taxpayerNip, idempotencyKey)`.
-- [ ] Przed pierwszą wysyłką: kontrola konkurencji i worker/outbox po commit.
-- [ ] Przed efektami zewnętrznymi: `UNKNOWN/RECONCILIATION_REQUIRED`, odtwarzanie po restarcie oraz testy niejednoznacznych odpowiedzi.
+- [x] Kontrola konkurencji i worker/outbox po commit — CAP-05 H2/mock; HANA/CF osobno.
+- [x] `RECONCILIATION_REQUIRED`, recovery po restarcie i testy niejednoznacznych odpowiedzi — CAP-05 H2/mock.
 - [x] Kontrola dostępu do operacji: rola `KsefOperator`, lista atrybutów `$user.taxpayerNips`, izolacja CREATE/READ i blokada UPDATE/DELETE w publicznym serwisie.
 - [x] Testy integracyjne OData + Spring Security + CAP + H2: użytkownicy operator A/B, anonimowy/brak roli, walidacja, status, brak UPDATE/DELETE i unikalność idempotencji.
 - [ ] Docelowa konfiguracja IAS/XSUAA i mapowanie zaufanych claimów do roli `KsefOperator` oraz atrybutu `taxpayerNips` (przed udostępnieniem serwisu użytkownikom).
@@ -90,22 +90,41 @@ ABAP Environment jest tu źródłem symulacyjnych danych aplikacyjnych; nie zak�
 
 ## Phase 4 — KSeF SDK Integration
 
-- [ ] Wybór i przypięcie wersji oficjalnego SDK MF, audyt zgodności z CAP/Spring Boot; adapter w tej samej JVM.
-- [ ] TEST: autoryzacja właściwego kontekstu podatnika, bezpieczne przechowywanie credentiali i obsługa JWT po stronie backendu.
-- [ ] Poprawny XML FA(3) według oficjalnego XSD; sesje i kryptografia obsługiwane przez SDK.
-- [ ] Wysyłka przez trwały worker; bez długiego pollingu w transakcji żądania OData.
-- [ ] Status końcowy i numer KSeF, zamknięcie sesji, UPO oraz metadane/ref. do trwałego magazynu dokumentów.
-- [ ] Retry tylko bezpiecznych odczytów i sklasyfikowanych błędów, backoff/jitter, 429/Retry-After oraz rekoncyliacja po utracie odpowiedzi.
+**IN PROGRESS — Agent A, `feature/ksef-auth`, 2026-10-29:** SDK 3.0.29,
+auth/sesje, trwały worker/checkpointy i rekoncyliacja; **141 testów lokalnych PASS** po integracji A+B.
+LIVE auth TEST (XAdES → 200 → redeem → chroniony READ → refresh) PASS.
+**LIVE E2E CAP/SDK PASS** na oficjalnym fixture: jedna faktura
+`1234563218-20261029-7DC8A1C00000-CD`, UPO 5528 bajtów, RESUME po restarcie.
+FA(3) B połączono ze snapshotem i outboxem (`7075c01` → `657c285`), z pełną kontrolą
+dużych maxOccurs na granicy wysyłki. Źródło LIVE H01 i LIVE send XML wygenerowanego
+przez B pozostają niepotwierdzone (NIP/PartyData; bez drugiej wysyłki).
+[Dziennik](journal/2026-10-29-agent-a-ksef-sdk.md).
+
+- [x] SDK MF 3.0.29 przypięte, zbudowane ze źródeł i użyte w JVM CAP/Boot 4; mock/HTTP i LIVE TEST PASS (Agent A).
+- [x] TEST lokalnie: XAdES, biznesowe 200, redeem, JWT w pamięci, refresh i autoryzowany READ PASS; zarządzane credentiale BTP przed CF.
+- [x] **Poprawny XML FA(3) według oficjalnego XSD (Agent B, 2026-10-29, `feature/ksef-fa3`):** generator podstawowej faktury VAT, walidacja XSD 1-0E offline + domenowa, bajty i SHA-256 dla migawki CAP, adapter SAP. Lokalnie 112/112 PASS; przyjęcie przez KSeF niezweryfikowane. [Przewodnik](guides/FA3_XML_GENERATION.md).
+- [x] Sesje i kryptografia SDK; dokładne bajty B → snapshot → storage → send potwierdzone testem A+B; LIVE jedna faktura z oficjalnego fixture.
+- [ ] Źródło danych spoza RAP dla FA(3): adres sprzedawcy/nabywcy, JST/GV; poprawne NIP-y w seedzie H01.
+- [x] Trwały worker/outbox, checkpointy przed HTTP, lokalne testy rollback/konkurencji/restartu PASS; brak blokad biznesowych podczas sieci.
+- [x] TEST lokalnie: status 200/hash/numer, close i UPO; plikowa H2 i jawny lokalny magazyn TEST. Zarządzany storage przed CF pozostaje osobnym zadaniem.
+- [x] TEST/H2: bezpieczne odczyty z limitem/backoff/jitter/Retry-After, rekoncyliacja hash/ref i brak ponownego send/close po niejednoznacznej odpowiedzi; CF/HANA osobno.
 - [ ] Pierwszy vertical slice: jedna syntetyczna faktura SAP Remote OData → CAP → SDK → KSeF TEST → numer KSeF i UPO; wysyłka tylko po jawnej zgodzie.
 
 HTTP 202 nie oznacza przyjęcia faktury. Eksperyment na `feature/ksef-java-e2e-runner` jest referencją według kontekstu projektu; nie zalicza tego etapu.
 
 ## Phase 5 — SAPUI5 + CAP
 
-- [ ] Stopniowe podłączenie istniejącego frontendu do gotowego API OData CAP.
-- [ ] Wyświetlanie faktur i akcji zlecenia wysyłki jako operacji asynchronicznej.
-- [ ] Odczyt statusów, numeru KSeF i autoryzowane pobranie UPO.
-- [ ] Weryfikacja uprawnień i regresji istniejących ekranów SAPUI5 oraz funkcji AI.
+- [x] CAP-05: A+B i UI5 C na `feature/cap-05-integration`; CAP clean verify **173/173 PASS** H2/mock; UI5 build/QUnit/OPA PASS. [Audyt](audits/2026-10-29-cap-05-implementation-review.md).
+- [x] `requestSend(invoiceUUID)` — własny odczyt RAP, NIP/CompanyCode, TEST, FA(3)/snapshot, atomowa rezerwacja DB i persistent outbox. Konkurencja dwóch użytkowników, rollback, nieznane stany i controlled retry potwierdzone lokalnie.
+- [x] ACCEPTED → SAP writeback po commit + sweeper; brak utraty przyjęcia/UPO przy błędzie enqueue/SAP; tylko SAP_RAP. VERSION_CONFLICT blokuje retry SEND, bez obejścia CAS; diagnostyka read-only.
+- [x] Istniejący frontend: named RAP V4 model, ograniczona strona, server paging/filter/sort RAP, CAP stan integracji dla UUID strony i akcje; priorytet numeru RAP. Brak CAP proxy listy.
+- [x] Regresja mock: AI Assistant, Scanner, Voice controls i Legacy FI; QUnit i OPA. Nie oznacza LIVE AI/STT ani CAP→SAPUI5 na BTP.
+- [ ] **BLOCKED:** oddzielna usługa RAP UI, DCL ACTVT03/NIP/CompanyCode, IAM i testy faktycznymi business userami; przygotowane [źródła i czynności ADT](patches/cap05-rap-ui/README.md), bez aktywacji.
+- [ ] Approuter i IAS/XSUAA: zgodne trusted claims NIP/CompanyCode w RAP/CAP; trasa `/rap-ui/` do zweryfikowanego bindingu. Domyślny UI pozostaje mock do przejścia bramki.
+- [ ] Autoryzowane publiczne pobranie XML/UPO; obecnie worker przechowuje UPO i publikuje upoAvailable, przyciski nadal wyłączone.
+- [ ] Globalne filtrowanie po statusie CAP (obecnie jawnie bieżąca strona); HANA/multi-instance i migracja historycznej bazy z uzupełnieniem zaufanego CompanyCode.
+- [ ] Osobna ocena biznesowa blokowania UPDATE/DELETE po numerze KSeF i total version kompozycji; patch testów charakteryzacyjnych NOT SAP VERIFIED.
+- [ ] Kontrolowany LIVE E2E: poprawne syntetyczne dane RAP + PartyData, jedna wysyłka TEST i writeback, numer w UI/UPO/409 po ponowieniu. Wyłącznie po osobnym zleceniu; w CAP-05 nie wykonano SEND/HTTP WRITE.
 
 ## Phase 6 — BTP & Production Hardening
 

@@ -64,7 +64,10 @@ sap.ui.define([
             if (oInfo) {
                 return oInfo.state;
             }
-            return sStatus === KsefContract.DerivedStatus.RECORDED_IN_SAP ? "Success" : "None";
+            if (sStatus === KsefContract.DerivedStatus.RECORDED_IN_SAP) {
+                return "Success";
+            }
+            return sStatus === KsefContract.DerivedStatus.ACCEPTED_SAP_SYNC ? "Warning" : "None";
         },
 
         ksefStatusIcon: function (sStatus) {

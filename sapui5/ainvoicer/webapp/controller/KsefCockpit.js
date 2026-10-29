@@ -2,6 +2,7 @@ sap.ui.define([
     "sap/ui/model/json/JSONModel",
     "sap/ui/model/Filter",
     "sap/ui/model/FilterOperator",
+    "sap/ui/model/Sorter",
     "sap/ui/core/Fragment",
     "sap/ui/core/BusyIndicator",
     "sap/m/MessageBox",
@@ -14,7 +15,7 @@ sap.ui.define([
     "ainvoicer/model/ksef/KsefActionRules",
     "ainvoicer/model/ksef/KsefFilterBuilder",
     "ainvoicer/model/ksef/KsefAiFilterAdapter"
-], function (JSONModel, Filter, FilterOperator, Fragment, BusyIndicator, MessageBox, MessageToast, mobileLibrary,
+], function (JSONModel, Filter, FilterOperator, Sorter, Fragment, BusyIndicator, MessageBox, MessageToast, mobileLibrary,
     formatMessage, formatter, KsefContract, KsefDataAdapter, KsefActionRules, KsefFilterBuilder, KsefAiFilterAdapter) {
     "use strict";
 
@@ -80,7 +81,9 @@ sap.ui.define([
             var sDefaultView = KsefContract.ViewKey[oConfig.defaultView] || KsefContract.ViewKey.ALL;
 
             this._oKsefConfig = oConfig;
-            this._oKsefAdapter = new KsefDataAdapter(oConfig);
+            // Tryb rap: named OData V4 model "rap" (manifest) = usługa RAP UI; CAP tylko stan integracji i akcje.
+            var oRapModel = oConfig.dataMode === KsefDataAdapter.Mode.RAP && oComponent ? oComponent.getModel("rap") : null;
+            this._oKsefAdapter = new KsefDataAdapter(oConfig, null, oRapModel);
             this._oKsefAi = null;
             this._oKsefSelected = null;
 
@@ -96,6 +99,10 @@ sap.ui.define([
                 modeText: this._ksefModeText(),
                 busy: false,
                 error: "",
+                integrationError: "",
+                hasMore: false,
+                hasPrevious: false,
+                pageSkip: 0,
                 rowCount: 0,
                 counts: { ALL: 0, PURCHASE: 0, SALES: 0 },
                 columns: mColumns,
@@ -119,6 +126,10 @@ sap.ui.define([
         },
 
         _ksefModeText: function () {
+            if (this._oKsefAdapter.getMode() === KsefDataAdapter.Mode.RAP) {
+                return this._ksefText("ksefModeRap", [(this._oKsefConfig.rap || {}).dataSource || "rap",
+                    (this._oKsefConfig.cap || {}).serviceUrl || ""]);
+            }
             return this._oKsefAdapter.getMode() === KsefDataAdapter.Mode.CAP
                 ? this._ksefText("ksefModeCap", [(this._oKsefConfig.cap || {}).serviceUrl || ""])
                 : this._ksefText("ksefModeMock");
@@ -139,14 +150,47 @@ sap.ui.define([
 
         // ------------------------------------------------------------------ dane
 
-        _ksefLoad: function () {
+        _isRapMode: function () {
+            return this._oKsefAdapter.getMode() === KsefDataAdapter.Mode.RAP;
+        },
+
+        /** Zapytanie serwerowe dla RAP: filtry widoku/paska/AI (bez pól UI), sortowanie, strona. */
+        _ksefServerQuery: function (iSkip) {
+            if (!this._isRapMode()) {
+                return undefined;
+            }
             var oViewModel = this._ksefViewModel();
+            var aFilters = KsefFilterBuilder.build(oViewModel.getProperty("/filters"), oViewModel.getProperty("/viewKey"));
+            if (this._oKsefAi) {
+                aFilters = aFilters.concat(this._oKsefAi.filters);
+            }
+            return {
+                filters: KsefFilterBuilder.serverFilters(aFilters),
+                sorters: KsefFilterBuilder.serverSorters(this._aKsefServerSorters || (this._oKsefAi && this._oKsefAi.sorter
+                    ? [].concat(this._oKsefAi.sorter) : [new Sorter("IssueDate", true), new Sorter("InvoiceNumber", false)]))
+                    .concat(new Sorter("InvoiceUUID", false)),
+                skip: iSkip || 0,
+                top: (this._oKsefConfig.rap || {}).pageSize || 50
+            };
+        },
+
+        _ksefLoad: function (iSkip) {
+            var oViewModel = this._ksefViewModel();
+            var oKsefModel = this.getView().getModel("ksef");
             var sSelectedUUID = this._oKsefSelected && this._oKsefSelected.InvoiceUUID;
+            iSkip = typeof iSkip === "number" ? iSkip : 0;
             oViewModel.setProperty("/busy", true);
             oViewModel.setProperty("/error", "");
 
-            return this._oKsefAdapter.loadInvoices().then(function (aRows) {
-                this.getView().getModel("ksef").setProperty("/invoices", aRows);
+            return this._oKsefAdapter.loadInvoices(this._ksefServerQuery(iSkip)).then(function (aPage) {
+                var aRows = aPage;
+                var oPage = this._oKsefAdapter.getLastPage();
+                oViewModel.setProperty("/hasMore", !!(oPage && oPage.hasMore));
+                oViewModel.setProperty("/hasPrevious", !!(oPage && oPage.skip > 0));
+                oViewModel.setProperty("/pageSkip", oPage ? oPage.skip : 0);
+                oViewModel.setProperty("/integrationError", oPage && oPage.integrationError
+                    ? this._ksefText("ksefIntegrationUnavailable", [oPage.integrationError]) : "");
+                oKsefModel.setProperty("/invoices", aRows);
                 oViewModel.setProperty("/counts", KsefFilterBuilder.countByView(aRows));
                 oViewModel.setProperty("/valueLists/companyCodes", KsefFilterBuilder.distinctValues(aRows, "CompanyCode"));
                 oViewModel.setProperty("/valueLists/ksefStatuses", KsefFilterBuilder.distinctValues(aRows, "KsefStatus").map(function (sStatus) {
@@ -157,6 +201,7 @@ sap.ui.define([
                 return aRows;
             }.bind(this)).catch(function (oError) {
                 this.getView().getModel("ksef").setProperty("/invoices", []);
+                oViewModel.setProperty("/hasMore", false);
                 oViewModel.setProperty("/counts", { ALL: 0, PURCHASE: 0, SALES: 0 });
                 oViewModel.setProperty("/rowCount", 0);
                 oViewModel.setProperty("/error", this._ksefText("ksefLoadError", [this._ksefErrorText(oError)]));
@@ -165,6 +210,27 @@ sap.ui.define([
             }.bind(this)).finally(function () {
                 oViewModel.setProperty("/busy", false);
             });
+        },
+
+        /** Tryb rap: tylko bieżąca strona w pamięci; stabilny porządek zawiera InvoiceUUID. */
+        onKsefLoadMore: function () {
+            var oPage = this._oKsefAdapter.getLastPage();
+            return this._ksefLoad(oPage ? oPage.skip + oPage.top : 0);
+        },
+
+        onKsefPreviousPage: function () {
+            var oPage = this._oKsefAdapter.getLastPage();
+            return this._ksefLoad(oPage ? Math.max(0, oPage.skip - oPage.top) : 0);
+        },
+
+        /** Sortowanie kolumn danych RAP wysyłamy do serwera, zamiast sortować tylko pobraną stronę. */
+        onKsefSort: function (oEvent) {
+            if (!this._isRapMode()) { return; }
+            var sPath = oEvent.getParameter("column").getSortProperty();
+            if (!KsefFilterBuilder.serverSorters([new Sorter(sPath)]).length) { return; }
+            oEvent.preventDefault();
+            this._aKsefServerSorters = [new Sorter(sPath, oEvent.getParameter("sortOrder") === "Descending")];
+            return this._ksefLoad();
         },
 
         _ksefErrorText: function (oError) {
@@ -186,12 +252,20 @@ sap.ui.define([
             oViewModel.setProperty("/viewKey", sKey);
             oViewModel.setProperty("/legacyMode", sKey === KsefContract.ViewKey.LEGACY);
             if (sKey !== KsefContract.ViewKey.LEGACY) {
-                this._ksefApplyFilters();
+                if (this._isRapMode()) {
+                    this._ksefLoad();
+                } else {
+                    this._ksefApplyFilters();
+                }
             }
             this._ksefUpdateActions();
         },
 
         onKsefSearch: function () {
+            if (this._isRapMode()) {
+                // Filtry i sortowanie wykonuje RAP; klient filtruje jeszcze tylko pola UI (KsefStatus).
+                return this._ksefLoad();
+            }
             this._ksefApplyFilters();
         },
 
@@ -202,6 +276,9 @@ sap.ui.define([
                 oDateRange.setValue("");
             }
             this._oKsefAi = null;
+            if (this._isRapMode()) {
+                return this._ksefLoad();
+            }
             this._ksefApplyFilters();
         },
 
@@ -347,9 +424,9 @@ sap.ui.define([
                 return;
             }
             var oInvoice = this._oKsefSelected;
-            var oLatest = oInvoice.LatestOperation;
+            var oSend = oInvoice.SendOperation;
             var sText = this._ksefText("ksefConfirmSend", [oInvoice.InvoiceNumber, this._oKsefConfig.targetEnvironment]);
-            if (oLatest && oLatest.status === "REJECTED") {
+            if (oSend && oSend.status === "REJECTED") {
                 sText += this._ksefText("ksefConfirmResendRejected");
             }
             MessageBox.confirm(sText, {
@@ -580,7 +657,11 @@ sap.ui.define([
         _applyAiResultToKsef: function (oData) {
             var oTranslation = KsefAiFilterAdapter.translate(oData);
             this._oKsefAi = oTranslation;
-            this._ksefApplyFilters();
+            if (this._isRapMode()) {
+                this._ksefLoad();
+            } else {
+                this._ksefApplyFilters();
+            }
 
             var aLines = [];
             if (oData && oData.description) {

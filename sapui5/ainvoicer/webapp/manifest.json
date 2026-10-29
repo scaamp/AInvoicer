@@ -24,6 +24,15 @@
           "localUri": "localService/mainService/metadata.xml",
           "odataVersion": "4.0"
         }
+      },
+      "rapUiService": {
+          "uri": "/rap-ui/",
+        "type": "OData",
+        "settings": {
+          "annotations": [],
+          "localUri": "localService/rapUi/metadata.xml",
+          "odataVersion": "4.0"
+        }
       }
     }
   },
@@ -65,6 +74,11 @@
       "ksefCockpit": {
         "dataMode": "mock",
         "targetEnvironment": "TEST",
+        "rap": {
+            "dataSource": "/rap-ui/",
+          "entitySet": "Invoices",
+          "pageSize": 50
+        },
         "defaultView": "ALL",
         "mock": {
           "headersPath": "ainvoicer/localService/ksef/ZC_AINV_INV_H.json",
@@ -72,10 +86,11 @@
         },
         "cap": {
           "serviceUrl": "/odata/v4/KsefService/",
+          "integrationStatus": "InvoiceIntegrationStatus",
           "invoiceListUrl": null,
           "invoiceDetailsUrl": null,
           "actions": {
-            "send": null,
+            "send": "requestSend",
             "sync": null,
             "xml": null,
             "upo": null,
@@ -83,7 +98,7 @@
           }
         },
         "capabilities": {
-          "sendInvoice": false,
+          "sendInvoice": true,
           "syncInbound": false,
           "viewXml": false,
           "downloadUpo": false,
@@ -105,6 +120,15 @@
           "operationMode": "Server",
           "autoExpandSelect": true,
           "earlyRequests": true
+        }
+      },
+      "rap": {
+        "dataSource": "rapUiService",
+        "preload": false,
+        "settings": {
+          "operationMode": "Server",
+          "autoExpandSelect": true,
+          "earlyRequests": false
         }
       }
     },

@@ -33,6 +33,9 @@ server:
           - path: /sap
             url: https://11b69711-9bcb-491b-b504-a9ba7e4b7e97.abap.us10.hana.ondemand.com
             destination: abap-cloud-abap-1ebf3ff5trial-dev
+          # CAP-05: lokalny CAP Java (stan integracji + requestSend). Docelowo approuter z dwiema destynacjami.
+          - path: /odata/v4/KsefService
+            url: http://localhost:8080
     - name: sap-fe-mockserver
       beforeMiddleware: csp
       configuration:

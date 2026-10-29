@@ -1,0 +1,11 @@
+@EndUserText.label: 'AInvoicer UI read scope'
+@MappingRole: true
+define role ZC_AINV_UI_H {
+  grant select on ZC_AINV_UI_H
+    where ( Direction = 'OUTBOUND' and
+      ( SellerNip, CompanyCode ) = aspect pfcg_auth(
+        Z_AINV_KSF, ZAINV_NIP, ZAINV_BUK, ACTVT = '03' ) )
+       or ( Direction = 'INBOUND' and
+      ( BuyerNip, CompanyCode ) = aspect pfcg_auth(
+        Z_AINV_KSF, ZAINV_NIP, ZAINV_BUK, ACTVT = '03' ) );
+}

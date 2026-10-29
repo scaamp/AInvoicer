@@ -47,6 +47,12 @@ public class KsefOperationsHandler implements EventHandler {
 				throw new ServiceException(ErrorStatuses.BAD_REQUEST,
 					"operationType is not supported");
 			}
+			// Wysyłkę zleca wyłącznie akcja requestSend (serwerowa rezerwacja i dane z RAP);
+			// surowa operacja SEND_INVOICE omijałaby ochronę przed duplikatem i myliła UI.
+			if ("SEND_INVOICE".equals(operationType)) {
+				throw new ServiceException(ErrorStatuses.BAD_REQUEST,
+					"SEND_INVOICE must be requested with the requestSend action");
+			}
 
 			// Status jest polem tylko do odczytu; stan początkowy nadaje wyłącznie serwer.
 			operation.setStatus("NEW");

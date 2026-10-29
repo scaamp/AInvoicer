@@ -108,7 +108,7 @@ public class SapKsefResultWriteback implements EventHandler {
     }
 
     /**
-     * Zaufany backend wywołuje po utrwaleniu potwierdzenia KSeF w tej samej transakcji.
+     * Zaufany backend wywołuje w nowej transakcji PO commit potwierdzenia KSeF (KsefAcceptedWriteback).
      * Operacja musi mieć ACCEPTED, SEND_INVOICE, OUTBOUND i numer KSeF; NEW jest odrzucane.
      * Oczekiwana wersja i spółka pochodzą wyłącznie z niezmiennej migawki dokumentu wysłanego
      * do KSeF, a skrót XML potwierdzony przy akceptacji musi być identyczny ze skrótem migawki.
@@ -132,7 +132,16 @@ public class SapKsefResultWriteback implements EventHandler {
         }
         var snapshot = db.run(Select.from(SNAPSHOTS).byId(operation.get("snapshot_ID"))).first()
                 .orElseThrow(() -> new IllegalStateException("DOCUMENT_SNAPSHOT_INVALID"));
-        UUID invoiceId = UUID.fromString((String) operation.get("sapDocumentRef"));
+        // Writeback wyłącznie dla dokumentu, który CAP sam odczytał z RAP (nie dla fixture SDK).
+        if (!KsefInvoiceSnapshotRegistry.SOURCE_SAP_RAP.equals(snapshot.get("source"))) {
+            throw new IllegalStateException("RAP_LINK_UNVERIFIED");
+        }
+        UUID invoiceId;
+        try {
+            invoiceId = UUID.fromString((String) operation.get("sapDocumentRef"));
+        } catch (RuntimeException notUuid) {
+            throw new IllegalStateException("RAP_LINK_UNVERIFIED");
+        }
         if (!invoiceId.equals(UUID.fromString((String) snapshot.get("invoiceUUID")))
                 || !operation.get("taxpayerNip").equals(snapshot.get("taxpayerNip"))
                 || !"OUTBOUND".equals(snapshot.get("direction"))

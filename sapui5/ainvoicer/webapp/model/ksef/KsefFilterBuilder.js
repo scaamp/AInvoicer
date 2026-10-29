@@ -6,6 +6,8 @@ sap.ui.define([
     "use strict";
 
     var SEARCH_FIELDS = ["InvoiceNumber", "SellerName", "BuyerName", "SellerNip", "BuyerNip", "KsefNumber"];
+    /** Pola wyliczane w UI ze stanu CAP — RAP ich nie zna, więc nie trafiają do $filter. */
+    var CLIENT_ONLY_FIELDS = ["KsefStatus"];
 
     function anyOf(sPath, aValues) {
         if (!aValues || !aValues.length) {
@@ -103,6 +105,37 @@ sap.ui.define([
                 aFilters.push(new Filter("GrossAmount", FilterOperator.LE, Number(oState.amountTo)));
             }
             return aFilters;
+        },
+
+        /**
+         * Filtry dla serwera RAP ($filter): te same drzewa bez pól wyliczanych w UI (KsefStatus).
+         * Filtr KsefStatus działa dalej po stronie klienta na pobranej stronie (dwufazowy filtr CAP→RAP
+         * jest kolejnym krokiem; zob. ADR-0005 „UI Data Sources”).
+         * @param {sap.ui.model.Filter[]} aFilters filtry z build() i adaptera AI
+         * @returns {sap.ui.model.Filter[]}
+         */
+        serverFilters: function (aFilters) {
+            function strip(oFilter) {
+                if (oFilter.aFilters) {
+                    var aMapped = oFilter.aFilters.map(strip);
+                    // Usunięcie składnika OR zawęziłoby wynik serwera i zgubiło poprawne wiersze.
+                    if (!oFilter.bAnd && aMapped.some(function (f) { return !f; })) { return null; }
+                    var aChildren = aMapped.filter(Boolean);
+                    if (!aChildren.length) {
+                        return null;
+                    }
+                    return aChildren.length === 1 ? aChildren[0] : new Filter({ filters: aChildren, and: !!oFilter.bAnd });
+                }
+                return CLIENT_ONLY_FIELDS.indexOf(oFilter.sPath) === -1 ? oFilter : null;
+            }
+            return (aFilters || []).map(strip).filter(Boolean);
+        },
+
+        /** RAP nie zna pól wyliczanych z CAP; takie sortery zostają wyłącznie na bieżącej stronie. */
+        serverSorters: function (aSorters) {
+            return (aSorters || []).filter(function (s) {
+                return ["KsefStatus", "LastUpdate", "OperationReference"].indexOf(s.sPath) === -1;
+            });
         },
 
         /** Liczy wiersze widoków All/Purchase/Sales dla liczników zakładek. */

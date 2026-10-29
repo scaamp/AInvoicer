@@ -1,0 +1,35 @@
+--- a/abap/src/zbp_r_ainv_inv_h.clas.testclasses.abap
++++ b/abap/src/zbp_r_ainv_inv_h.clas.testclasses.abap
+@@ -30,2 +30,4 @@
+     METHODS child_changes_denied FOR TESTING.
++    METHODS recorded_still_editable FOR TESTING.
++    METHODS recorded_still_deletable FOR TESTING.
+ ENDCLASS.
+@@ -319,2 +321,27 @@
+   ENDMETHOD.
++
++  METHOD recorded_still_editable.
++    " Test charakteryzacyjny: numer KSeF nie blokuje zwyklego UPDATE z prawem 02.
++    " Zmienia tylko bufor RAP; teardown wykonuje ROLLBACK ENTITIES.
++    apply( request ).
++    MODIFY ENTITIES OF zr_ainv_inv_h ENTITY ZrAinvInvH
++      UPDATE FIELDS ( GrossAmount )
++      WITH VALUE #( ( InvoiceUUID = invoice_uuid GrossAmount = '999.00' ) )
++      FAILED DATA(failure).
++    cl_abap_unit_assert=>assert_initial( failure ).
++    cl_abap_unit_assert=>assert_equals( act = read_header( )-GrossAmount exp = '999.00' ).
++    cl_abap_unit_assert=>assert_equals( act = read_header( )-KsefNumber exp = request-KsefNumber ).
++  ENDMETHOD.
++
++  METHOD recorded_still_deletable.
++    " Test charakteryzacyjny: prawo 06 pozwala usunac dokument z numerem KSeF.
++    " Brak COMMIT; nie jest to test HTTP ani dowod persisted DELETE.
++    apply( request ).
++    MODIFY ENTITIES OF zr_ainv_inv_h ENTITY ZrAinvInvH
++      DELETE FROM VALUE #( ( InvoiceUUID = invoice_uuid ) ) FAILED DATA(failure).
++    cl_abap_unit_assert=>assert_initial( failure ).
++    READ ENTITIES OF zr_ainv_inv_h ENTITY ZrAinvInvH
++      ALL FIELDS WITH VALUE #( ( InvoiceUUID = invoice_uuid ) ) RESULT DATA(rows).
++    cl_abap_unit_assert=>assert_initial( rows ).
++  ENDMETHOD.
+ ENDCLASS.

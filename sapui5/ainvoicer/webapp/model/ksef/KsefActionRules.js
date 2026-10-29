@@ -31,6 +31,15 @@ sap.ui.define([
         return result(false, "ksefActionReasonBackendMissing", [sGap]);
     }
 
+    /** Wszystkie próby SEND (mapper); zgodność wsteczna z wierszem znającym tylko najnowszą operację. */
+    function sendOperations(oInvoice) {
+        if (oInvoice && Array.isArray(oInvoice.SendOperations)) {
+            return oInvoice.SendOperations;
+        }
+        var oLatest = latestOperationOfType(oInvoice, KsefContract.OperationType.SEND_INVOICE);
+        return oLatest ? [oLatest] : [];
+    }
+
     function latestOperationOfType(oInvoice, sType) {
         var oLatest = oInvoice && oInvoice.LatestOperation;
         return oLatest && oLatest.operationType === sType ? oLatest : null;
@@ -40,7 +49,11 @@ sap.ui.define([
 
         Gap: Gap,
 
-        /** Wysyłka: tylko OUTBOUND, bez numeru KSeF, bez operacji w toku, wyłącznie TEST/DEMO i przez CAP. */
+        /**
+         * Wysyłka: tylko OUTBOUND, bez numeru KSeF, gdy CAP jest osiągalny i ŻADNA próba SEND nie jest
+         * przyjęta, w toku, nieznana ani wymagająca uzgodnienia; wyłącznie TEST/DEMO i przez CAP.
+         * To tylko odzwierciedlenie — ostateczna autoryzacja i blokada duplikatów należą do CAP requestSend.
+         */
         evaluateSend: function (oInvoice, oCaps, sTargetEnvironment) {
             if (!oInvoice) {
                 return result(false, "ksefActionReasonNoSelection");
@@ -51,22 +64,27 @@ sap.ui.define([
             if (oInvoice.SapKsefNumber || oInvoice.KsefNumber) {
                 return result(false, "ksefActionReasonAlreadyInKsef", [oInvoice.KsefNumber || oInvoice.SapKsefNumber]);
             }
-            var oSend = latestOperationOfType(oInvoice, KsefContract.OperationType.SEND_INVOICE);
-            if (oSend) {
+            if (oInvoice.IntegrationAvailable === false) {
+                // Bez stanu CAP nie da się wykluczyć wysyłki w toku lub przyjętej — bezpiecznie blokujemy.
+                return result(false, "ksefActionReasonCapUnavailable");
+            }
+            var aSends = sendOperations(oInvoice);
+            for (var i = 0; i < aSends.length; i++) {
+                var oSend = aSends[i];
                 if (!KsefContract.OperationStatus[oSend.status]) {
                     return result(false, "ksefActionReasonUnknownStatus", [oSend.status]);
                 }
                 if (oSend.status === "ACCEPTED") {
                     return result(false, "ksefActionReasonAlreadyInKsef", [oSend.ksefNumber || ""]);
                 }
-                if (oSend.status === "FAILED") {
-                    // Błąd techniczny: ponowienie i rekoncyliacja należą do CAP, nie do użytkownika UI.
+                if (oSend.status === "FAILED" || oSend.status === "RECONCILIATION_REQUIRED") {
+                    // Wynik nieznany: rekoncyliacja należy do CAP; nowa wysyłka mogłaby zdublować fakturę.
                     return result(false, "ksefActionReasonReconciliation");
                 }
                 if (!KsefContract.isTerminalStatus(oSend.status)) {
                     return result(false, "ksefActionReasonInProgress", [oSend.status]);
                 }
-                // REJECTED: ponowna wysyłka po korekcie jest dozwolona, ale wymaga wyraźnego potwierdzenia.
+                // REJECTED: ponowna wysyłka po korekcie dozwolona wg polityki CAP i wymaga potwierdzenia.
             }
             if (NON_PRODUCTIVE.indexOf(sTargetEnvironment) === -1) {
                 return result(false, "ksefActionReasonProdBlocked", [sTargetEnvironment || "?"]);
@@ -125,7 +143,8 @@ sap.ui.define([
             if (oInvoice.Direction !== Direction.OUTBOUND) {
                 return result(false, "ksefActionReasonOutboundOnly");
             }
-            if (oInvoice.KsefStatus !== "ACCEPTED" && oInvoice.KsefStatus !== DerivedStatus.RECORDED_IN_SAP) {
+            if (oInvoice.KsefStatus !== "ACCEPTED" && oInvoice.KsefStatus !== DerivedStatus.RECORDED_IN_SAP
+                    && oInvoice.KsefStatus !== DerivedStatus.ACCEPTED_SAP_SYNC) {
                 return result(false, "ksefActionReasonNotAccepted");
             }
             if (!oCaps || !oCaps.downloadUpo) {

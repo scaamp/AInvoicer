@@ -2,13 +2,13 @@
 title: "ADR-0005 — RAP jako właściciel statusu biznesowego, CAP jako właściciel statusu integracji"
 date: 2026-10-29
 type: adr
-status: PROPOSED
+status: zaakceptowany
 tags: [ainvoicer, architektura, rap, cap-java, sapui5, ksef, status, eventual-consistency]
 ---
 
 # ADR-0005 — RAP Business Status / CAP Integration Status
 
-**Status: PROPOSED** — projekt do zatwierdzenia. Nie zmienia jeszcze ADR-0001…0004 ani kodu.
+**Status: zaakceptowany** — prompt CAP-05 przekazany przez użytkownika zatwierdza ten podział. Implementacja lokalna na `feature/cap-05-integration`; RAP UI/IAM pozostają BLOCKED. [Audyt wykonania](../audits/2026-10-29-cap-05-implementation-review.md).
 
 [Audyt 2026-10-29](../audits/2026-10-29-rap-cap-status-ownership.md) · [ADR-0001](ADR-0001-cap-java-ksef-architecture.md) · [ADR-0002](ADR-0002-sap-ksef-result-write-contract.md) · [ADR-0003](ADR-0003-cap-sap-result-writeback.md)
 
@@ -29,8 +29,8 @@ Potrzebny jest jednoznaczny podział: kto jest źródłem prawdy dla którego st
 3. **Nie dodajemy `KsefBusinessStatus`** do RAP dla OUTBOUND. Odrzucenie przez KSeF jest wynikiem próby, nie faktem prawnym o dokumencie; pozostaje w CAP.
 4. **CAP Java** jest właścicielem **wykonania integracji** (`KsefSubmissions`), **publicznego podsumowania operacji** (`KsefOperations`) i **synchronizacji do SAP** (`SapResultWrites`). CAP nie przechowuje danych finansowych faktury.
 5. **SAPUI5** czyta listę, nagłówki, pozycje, referencje i wynik biznesowy **bezpośrednio z RAP OData V4** (named model). Z CAP korzysta wyłącznie do akcji (`requestSend`, operacje administracyjne) i odczytu stanu integracji per faktura. **Nie tworzymy proxy danych SAP w CAP.**
-6. **Writeback następuje raz, po potwierdzonym `ACCEPTED`**, niezależnie od UPO. Zlecenie powstaje w tej samej transakcji, która utrwala przyjęcie; wykonanie po commit przez outbox.
-7. **Blokada duplikatów wysyłki jest serwerowa w CAP.** UI tylko ją odzwierciedla.
+6. **Writeback następuje po trwałym `ACCEPTED`**, niezależnie od UPO. Najpierw commit przyjęcia, potem nowa transakcja zlecenia i persistent outboxa. Błąd enqueue nie może cofnąć przyjęcia; lukę domyka sweeper. Wyłącznie zweryfikowane migawki `SAP_RAP`, nigdy standalone fixture SDK. Jedno logiczne zlecenie per operationId, stały WriteRequestId.
+7. **Blokada duplikatów wysyłki jest serwerowa w CAP.** PK rezerwacji `(InvoiceUUID, Environment)` i CAS kolejnej próby działają atomowo w DB. UI tylko ją odzwierciedla. RECONCILIATION_REQUIRED/nieznany wynik blokują; odrzucenie pozwala na retry tylko po zamknięciu sesji i włączeniu jawnej polityki (domyślnie OFF).
 
 ## Responsibilities
 
@@ -69,13 +69,13 @@ Prezentacja w UI (kolejność rozstrzygania):
 1. RAP ma numer → „Przyjęta w KSeF” (stan CAP tylko jako informacja dodatkowa).
 2. Operacja `ACCEPTED`, RAP bez numeru → „Przyjęta w KSeF — synchronizacja z SAP” / „konflikt zapisu w SAP”.
 3. Operacja w toku → „Wysyłanie”; `RECONCILIATION_REQUIRED` → „Wymaga uzgodnienia”; `REJECTED` → „Odrzucona”.
-4. Brak operacji i numeru → „Nie wysłano”.
+4. Brak operacji i numeru → „Brak potwierdzenia KSeF”. Niedostępna lub ucięta historia CAP oznacza stan nieznany i blokuje Send.
 
 ## Eventual Consistency
 
 „KSeF przyjął fakturę” i „SAP zapisał wynik” to dwa niezależne fakty; nie łączymy ich w transakcję rozproszoną.
 
-1. Przyjęcie i zlecenie writebacku zatwierdzamy razem w bazie CAP. Błąd walidacji zlecenia **nie może** wycofać przyjęcia.
+1. Przyjęcie zatwierdzamy w bazie CAP jako samodzielny checkpoint. Zlecenie writebacku i jego outbox zatwierdzamy atomowo w kolejnej transakcji. Błąd walidacji/DB/outbox tego zlecenia **nie może** wycofać przyjęcia.
 2. Outbox dostarcza zlecenie po commit; payload i `WriteRequestId` (= UUID operacji) są niezmienne.
 3. Sweeper przy starcie i okresowo zleca writeback dla operacji `ACCEPTED` bez `SapResultWrites` (idempotentnie).
 4. `ApplyKsefResult` rozstrzyga ponowienia (`ALREADY_APPLIED`) i chroni przed nadpisaniem (`RESULT_CONFLICT`).
@@ -121,7 +121,7 @@ Filtrowanie po stanie integracji wykonujemy dwufazowo (CAP → lista UUID → RA
 - Potrzebna praca ABAP (usługa UI, DCL odczytu, IAM) przed przełączeniem kokpitu z mock.
 - Krótkie okno niespójności (przyjęta w KSeF, brak w SAP) jest widoczne i obsługiwane w UI przez stan CAP.
 - `KsefInvoices.businessStatus` traci rolę dla OUTBOUND.
-- ADR-0004 („bez automatycznego writebacku”) zostanie zastąpiony w tym punkcie; przewodnik kokpitu (G-01) i ROADMAP Phase 5 wymagają korekty.
+- ADR-0004 („bez automatycznego writebacku”) zostaje zastąpiony w tym punkcie; zaktualizowano przewodnik kokpitu i ROADMAP Phase 5.
 
 ## Alternatives Rejected
 

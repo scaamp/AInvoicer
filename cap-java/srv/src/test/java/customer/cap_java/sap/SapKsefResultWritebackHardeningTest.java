@@ -345,7 +345,7 @@ class SapKsefResultWritebackHardeningTest {
             }
             return result;
         });
-        var controlledRecovery = new SapKsefResultWriteRecovery(observedDb, writeback, clock, Duration.ofMinutes(10));
+        var controlledRecovery = new SapKsefResultWriteRecovery(observedDb, writeback, null, clock, Duration.ofMinutes(10));
         var start = new java.util.concurrent.CyclicBarrier(2);
         try (var pool = Executors.newFixedThreadPool(2)) {
             java.util.concurrent.Callable<String> resume = () -> {
@@ -389,7 +389,7 @@ class SapKsefResultWritebackHardeningTest {
         var failingWriteback = mock(SapKsefResultWriteback.class,
                 org.mockito.AdditionalAnswers.delegatesTo(writeback));
         doThrow(new IllegalStateException("OUTBOX_FAILED")).when(failingWriteback).publish(id);
-        var failingRecovery = new SapKsefResultWriteRecovery(db, failingWriteback, clock, Duration.ofMinutes(10));
+        var failingRecovery = new SapKsefResultWriteRecovery(db, failingWriteback, null, clock, Duration.ofMinutes(10));
         assertEquals("OUTBOX_FAILED", assertThrows(IllegalStateException.class,
                 () -> failingRecovery.resume(id, "OPERATOR")).getMessage());
         assertEquals(before, row());

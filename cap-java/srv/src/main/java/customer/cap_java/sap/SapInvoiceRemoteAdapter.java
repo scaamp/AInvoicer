@@ -68,6 +68,33 @@ public class SapInvoiceRemoteAdapter {
 		return runtime.requestContext().systemUser().run((RequestContext ctx) -> doReadInvoices());
 	}
 
+	/**
+	 * Odczyt jednej faktury (nagłówek po kluczu + pozycje + referencje) przez communication usera.
+	 * Brak faktury = pusty Optional. Wywołujący sprawdza zakres NIP/CompanyCode użytkownika CAP —
+	 * DCL RAP dla communication usera nie izoluje danych per użytkownik końcowy.
+	 */
+	public java.util.Optional<SapInvoiceSnapshot> readInvoice(UUID invoiceId) {
+		if (runtime == null) {
+			return doReadInvoice(invoiceId);
+		}
+		return runtime.requestContext().systemUser().run((RequestContext ctx) -> doReadInvoice(invoiceId));
+	}
+
+	private java.util.Optional<SapInvoiceSnapshot> doReadInvoice(UUID invoiceId) {
+		List<Map<String, Object>> headers = rows(remote.run(Select.from(HEADERS)
+			.columns(HEADER_COLUMNS.toArray(String[]::new)).where(get("InvoiceUUID").eq(invoiceId))));
+		if (headers.isEmpty()) {
+			return java.util.Optional.empty();
+		}
+		if (headers.size() > 1 || !invoiceId.equals(uuid(headers.get(0).get("InvoiceUUID")))) {
+			throw new IllegalStateException("SAP_INVOICE_KEY_AMBIGUOUS");
+		}
+		List<UUID> ids = List.of(invoiceId);
+		return java.util.Optional.of(new SapInvoiceSnapshot(headers.get(0),
+			rows(remote.run(selectChildren(ITEMS, ITEM_COLUMNS, ids))),
+			rows(remote.run(selectChildren(REFERENCES, REFERENCE_COLUMNS, ids)))));
+	}
+
 	private List<SapInvoiceSnapshot> doReadInvoices() {
 		List<Map<String, Object>> headers = rows(remote.run(select(HEADERS, HEADER_COLUMNS)));
 		if (headers.isEmpty()) {

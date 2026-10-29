@@ -33,17 +33,57 @@ public class SapKsefResultWriteRecovery {
             FailureKind failureKind, int attempts, Instant lastAttemptAt, Instant retryNotBefore,
             Instant leaseUntil, boolean orphaned, boolean resumable) { }
 
+    /**
+     * Wynik diagnostyki zatrzymanego writebacku (np. VERSION_CONFLICT). {@code drift} porównuje migawkę
+     * dokumentu wysłanego do KSeF z bieżącym stanem RAP (nagłówek/pozycje); {@code sapKsefNumber}
+     * pokazuje, czy SAP ma już jakikolwiek numer i czy jest to numer tej operacji.
+     */
+    public record ConflictDiagnosis(UUID writeId, UUID invoiceId, String state, String outcome,
+            FailureKind failureKind, boolean sapInvoiceFound, boolean sapHasKsefNumber,
+            boolean sapNumberMatches, KsefInvoiceSnapshotRegistry.Drift drift) { }
+
     private final PersistenceService db;
     private final SapKsefResultWriteback writeback;
+    private final SapInvoiceRemoteAdapter sap;
     private final Clock clock;
     private final Duration staleAfter;
 
-    public SapKsefResultWriteRecovery(PersistenceService db, SapKsefResultWriteback writeback, Clock clock,
+    public SapKsefResultWriteRecovery(PersistenceService db, SapKsefResultWriteback writeback,
+            SapInvoiceRemoteAdapter sap, Clock clock,
             @Value("${ainv.sap-write.stale-after:PT10M}") Duration staleAfter) {
         this.db = db;
         this.writeback = writeback;
+        this.sap = sap;
         this.clock = clock;
         this.staleAfter = staleAfter;
+    }
+
+    /**
+     * Bezpieczna procedura diagnostyczna dla operatora po VERSION_CONFLICT/RESULT_CONFLICT (ADR-0005 Q3):
+     * wyłącznie odczyt CAP i RAP (communication user). Nie zmienia stanu zlecenia, nie wznawia
+     * writebacku, nie pomija CAS i nigdy nie wywołuje KSeF. Decyzję podejmuje człowiek na podstawie
+     * wyniku: zmiany nagłówka/pozycji po wysyłce, obecność innego numeru KSeF w SAP itp.
+     */
+    public ConflictDiagnosis diagnose(UUID writeId) {
+        var stored = writeback.inNewTransaction(() -> {
+            var row = db.run(Select.from(SapKsefResultWriteback.WRITES).byId(writeId.toString())).first()
+                    .orElseThrow(() -> new IllegalArgumentException("WRITE_NOT_FOUND"));
+            var snapshot = db.run(Select.from(SapKsefResultWriteback.SNAPSHOTS).byId(row.get("snapshotId"))).single();
+            return List.of(new LinkedHashMap<String, Object>(row), new LinkedHashMap<String, Object>(snapshot));
+        });
+        var row = stored.get(0);
+        UUID invoiceId = UUID.fromString((String) row.get("invoiceUUID"));
+        var current = sap.readInvoice(invoiceId);
+        String outcome = (String) row.get("outcome");
+        if (current.isEmpty()) {
+            return new ConflictDiagnosis(writeId, invoiceId, (String) row.get("state"), outcome, classify(outcome),
+                    false, false, false, null);
+        }
+        Object number = current.get().header().get("KsefNumber");
+        boolean hasNumber = number != null && !number.toString().isBlank();
+        return new ConflictDiagnosis(writeId, invoiceId, (String) row.get("state"), outcome, classify(outcome), true,
+                hasNumber, hasNumber && number.toString().equals(row.get("ksefNumber")),
+                KsefInvoiceSnapshotRegistry.detectDrift(stored.get(1), current.get()));
     }
 
     /** Klasyfikacja wyłącznie z bezpiecznego kodu; nie wymaga ani nie ujawnia treści odpowiedzi SAP. */
