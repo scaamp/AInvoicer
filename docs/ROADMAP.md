@@ -14,6 +14,8 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
 
 ## Narzędzia projektowe — Agent Skills
 
+- [x] 2026-10-29: scalono ABAP-05 do java-cap-ksef i promowano tę linię do głównej gałęzi `main`; oryginał zachowano na `archive/original-ainvoicer-2026-10-29`. Nowe feature z `main`; konfiguracja SAP abapGit wymaga niezależnego sprawdzenia. [Dziennik migracji gałęzi](journal/2026-10-29-main-promotion.md).
+
 - [x] Trzy kanoniczne Skills ABAP/RAP, CAP Java i KSeF w `.agents/skills/`, odwołania Claude w `.claude/skills/` oraz sekcje `Project Skills` w instrukcjach agentów.
 - [x] Walidacja statyczna i ręczna ocena czterech scenariuszy; Codex `skills/list` wykrywa trzy aktywne Skills w zakresie repo bez błędów ładowania.
 - [ ] Potwierdzenie automatycznego doboru przez model oraz wykrywania/odczytu kanonicznych instrukcji w sesji Claude Code. Wersje CLI i poprawne pliki nie zastępują tego testu.

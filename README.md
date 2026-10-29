@@ -5,6 +5,8 @@
 
 Aktualny stan rozwoju CAP Java i KSeF, roadmapa, dziennik oraz decyzje architektoniczne: [baza wiedzy projektu](docs/README.md). Folder `docs/` można otworzyć jako Obsidian Vault.
 
+Główna gałąź rozwoju to **`main`**, zawierająca dotychczasową linię `java-cap-ksef` wraz z CAP Java, KSeF i RAP. Pierwotny AInvoicer zachowano na [archive/original-ainvoicer-2026-10-29](https://github.com/scaamp/AInvoicer/tree/archive/original-ainvoicer-2026-10-29). Nowe branche feature twórz z `main`. [Zapis migracji gałęzi](docs/journal/2026-10-29-main-promotion.md).
+
 ---
 
 ## 💡 Overview

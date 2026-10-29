@@ -8,9 +8,11 @@ tags: [ainvoicer, dokumentacja]
 
 # AInvoicer — baza wiedzy projektu
 
-AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijana w kierunku integracji z KSeF 2.0. Repozytorium zachowuje istniejące moduły ABAP, SAPUI5, Node.js i Python; nowy backend powstaje w `cap-java/` na gałęzi `java-cap-ksef`.
+AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijana w kierunku integracji z KSeF 2.0. Repozytorium zachowuje istniejące moduły ABAP, SAPUI5, Node.js i Python; backend powstaje w `cap-java/` na głównej gałęzi `main`. Dotychczasową linię `java-cap-ksef` promowano do `main`; oryginalny projekt zachowano na `archive/original-ainvoicer-2026-10-29`.
 
 ## Od czego zacząć
+
+- [Promocja java-cap-ksef do main i archiwum oryginalnego AInvoicer](journal/2026-10-29-main-promotion.md).
 
 - [ABAP-05 + CAP-05.1 + UI5-05 — ponowiona regresja i inspekcja aktywnego H01](journal/2026-10-29-abap-05-real-rap-ui.md).
 - [RAP UI LIVE — binding ADT, IAM, routing i macierz READ](guides/RAP_UI_LIVE_CONNECTION.md).

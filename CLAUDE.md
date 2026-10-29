@@ -7,7 +7,7 @@ To jedyne źródło prawdy o architekturze, granicach komponentów, bezpieczeńs
 
 ## Kontekst w 30 sekund
 
-- Repo: `scaamp/AInvoicer`; gałąź rozwoju architektury: `java-cap-ksef`.
+- Repo: `scaamp/AInvoicer`; główna gałąź rozwoju: `main` (zawiera dotychczasowe `java-cap-ksef`). Nowe feature z `main`. Oryginalny projekt: `archive/original-ainvoicer-2026-10-29`. Konfigurację gałęzi abapGit w SAP sprawdzaj oddzielnie według AGENTS.md.
 - Cel: produkcyjnie zaprojektowana aplikacja SAP Fiori do faktur zakupowych/sprzedażowych i KSeF 2.0; najpierw E2E TEST.
 - **CAP Java + Spring Boot**: nowy centralny backend i właściciel procesu KSeF; **oficjalne Java SDK MF działa jako biblioteka w tej samej JVM**.
 - **ABAP Cloud/RAP** (system H01 na BTP Trial, domyślny pakiet `ZAINVOICER` — szczegóły w AGENTS.md): utrzymuje symulacyjny model faktur `ZAINV_INV_H/I/REF`; obecny eksport RAP wystawia wyłącznie nagłówek przez service definition/binding `ZAPI_AINV_INV_H_O4`. Nie zakładaj tabel ani dokumentów S/4HANA.

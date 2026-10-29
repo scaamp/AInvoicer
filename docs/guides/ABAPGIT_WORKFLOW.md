@@ -8,6 +8,8 @@ tags: [ainvoicer, abap, abapgit, eclipse, git]
 
 # Workflow abapGit w AInvoicer
 
+**Aktualizacja 2026-10-29:** główną gałęzią rozwoju jest teraz `main`, zawierający dotychczasową linię java-cap-ksef. Oryginalny projekt zachowano na `archive/original-ainvoicer-2026-10-29`. [Dziennik promocji](../journal/2026-10-29-main-promotion.md). Ta operacja Git nie zmieniła konfiguracji abapGit w SAP. Poniższe odwołania do java-cap-ksef opisują ostatnio potwierdzony branch eksportu; przed synchronizacją odczytaj rzeczywistą konfigurację. Do czasu jej osobnego przełączenia aktualizuj lokalny checkout gałęzi eksportu, a sprawdzony eksport integruj do `main` po review i w autoryzowanym zakresie. Nie wykonuj pull z java-cap-ksef na main, zakładając automatyczną zgodność historii.
+
 [Project Home](../README.md) · [STATUS](../STATUS.md) · [Model RAP faktur](ABAP_RAP_INVOICE_MODEL.md) · [Dziennik pierwszego eksportu](../journal/2026-10-24-abapgit-rap-initial-export.md)
 
 ## Cel i granice
