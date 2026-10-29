@@ -319,7 +319,7 @@ sap.ui.define([
     KsefDataAdapter.prototype._loadIntegrationStatus = function (aUUIDs) {
         var aValid = (aUUIDs || []).filter(function (sUuid) {
             return UUID_PATTERN.test(String(sUuid || ""));
-        }).slice(0, MAX_PAGE);
+        }).slice(0, MAX_PAGE).map(function (sUuid) { return sUuid.toLowerCase(); });
         if (!aValid.length) {
             return Promise.resolve([]);
         }
@@ -330,10 +330,22 @@ sap.ui.define([
             + "?$filter=" + encodeURIComponent(sFilter) + "&$top=" + MAX_PAGE
             + "&$count=true&$orderby=createdAt desc,operationId";
         return this._getJson(this._capUrl(sPath)).then(function (oBody) {
+            // HTTP 200 bez kompletnej kolekcji i żądanego count nie dowodzi braku wcześniejszego SEND.
+            var vCount = oBody && oBody["@odata.count"];
+            var iCount = typeof vCount === "number" || typeof vCount === "string" && /^\d+$/.test(vCount)
+                ? Number(vCount) : NaN;
+            if (!oBody || !Array.isArray(oBody.value) || !Number.isSafeInteger(iCount) || iCount < 0
+                    || oBody.value.some(function (oRow) {
+                        return !oRow || aValid.indexOf(String(oRow.invoiceUUID || "").toLowerCase()) === -1
+                            || ["operationId", "operationType", "integrationStatus", "environment"].some(function (sField) {
+                                return typeof oRow[sField] !== "string" || !oRow[sField].trim();
+                            });
+                    })) {
+                throw adapterError(ErrorCode.PARSE, "CAP_INTEGRATION_HISTORY_INVALID");
+            }
             // Uciętej historii nie wolno interpretować jako braku aktywnej/przyjętej próby SEND.
             // Pobieramy ograniczoną partię; nadmiar bezpiecznie wyłącza Send na stronie.
-            if (oBody["@odata.nextLink"] || Number(oBody["@odata.count"]) > (oBody.value || []).length
-                    || (oBody.value || []).length >= MAX_PAGE && oBody["@odata.count"] === undefined) {
+            if (oBody["@odata.nextLink"] || iCount !== oBody.value.length) {
                 throw adapterError(ErrorCode.PARSE, "CAP_INTEGRATION_HISTORY_INCOMPLETE");
             }
             return (oBody.value || []).map(fromIntegrationStatus);

@@ -8,6 +8,8 @@ tags: [ainvoicer, sapui5, ksef, cap-java, frontend]
 
 # SAPUI5 — kokpit faktur KSeF
 
+**Aktualizacja ABAP-05/UI5-05:** H01 ma już aktywne CDS/DCL `ZC_AINV_INV_*_UI` i SRVD (ATC 7 obiektów bez ustaleń), ale binding V4 UI zwraca 404, a IAM dwóch business userów nie przetestowano. Nie zmieniono domyślnego `mock`. Osobna konfiguracja: [ui5-rap.yaml.example](../../sapui5/ainvoicer/ui5-rap.yaml.example); [kroki połączenia LIVE](RAP_UI_LIVE_CONNECTION.md). UI blokuje Send także przy HTTP200 z wadliwą kolekcją CAP, brakującym/niespójnym count, brakującym stanem lub obcymi UUID. Aktualna regresja: **QUnit 59/59, 346 asercji; OPA 13/13, 80; oba buildy PASS**. Wyniki dotyczą mock RAP/fake CAP i atrap AI/OCR/Legacy, nie LIVE. CAP retry po REJECTED jest domyślnie OFF; ponowienie w UI nadal podlega autorytatywnej polityce serwera (możliwe 409).
+
 [Project Home](../README.md) · [STATUS](../STATUS.md) · [ROADMAP](../ROADMAP.md) · [Model RAP faktur](ABAP_RAP_INVOICE_MODEL.md) · [Dziennik Agent C](../journal/2026-10-29-agent-c-ui5.md)
 
 Rozszerzenie istniejącej aplikacji `sapui5/ainvoicer` (SAPUI5 freestyle, SAP Horizon) o kokpit faktur zakupowych i sprzedażowych KSeF 2.0. To nie jest nowa aplikacja: AI Assistant, Voice Input, historia rozmów, FilterBar, tabela SAP FI (`ZC_FI_ACDOCA`), Add/Copy/Delete i Scanner działają jak wcześniej.

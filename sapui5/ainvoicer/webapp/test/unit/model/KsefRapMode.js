@@ -124,7 +124,7 @@ sap.ui.define([
 
     QUnit.test("server-side paging: one page with $count, CAP queried only for the page UUIDs", function (assert) {
         var fnFetch = fakeCap(function () {
-            return { status: 200, body: { value: [] } };
+            return { status: 200, body: { value: [], "@odata.count": 0 } };
         });
         var oAdapter = rapAdapter(fnFetch);
         return oAdapter.loadInvoices({ sorters: [new Sorter("InvoiceNumber", false)], skip: 0, top: 3 }).then(function (aRows) {
@@ -149,7 +149,7 @@ sap.ui.define([
     });
 
     QUnit.test("server-side filtering and descending sort", function (assert) {
-        var oAdapter = rapAdapter(fakeCap(function () { return { status: 200, body: { value: [] } }; }));
+        var oAdapter = rapAdapter(fakeCap(function () { return { status: 200, body: { value: [], "@odata.count": 0 } }; }));
         return oAdapter.loadInvoices({
             filters: [new Filter("Direction", FilterOperator.EQ, "OUTBOUND")],
             sorters: [new Sorter("GrossAmount", true)], skip: 0, top: 50
@@ -167,7 +167,7 @@ sap.ui.define([
         var oAdapter;
         var fnFetch = fakeCap(function (sUrl) {
             var aIds = decodeURIComponent(sUrl).match(/[0-9a-f]{8}-[0-9a-f-]{27}/g) || [];
-            return { status: 200, body: { value: aIds.map(function (sId) {
+            return { status: 200, body: { "@odata.count": aIds.length, value: aIds.map(function (sId) {
                 return { operationId: "op-" + sId, invoiceUUID: sId, operationType: "SEND_INVOICE",
                     integrationStatus: "SUBMITTED", environment: "TEST", createdAt: "2026-10-29T08:00:00Z", modifiedAt: "2026-10-29T08:00:00Z" };
             }) } };
@@ -214,8 +214,30 @@ sap.ui.define([
         }).finally(function () { oAdapter.model.destroy(); });
     });
 
+    QUnit.test("HTTP 200 with malformed, uncounted or foreign CAP history keeps Send disabled", function (assert) {
+        var aBodies = [null, {}, { value: [] }, { value: {}, "@odata.count": 0 },
+            { value: [], "@odata.count": null }, { value: [], "@odata.count": -1 },
+            { value: [], "@odata.count": "invalid" }, { value: [], "@odata.count": 0.5 },
+            { value: [], "@odata.count": 1 },
+            { value: [{ invoiceUUID: "00000000-0000-0000-0000-000000000000", operationId: "foreign-operation",
+                operationType: "SEND_INVOICE", integrationStatus: "ACCEPTED", environment: "TEST" }], "@odata.count": 1 }];
+        return aBodies.reduce(function (oPrevious, oBody) {
+            return oPrevious.then(function () {
+                var oAdapter = rapAdapter(fakeCap(function () { return { status: 200, body: oBody }; }));
+                return oAdapter.loadInvoices({ top: 3 }).then(function (aRows) {
+                    assert.strictEqual(aRows.length, 3, "SAP rows remain visible");
+                    assert.ok(oAdapter.getLastPage().integrationError, "invalid history is reported");
+                    aRows.forEach(function (oRow) {
+                        assert.strictEqual(oRow.IntegrationAvailable, false);
+                        assert.strictEqual(KsefActionRules.evaluateSend(oRow, ALL_CAPS, "TEST").enabled, false);
+                    });
+                }).finally(function () { oAdapter.model.destroy(); });
+            });
+        }, Promise.resolve());
+    });
+
     QUnit.test("details come from RAP with _Items/_References", function (assert) {
-        var oAdapter = rapAdapter(fakeCap(function () { return { status: 200, body: { value: [] } }; }));
+        var oAdapter = rapAdapter(fakeCap(function () { return { status: 200, body: { value: [], "@odata.count": 0 } }; }));
         return oAdapter.loadInvoices({ skip: 0, top: 1,
             filters: [new Filter("InvoiceNumber", FilterOperator.EQ, "AINV-TEST-SEED-2026-SD-BILL")] }).then(function (aRows) {
             return oAdapter.loadInvoiceDetails(aRows[0].InvoiceUUID);
@@ -224,5 +246,18 @@ sap.ui.define([
             assert.strictEqual(oRow.Items.length, 2, "items expanded from RAP");
             assert.ok(Array.isArray(oRow.References), "references expanded from RAP");
         });
+    });
+
+    QUnit.test("CAP records without an operation state never count as a complete history", function (assert) {
+        var oAdapter = rapAdapter(fakeCap(function (sUrl) {
+            var aIds = decodeURIComponent(sUrl).match(/[0-9a-f]{8}-[0-9a-f-]{27}/g) || [];
+            return { status: 200, body: { value: [{ invoiceUUID: aIds[0] }], "@odata.count": 1 } };
+        }));
+        return oAdapter.loadInvoices({ top: 3 }).then(function (aRows) {
+            aRows.forEach(function (oRow) {
+                assert.strictEqual(oRow.IntegrationAvailable, false);
+                assert.strictEqual(KsefActionRules.evaluateSend(oRow, ALL_CAPS, "TEST").enabled, false);
+            });
+        }).finally(function () { oAdapter.model.destroy(); });
     });
 });

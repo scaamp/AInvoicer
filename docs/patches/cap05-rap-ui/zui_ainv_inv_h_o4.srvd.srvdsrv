@@ -1,6 +1,7 @@
-@EndUserText.label: 'AInvoicer read-only invoice UI'
-define service ZUI_AINV_INV_H_O4 {
-  expose ZC_AINV_UI_H as Invoices;
-  expose ZC_AINV_UI_I as Items;
-  expose ZC_AINV_UI_REF as References;
+@EndUserText.label: 'AInvoicer invoice read UI service'
+@ObjectModel.leadingEntity.name: 'ZC_AINV_INV_H_UI'
+define service ZUI_AINV_INV_H_O4 provider contracts odata_v4_ui {
+  expose ZC_AINV_INV_H_UI as Invoices;
+  expose ZC_AINV_INV_I_UI as Items;
+  expose ZC_AINV_INV_REF_UI as References;
 }

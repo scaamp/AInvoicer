@@ -1,45 +1,37 @@
 ---
-title: "CAP-05 — przygotowanie usługi RAP UI i testów ochrony dokumentu"
+title: "ABAP-05 — reuse aktywnej usługi RAP UI i krok ADT"
 date: 2026-10-29
 type: guide
 status: zablokowany
-tags: [ainvoicer, abap, rap, dcl, iam, cap-05]
+tags: [ainvoicer, abap, rap, dcl, iam, cap-05, abap-05]
 ---
 
-# RAP UI — patch do przeglądu w ADT
+# RAP UI — stan SAP i źródła do review
 
-**BLOCKED / NOT SAP VERIFIED.** To źródła do kontrolowanego wdrożenia, nie eksport aktywnych obiektów. Nie zmieniono H01 ani `abap/src/`. [Raport audytu](../../audits/2026-10-29-cap-05-implementation-review.md).
+[Dziennik ABAP-05](../../journal/2026-10-29-abap-05-real-rap-ui.md) · [Połączenie LIVE i dokładne kroki ADT/IAM](../../guides/RAP_UI_LIVE_CONNECTION.md) · [Historyczny audyt CAP-05](../../audits/2026-10-29-cap-05-implementation-review.md)
 
-## Ustalenia LIVE READ
+**Aktualizacja po inspekcji H01:** trzy widoki `ZC_AINV_INV_H_UI`, `ZC_AINV_INV_I_UI`, `ZC_AINV_INV_REF_UI`, odpowiadające im DCLS oraz SRVD `ZUI_AINV_INV_H_O4` już istnieją i są aktywne. Były zastane; nie utworzono ani nie aktywowano ich w tym sprincie. To stan nowszy od snapshotu `abap/src/` i wcześniejszego opisu patcha. Wszystkie siedem przeszło ATC ABAP_CLOUD_DEVELOPMENT_DEFAULT bez ustaleń.
 
-ABAP FS MCP 2.13.3, `h01`, pakiet `ZAINVOICER`, `recordChanges=false`. Wyszukiwanie bindingów `Z*AINV*` zwróciło tylko `ZAPI_AINV_INV_H_O4`; resolve i `$metadata` HTTP 200, published=true, wersja 0001. READ `$expand=_Items,_References`: 4 nagłówki / 9 pozycji / 6 referencji, bez dalszych stron.
+**BLOCKED:** SRVB `ZUI_AINV_INV_H_O4` zwraca 404. MCP 2.13.3 oferuje dla tworzenia bindingu wyłącznie V2; wymagany V4 UI należy utworzyć w ADT. Nie utworzono V2 jako obejścia. Nie ma URI UI ani runtime testów IAM/DCL dwoma business userami; `dataMode` pozostaje `mock`. Web API `ZAPI_AINV_INV_H_O4` READ HTTP200, 4 nagłówki / 9 pozycji / 6 referencji, nie jest usługą UI.
 
-Aktywne źródła root BDEF i implementation: update/delete oraz autoryzacja 02/06 bez warunku `KsefNumber`. Root DCL: `where TRUE`. Dostęp deweloperski OAuth nie dowodzi praw business usera ani communication usera.
+## Których źródeł używać
 
-Schemat `abapfs_create_object` pozwala na `DDLS/DF`, `DCLS/DL`, `SRVD/SRV`, lecz dla `SRVB/SVB` dopuszcza tylko `bindingType=ODATA` oraz kategorie OData **V2**. Nie ma opcji V4. Nie próbowano tworzyć bindingu V2 jako obejścia. Narzędzia nie zapewniają kompletnej ścieżki nadania i weryfikacji business catalog/role z ograniczeniami użytkownika. Potrzebne ADT i administrator IAM.
+- **Reuse aktywnego zestawu `ZC_AINV_INV_*_UI`**: zwykłe SELECT views, `#MANDATORY`, bez BDEF; dzieci dziedziczą DCL nagłówka przez `_Parent`. Nagłówek używa Z_AINV_KSF/ACTVT03 i pary NIP/CompanyCode (SellerNip OUTBOUND, BuyerNip INBOUND). Nie dziedziczy otwartego root `where TRUE`.
+- Sześć plików `zc_ainv_ui_*.ddls.asddls` / `*.dcls.asdcls` w tym katalogu to **historyczny, alternatywny projekt, NOT SAP VERIFIED**. Nie wdrażać ich obok istniejących obiektów ani nie traktować jako eksportu H01. Pozostają do porównania z poprzednim audytem.
+- `zui_ainv_inv_h_o4.srvd.srvdsrv` dostosowano do rzeczywistych widoków i provider contract `odata_v4_ui`. To **patch do review w ADT, nie eksport abapGit**. W aktywnym SAP aliasy dzieci to InvoiceItems/InvoiceReferences; patch zmienia je na wymagane Items/References. Nie zastosowano tej zmiany w SAP i nie deklarujemy jej Syntax Check/aktywacji.
+- `document-mutation-tests.patch` jest historycznym, lokalnym patchem ABAP Unit, sprawdzonym wcześniej wyłącznie przez git apply --check. Nie uruchomiono go w H01. Nie dotyczy bramki publikacji read-only UI i nie upoważnia do testowych zmian faktur w tym sprincie.
 
-## Przygotowany wariant
+## Kolejność odblokowania
 
-Siedem źródeł w tym katalogu:
+1. ADT: porównać bieżące active/inactive i blokady istniejących obiektów, bez nadpisywania pracy użytkownika. Pakiet ZAINVOICER miał recordChanges=false; zweryfikować ponownie przed zmianą. Sprawdzić/uzgodnić aliasy SRVD i aktywować wyłącznie uzgodnioną zmianę.
+2. Utworzyć binding **OData V4 - UI** dla istniejącego SRVD, aktywować i opublikować; skopiować rzeczywisty Service URL. Nie zmieniać Web API CAP ani ręcznie metadanych SRVB XML.
+3. Administrator: skonfigurować IAM app/catalog/role oraz konkretne zakresy ZAINV_NIP/ZAINV_BUK i ACTVT03 dla dwóch business userów; bez wildcard i bez ACTVT16 dla UI. Nazwy nadań i użytkownicy wymagają ustalenia. Żadnego nadania nie wykonano.
+4. Zaliczyć pełną [macierz READ](../../guides/RAP_UI_LIVE_CONNECTION.md#test-read--macierz-do-wykonania-po-publikacji), w tym bezpośredni odczyt obcych dzieci, metadata bez mutujących akcji, filtry/sort/count/paging/expand. Nie uruchamiać testowych HTTP mutacji.
+5. Dopiero potem podłączyć `/rap-ui/` w osobnej konfiguracji Fiori tools lub approutera z tożsamością business usera. Szablon: `sapui5/ainvoicer/ui5-rap.yaml.example`. Weryfikację READ prowadzić z transportami KSeF/SAP write wyłączonymi.
+6. Przygotować kontrolowany eksport aktywnych obiektów przez abapGit po ich pełnej weryfikacji. Autoryzacja Git w tym sprincie dotyczy własnego brancha feature, nie push SAP na java-cap-ksef; nie wykonano eksportu ani importu SAP.
 
-- `ZC_AINV_UI_H/I/REF`: zwykłe CDS read-only, bez BDEF, z `_Items`, `_References` i `_Header`.
-- Trzy DCL: root sprawdza ACTVT03 oraz parę NIP/CompanyCode; OUTBOUND używa SellerNip, INBOUND BuyerNip. Dzieci dziedziczą ten sam warunek przez `_Header`, również przy bezpośrednim odczycie.
-- `ZUI_AINV_INV_H_O4`: service definition z aliasami `Invoices`, `Items`, `References`. Bez `ApplyKsefResult` i bez projekcji behavior.
+## Ochrona dokumentu i writeback
 
-Osobny zestaw jest potrzebny, ponieważ istniejąca projekcja transakcyjna udostępnia akcję i CRUD. Brak BDEF w nowym zestawie odcina je od usługi UI. Nie modyfikujemy Web API ani jego dotychczasowej polityki odczytu. Składnię DCL porównano z [dokumentacją SAP dziedziczenia warunków](https://help.sap.com/docs/abap-cloud/abap-keywords/cds-dcl-define-role-replacement-step?locale=en-US); wymagane syntax check, ATC i weryfikacja runtime w H01.
+Root BDEF nadal dopuszcza update/delete; inspekcja z poprzedniego audytu nie wykazała blokady po KsefNumber. Nie zmieniano tej polityki. Samo readonly czterech pól wyniku nie blokuje zmian treści, a wersja nagłówka nie gwarantuje wersji całej kompozycji. To osobna decyzja biznesowa/testy, bez obejścia CAS.
 
-## Czynności ADT / IAM
-
-1. Porównać bieżące active/inactive obiekty i nazwy, potwierdzić pakiet `ZAINVOICER` oraz brak blokad. Utworzyć nowe trzy DDLS i trzy DCLS, aktywować razem ze względu na skojarzenia cykliczne, uruchomić syntax check/ATC. Następnie aktywować SRVD. Bez transportu przy potwierdzonym `recordChanges=false`.
-2. W ADT utworzyć binding **OData V4 UI** dla tej definicji, sprawdzić aktywację i publikację. Nazwa planowana: `ZUI_AINV_INV_H_O4`. URL uzyskać z rzeczywistego bindingu; nie wyprowadzać go z nazwy.
-3. Administrator: utworzyć właściwą IAM app dla bindingu, business catalog i business role, z `Z_AINV_KSF`, ACTVT03 oraz uzgodnionym ograniczeniem `ZAINV_NIP` / `ZAINV_BUK`. Nie nadawać ACTVT16 ani credentiali communication usera do przeglądarki. Nazwy aplikacji/katalogu/roli i użytkownicy nie są jeszcze uzgodnione; nie tworzyć globalnego nadania `*`.
-4. Testować faktycznym business userem: `$metadata` bez akcji/CRUD; `Invoices?$filter=...&$orderby=...&$top=...&$skip=...`; szczegóły po kluczu i `$expand`. Drugi principal nie może widzieć obcego NIP/spółki ani dzieci, także bezpośrednio. Sprawdzić osobno regresję Web API CAP.
-5. Dopiero po powyższych testach skonfigurować trasę aplikacji `/rap-ui/` do rzeczywistego runtime i uwierzytelnienie business usera. Trasa w UI5 jest logiczną trasą approutera/mockservera, **nie zgadniętym adresem SAP**. Dopiero wtedy ustawić `dataMode: "rap"`. Nie wykonano deploymentu ani eksportu/push.
-
-## Ochrona dokumentu po numerze KSeF
-
-`document-mutation-tests.patch` dodaje dwa testy charakteryzacyjne do istniejącego include testclasses. Pokazują oczekiwany obecnie brak blokady UPDATE kwoty i DELETE po `ApplyKsefResult`, z autoryzacją testową i rollbackiem. Patch sprawdzono `git apply --check`; **ABAP Unit nie wykonano, wynik zachowania nie jest LIVE PASS**. Przed użyciem porównać include z H01; nie nadpisywać jego nowszej wersji.
-
-Rekomendowana osobna decyzja: precheck update/delete nagłówka i dzieci przy zapisanym numerze KSeF, z oceną korekt, zmian technicznych i istniejących konsumentów. Sam readonly pól wyniku nie blokuje zmiany treści. Dodatkowo CAS nagłówka nie gwarantuje wersji pozycji; rozważyć total version kompozycji. W tym sprincie nie dodano ograniczeń księgowych ani obejścia CAS.
-
-`VERSION_CONFLICT`: zachować ACCEPTED/numer/WriteRequestId, pozostawić writeback w RECONCILIATION_REQUIRED. `SapKsefResultWriteRecovery.diagnose(id)` czyta bieżący RAP i porównuje wersję nagłówka/odcisk pozycji. Nie nadpisuje ExpectedVersion i nie wznawia konfliktu. Uzgodnienie biznesowe wymaga osobnej decyzji; nie wolno wysłać faktury ponownie do KSeF.
+VERSION_CONFLICT pozostawia ACCEPTED/numer/WriteRequestId i writeback RECONCILIATION_REQUIRED. SapKsefResultWriteRecovery.diagnose(id) jest tylko odczytem i nie zmienia ExpectedVersion. UPO pozostaje niezależne. **Nowego KSeF SEND i H01 HTTP WRITE nie wykonano.**

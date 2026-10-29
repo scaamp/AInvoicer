@@ -61,6 +61,11 @@ public class KsefSendRequestHandler implements EventHandler {
             KsefPartyDataProvider parties, KsefInvoicePreparation preparation, KsefSubmissionWorker worker,
             @Value("${ainv.ksef.send.retry-after-rejection:false}") boolean retryAfterRejection,
             @Value("${ainv.ksef.send.max-attempts:1}") int maxAttempts) {
+        // Błędna zaufana konfiguracja zatrzymuje start, zamiast otwierać nieograniczone ponowienia.
+        // Limit obejmuje pierwszą próbę; zmiana polityki nie modyfikuje istniejących rezerwacji.
+        if (maxAttempts < 1 || maxAttempts > 10) {
+            throw new IllegalArgumentException("ainv.ksef.send.max-attempts must be between 1 and 10");
+        }
         this.db = db;
         this.sap = sap;
         this.documents = documents;

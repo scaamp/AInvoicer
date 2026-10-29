@@ -7,4 +7,5 @@ mta_archives
 mta-*
 resources
 archive.zip
+ui5-rap.local.yaml
 .*_mta_build_tmp
