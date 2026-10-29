@@ -13,6 +13,19 @@
         contentWidth="700px"
     >
         <VBox class="sapUiSmallMargin">
+            <MessageStrip
+                id="scanLegacyNotice"
+                type="Information"
+                showIcon="true"
+                text="{i18n>scanLegacyNotice}"
+                class="sapUiTinyMarginBottom"
+            />
+            <MessageStrip
+                id="scanStatusStrip"
+                type="{= (${file>/status} || '').indexOf('Błąd') === 0 ? 'Error' : 'None' }"
+                text="{file>/status}"
+                class="sapUiTinyMarginBottom"
+            />
             <f:SimpleForm
                 id="invoiceForm"
                 layout="ResponsiveGridLayout"
@@ -241,7 +254,8 @@
                     <Input
                         value="{
         path: '/CurrencyCode',
-        type: 'sap.ui.model.odata.type.Currency'
+        type: 'sap.ui.model.odata.type.String',
+        constraints: { maxLength: 5 }
     }"
                         maxLength="5"
                     />

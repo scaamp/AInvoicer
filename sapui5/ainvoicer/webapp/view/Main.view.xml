@@ -10,7 +10,7 @@
     xmlns:fb="sap.ui.comp.filterbar"
     xmlns:table="sap.ui.table"
 >
-    <Page title="Invoices">
+    <Page id="page" title="Invoices">
         <content>
             <Panel
                 id="aiCommandPanel"
@@ -123,6 +123,7 @@
                     id="filterbar"
                     persistencyKey="myPersKey"
                     useToolbar="false"
+                    visible="{ksefView>/legacyMode}"
                     search=".onSearch"
                     filterChange=".onFilterChange"
                     afterVariantLoad=".onAfterVariantLoad"
@@ -178,11 +179,64 @@
                         </fb:FilterGroupItem>
                     </fb:filterGroupItems>
                 </fb:FilterBar>
+                <core:Fragment
+                    fragmentName="ainvoicer.view.KsefFilterBar"
+                    type="XML"
+                />
             </Panel>
+
+            <!-- Przełącznik widoków: nowe faktury KSeF (RAP + CAP) albo dotychczasowa tabela FI -->
+            <IconTabHeader
+                id="invoiceViewSwitch"
+                mode="Inline"
+                selectedKey="{ksefView>/viewKey}"
+                select=".onKsefViewSelect"
+            >
+                <items>
+                    <IconTabFilter
+                        id="viewTabAll"
+                        key="ALL"
+                        text="{i18n>viewAll}"
+                        count="{ksefView>/counts/ALL}"
+                    />
+                    <IconTabFilter
+                        id="viewTabPurchase"
+                        key="PURCHASE"
+                        text="{i18n>viewPurchase}"
+                        count="{ksefView>/counts/PURCHASE}"
+                    />
+                    <IconTabFilter
+                        id="viewTabSales"
+                        key="SALES"
+                        text="{i18n>viewSales}"
+                        count="{ksefView>/counts/SALES}"
+                    />
+                    <IconTabSeparator />
+                    <IconTabFilter
+                        id="viewTabLegacy"
+                        key="LEGACY"
+                        text="{i18n>viewLegacy}"
+                    />
+                </items>
+            </IconTabHeader>
+
+            <MessageStrip
+                id="ksefModeStrip"
+                type="{= ${ksefView>/legacyMode} ? 'None' : 'Information' }"
+                showIcon="true"
+                text="{= ${ksefView>/legacyMode} ? ${i18n>ksefLegacyInfo} : ${ksefView>/modeText} }"
+                class="sapUiTinyMarginTopBottom"
+            />
+
+            <core:Fragment
+                fragmentName="ainvoicer.view.KsefInvoiceTable"
+                type="XML"
+            />
 
             <!-- <FlexBox direction="Column" height="100%" fitContainer="true"> -->
             <table:Table
                 id="invoiceTable"
+                visible="{ksefView>/legacyMode}"
                 rows="{
 					path: '/ZC_FI_ACDOCA',
 					parameters: {operationMode: 'Server'}

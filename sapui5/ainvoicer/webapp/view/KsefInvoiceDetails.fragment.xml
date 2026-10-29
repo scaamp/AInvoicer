@@ -1,0 +1,291 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:form="sap.ui.layout.form"
+>
+    <!-- Szczegóły faktury: dane RAP (nagłówek, pozycje, referencje) oraz historia operacji CAP. -->
+    <Dialog
+        id="ksefDetailsDialog"
+        title="{ parts: ['i18n>ksefDetailsTitle', 'ksefDetails>/invoice/InvoiceNumber'], formatter: '.formatMessage' }"
+        contentWidth="64rem"
+        contentHeight="36rem"
+        resizable="true"
+        draggable="true"
+        stretch="{device>/system/phone}"
+        busy="{ksefDetails>/busy}"
+        busyIndicatorDelay="0"
+        afterClose=".onKsefDetailsAfterClose"
+    >
+        <content>
+            <ObjectHeader
+                id="ksefDetailsObjectHeader"
+                responsive="true"
+                title="{ksefDetails>/invoice/InvoiceNumber}"
+                number="{ path: 'ksefDetails>/invoice/GrossAmount', formatter: '.formatter.amount' }"
+                numberUnit="{ksefDetails>/invoice/CurrencyCode}"
+                backgroundDesign="Solid"
+            >
+                <statuses>
+                    <ObjectStatus
+                        title="{i18n>ksefColKsefStatus}"
+                        text="{ path: 'ksefDetails>/invoice/KsefStatus', formatter: '.formatter.ksefStatusText' }"
+                        state="{ path: 'ksefDetails>/invoice/KsefStatus', formatter: '.formatter.ksefStatusState' }"
+                        icon="{ path: 'ksefDetails>/invoice/KsefStatus', formatter: '.formatter.ksefStatusIcon' }"
+                    />
+                    <ObjectStatus
+                        title="{i18n>ksefColDirection}"
+                        text="{ksefDetails>/invoice/Direction}"
+                        icon="{ path: 'ksefDetails>/invoice/Direction', formatter: '.formatter.directionIcon' }"
+                        state="{ path: 'ksefDetails>/invoice/Direction', formatter: '.formatter.directionState' }"
+                    />
+                </statuses>
+                <attributes>
+                    <ObjectAttribute title="{i18n>ksefColOriginProcess}" text="{ksefDetails>/invoice/OriginProcess}" />
+                    <ObjectAttribute title="{i18n>ksefColIssueDate}" text="{ path: 'ksefDetails>/invoice/IssueDate', formatter: '.formatter.date' }" />
+                </attributes>
+            </ObjectHeader>
+
+            <IconTabBar
+                id="ksefDetailsTabs"
+                selectedKey="{ksefDetails>/selectedTab}"
+                expandable="false"
+                applyContentPadding="true"
+            >
+                <items>
+                    <IconTabFilter key="header" text="{i18n>ksefDetailsHeader}" icon="sap-icon://document-text">
+                        <form:SimpleForm editable="false" layout="ColumnLayout" columnsM="2" columnsL="2" columnsXL="2">
+                            <form:content>
+                                <core:Title text="{i18n>ksefDetailsSourceRap}" />
+                                <Label text="{i18n>ksefColInvoiceNumber}" />
+                                <Text text="{ksefDetails>/invoice/InvoiceNumber}" />
+                                <Label text="{i18n>ksefFieldInvoiceUUID}" />
+                                <Text text="{ksefDetails>/invoice/InvoiceUUID}" />
+                                <Label text="{i18n>ksefFieldInvoiceKind}" />
+                                <Text text="{ksefDetails>/invoice/InvoiceKind}" />
+                                <Label text="{i18n>ksefColInvoiceStatus}" />
+                                <Text text="{ksefDetails>/invoice/InvoiceStatus}" />
+                                <Label text="{i18n>ksefColCompanyCode}" />
+                                <Text text="{ksefDetails>/invoice/CompanyCode}" />
+                                <Label text="{i18n>ksefColIssueDate}" />
+                                <Text text="{ path: 'ksefDetails>/invoice/IssueDate', formatter: '.formatter.date' }" />
+                                <Label text="{i18n>ksefFieldPostingDate}" />
+                                <Text text="{ path: 'ksefDetails>/invoice/PostingDate', formatter: '.formatter.date' }" />
+                                <Label text="{i18n>ksefFieldDueDate}" />
+                                <Text text="{ path: 'ksefDetails>/invoice/DueDate', formatter: '.formatter.date' }" />
+                                <Label text="{i18n>ksefColLastUpdate}" />
+                                <Text text="{ path: 'ksefDetails>/invoice/SapLastChangedAt', formatter: '.formatter.dateTime' }" />
+                            </form:content>
+                        </form:SimpleForm>
+                        <Table
+                            id="ksefDetailsReferences"
+                            headerText="{i18n>ksefDetailsReferences}"
+                            items="{ path: 'ksefDetails>/invoice/References', templateShareable: false }"
+                            class="sapUiSmallMarginTop"
+                        >
+                            <columns>
+                                <Column><Text text="{i18n>ksefFieldReferenceRole}" /></Column>
+                                <Column><Text text="{i18n>ksefFieldSourceDocNo}" /></Column>
+                                <Column minScreenWidth="Tablet" demandPopin="true"><Text text="{i18n>ksefFieldSourceModule}" /></Column>
+                            </columns>
+                            <items>
+                                <ColumnListItem>
+                                    <cells>
+                                        <Text text="{ksefDetails>ReferenceRole}" />
+                                        <Text text="{ksefDetails>SourceDocNo}" />
+                                        <Text text="{ksefDetails>SourceSystem} / {ksefDetails>SourceModule}" />
+                                    </cells>
+                                </ColumnListItem>
+                            </items>
+                        </Table>
+                    </IconTabFilter>
+
+                    <IconTabFilter key="parties" text="{i18n>ksefDetailsParties}" icon="sap-icon://customer-and-supplier">
+                        <form:SimpleForm editable="false" layout="ColumnLayout" columnsM="2" columnsL="2" columnsXL="2">
+                            <form:content>
+                                <core:Title text="{i18n>ksefColSeller}" />
+                                <Label text="{i18n>ksefFieldSellerName}" />
+                                <Text text="{ksefDetails>/invoice/SellerName}" />
+                                <Label text="{i18n>ksefFieldSellerNip}" />
+                                <Text text="{ path: 'ksefDetails>/invoice/SellerNip', formatter: '.formatter.nip' }" />
+                                <core:Title text="{i18n>ksefColBuyer}" />
+                                <Label text="{i18n>ksefFieldBuyerName}" />
+                                <Text text="{ksefDetails>/invoice/BuyerName}" />
+                                <Label text="{i18n>ksefFieldBuyerNip}" />
+                                <Text text="{ path: 'ksefDetails>/invoice/BuyerNip', formatter: '.formatter.nip' }" />
+                            </form:content>
+                        </form:SimpleForm>
+                    </IconTabFilter>
+
+                    <IconTabFilter key="amounts" text="{i18n>ksefDetailsAmounts}" icon="sap-icon://money-bills">
+                        <form:SimpleForm editable="false" layout="ColumnLayout">
+                            <form:content>
+                                <Label text="{i18n>ksefFieldNetAmount}" />
+                                <ObjectNumber number="{ path: 'ksefDetails>/invoice/NetAmount', formatter: '.formatter.amount' }" unit="{ksefDetails>/invoice/CurrencyCode}" />
+                                <Label text="{i18n>ksefFieldTaxAmount}" />
+                                <ObjectNumber number="{ path: 'ksefDetails>/invoice/TaxAmount', formatter: '.formatter.amount' }" unit="{ksefDetails>/invoice/CurrencyCode}" />
+                                <Label text="{i18n>ksefColGrossAmount}" />
+                                <ObjectNumber number="{ path: 'ksefDetails>/invoice/GrossAmount', formatter: '.formatter.amount' }" unit="{ksefDetails>/invoice/CurrencyCode}" emphasized="true" />
+                            </form:content>
+                        </form:SimpleForm>
+                    </IconTabFilter>
+
+                    <IconTabFilter
+                        key="items"
+                        text="{i18n>ksefDetailsItems}"
+                        icon="sap-icon://list"
+                        count="{= (${ksefDetails>/invoice/Items} || []).length }"
+                    >
+                        <Table
+                            id="ksefDetailsItems"
+                            items="{ path: 'ksefDetails>/invoice/Items', templateShareable: false }"
+                        >
+                            <columns>
+                                <Column width="5rem"><Text text="{i18n>ksefFieldItemNo}" /></Column>
+                                <Column><Text text="{i18n>ksefFieldDescription}" /></Column>
+                                <Column minScreenWidth="Tablet" demandPopin="true"><Text text="{i18n>ksefFieldMaterial}" /></Column>
+                                <Column hAlign="End"><Text text="{i18n>ksefFieldQuantity}" /></Column>
+                                <Column hAlign="End" minScreenWidth="Tablet" demandPopin="true"><Text text="{i18n>ksefFieldUnitPrice}" /></Column>
+                                <Column hAlign="End" minScreenWidth="Tablet" demandPopin="true"><Text text="{i18n>ksefFieldTaxRate}" /></Column>
+                                <Column hAlign="End"><Text text="{i18n>ksefColGrossAmount}" /></Column>
+                            </columns>
+                            <items>
+                                <ColumnListItem>
+                                    <cells>
+                                        <Text text="{ksefDetails>ItemNo}" />
+                                        <Text text="{ksefDetails>Description}" />
+                                        <Text text="{ksefDetails>MaterialId}" />
+                                        <Text text="{ksefDetails>Quantity} {ksefDetails>UnitCode}" />
+                                        <ObjectNumber number="{ path: 'ksefDetails>UnitPrice', formatter: '.formatter.amount' }" unit="{ksefDetails>CurrencyCode}" />
+                                        <Text text="{ksefDetails>TaxRate}% {ksefDetails>TaxCategory}" />
+                                        <ObjectNumber number="{ path: 'ksefDetails>GrossAmount', formatter: '.formatter.amount' }" unit="{ksefDetails>CurrencyCode}" />
+                                    </cells>
+                                </ColumnListItem>
+                            </items>
+                        </Table>
+                    </IconTabFilter>
+
+                    <IconTabFilter key="ksef" text="{i18n>ksefDetailsKsef}" icon="sap-icon://shield">
+                        <form:SimpleForm editable="false" layout="ColumnLayout" columnsM="2" columnsL="2" columnsXL="2">
+                            <form:content>
+                                <core:Title text="{i18n>ksefDetailsSourceRap}" />
+                                <Label text="{i18n>ksefFieldSapKsefNumber}" />
+                                <Text text="{ksefDetails>/invoice/SapKsefNumber}" />
+                                <Label text="{i18n>ksefFieldSapKsefEnvironment}" />
+                                <Text text="{ksefDetails>/invoice/SapKsefEnvironment}" />
+                                <Label text="{i18n>ksefFieldSapKsefRecordedAt}" />
+                                <Text text="{ path: 'ksefDetails>/invoice/SapKsefRecordedAt', formatter: '.formatter.dateTime' }" />
+                                <Label text="{i18n>ksefFieldSapKsefWriteRequestId}" />
+                                <Text text="{ksefDetails>/invoice/SapKsefWriteRequestId}" />
+                                <core:Title text="{i18n>ksefDetailsSourceCap}" />
+                                <Label text="{i18n>ksefColKsefStatus}" />
+                                <ObjectStatus
+                                    text="{ path: 'ksefDetails>/invoice/KsefStatus', formatter: '.formatter.ksefStatusText' }"
+                                    state="{ path: 'ksefDetails>/invoice/KsefStatus', formatter: '.formatter.ksefStatusState' }"
+                                />
+                                <Label text="{i18n>ksefFieldStatusSource}" />
+                                <Text text="{ksefDetails>/invoice/KsefStatusSource}" />
+                                <Label text="{i18n>ksefColKsefNumber}" />
+                                <Text text="{ksefDetails>/invoice/KsefNumber}" />
+                                <Label text="{i18n>ksefColKsefEnvironment}" />
+                                <Text text="{ksefDetails>/invoice/KsefEnvironment}" />
+                                <Label text="{i18n>ksefColOperationReference}" />
+                                <Text text="{ksefDetails>/invoice/OperationReference}" />
+                            </form:content>
+                        </form:SimpleForm>
+                    </IconTabFilter>
+
+                    <IconTabFilter
+                        key="history"
+                        text="{i18n>ksefDetailsHistory}"
+                        icon="sap-icon://history"
+                        count="{= (${ksefDetails>/operations} || []).length }"
+                    >
+                        <MessageStrip
+                            type="Error"
+                            showIcon="true"
+                            text="{ksefDetails>/historyError}"
+                            visible="{= !!${ksefDetails>/historyError} }"
+                            class="sapUiTinyMarginBottom"
+                        />
+                        <Table
+                            id="ksefDetailsHistory"
+                            busy="{ksefDetails>/historyBusy}"
+                            noDataText="{i18n>ksefDetailsNoHistory}"
+                            items="{ path: 'ksefDetails>/operations', templateShareable: false }"
+                        >
+                            <columns>
+                                <Column><Text text="{i18n>ksefFieldOperationType}" /></Column>
+                                <Column><Text text="{i18n>ksefFieldOperationStatus}" /></Column>
+                                <Column minScreenWidth="Tablet" demandPopin="true"><Text text="{i18n>ksefFieldEnvironment}" /></Column>
+                                <Column minScreenWidth="Tablet" demandPopin="true"><Text text="{i18n>ksefFieldReferenceNumber}" /></Column>
+                                <Column minScreenWidth="Desktop" demandPopin="true"><Text text="{i18n>ksefFieldError}" /></Column>
+                                <Column><Text text="{i18n>ksefFieldCreatedAt}" /></Column>
+                                <Column minScreenWidth="Tablet" demandPopin="true"><Text text="{i18n>ksefFieldModifiedAt}" /></Column>
+                            </columns>
+                            <items>
+                                <ColumnListItem>
+                                    <cells>
+                                        <Text text="{ksefDetails>operationType}" />
+                                        <ObjectStatus
+                                            text="{ path: 'ksefDetails>status', formatter: '.formatter.ksefStatusText' }"
+                                            state="{ path: 'ksefDetails>status', formatter: '.formatter.ksefStatusState' }"
+                                        />
+                                        <ObjectStatus
+                                            text="{ksefDetails>environment}"
+                                            state="{ path: 'ksefDetails>environment', formatter: '.formatter.environmentState' }"
+                                        />
+                                        <Text text="{ksefDetails>referenceNumber}" />
+                                        <Text text="{= ${ksefDetails>errorCode} ? ${ksefDetails>errorCode} + ': ' + ${ksefDetails>errorMessage} : '' }" />
+                                        <Text text="{ path: 'ksefDetails>createdAt', formatter: '.formatter.dateTime' }" />
+                                        <Text text="{ path: 'ksefDetails>modifiedAt', formatter: '.formatter.dateTime' }" />
+                                    </cells>
+                                </ColumnListItem>
+                            </items>
+                        </Table>
+                    </IconTabFilter>
+
+                    <IconTabFilter key="documents" text="{i18n>ksefDetailsDocuments}" icon="sap-icon://attachment">
+                        <MessageStrip
+                            type="Information"
+                            showIcon="true"
+                            text="{i18n>ksefDetailsDocumentsInfo}"
+                            class="sapUiTinyMarginBottom"
+                        />
+                        <HBox>
+                            <Button
+                                text="{i18n>ksefActionViewXml}"
+                                icon="sap-icon://source-code"
+                                enabled="{ksefView>/actions/viewXml/enabled}"
+                                tooltip="{ksefView>/actions/viewXml/tooltip}"
+                                press=".onKsefViewXml"
+                                class="sapUiTinyMarginEnd"
+                            />
+                            <Button
+                                text="{i18n>ksefActionDownloadUpo}"
+                                icon="sap-icon://download"
+                                enabled="{ksefView>/actions/downloadUpo/enabled}"
+                                tooltip="{ksefView>/actions/downloadUpo/tooltip}"
+                                press=".onKsefDownloadUpo"
+                                class="sapUiTinyMarginEnd"
+                            />
+                            <Button
+                                text="{i18n>ksefActionCheckDuplicate}"
+                                icon="sap-icon://compare"
+                                enabled="{ksefView>/actions/checkDuplicate/enabled}"
+                                tooltip="{ksefView>/actions/checkDuplicate/tooltip}"
+                                press=".onKsefCheckDuplicate"
+                            />
+                        </HBox>
+                    </IconTabFilter>
+                </items>
+            </IconTabBar>
+        </content>
+        <endButton>
+            <Button
+                id="ksefDetailsCloseButton"
+                text="{i18n>ksefDetailsClose}"
+                press=".onKsefDetailsClose"
+            />
+        </endButton>
+    </Dialog>
+</core:FragmentDefinition>

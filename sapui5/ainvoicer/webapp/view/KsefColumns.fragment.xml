@@ -1,0 +1,33 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+>
+    <!-- Personalizacja widoczności kolumn tabeli KSeF (zapisywana lokalnie w przeglądarce). -->
+    <Dialog
+        id="ksefColumnsDialog"
+        title="{i18n>ksefColumnsTitle}"
+        contentWidth="22rem"
+        stretch="{device>/system/phone}"
+    >
+        <content>
+            <List
+                id="ksefColumnsList"
+                mode="MultiSelect"
+                includeItemInSelection="true"
+                items="{ path: 'ksefView>/columnList', templateShareable: false }"
+            >
+                <StandardListItem
+                    title="{ksefView>label}"
+                    info="{ksefView>source}"
+                    selected="{ksefView>visible}"
+                />
+            </List>
+        </content>
+        <beginButton>
+            <Button id="ksefColumnsOk" text="{i18n>ksefColumnsOk}" type="Emphasized" press=".onKsefColumnsConfirm" />
+        </beginButton>
+        <endButton>
+            <Button id="ksefColumnsReset" text="{i18n>ksefColumnsReset}" press=".onKsefColumnsReset" />
+        </endButton>
+    </Dialog>
+</core:FragmentDefinition>

@@ -24,7 +24,11 @@
     "start-mock": "fiori run --config ./ui5-mock.yaml --open \"test/flp.html#app-preview\"",
     "int-test": "fiori run --config ./ui5-mock.yaml --open 'test/integration/opaTests.qunit.html'",
     "start-variants-management": "fiori run --open \"preview.html#app-preview\"",
-    "unit-test": "fiori run --config ./ui5-mock.yaml --open 'test/unit/unitTests.qunit.html'"
+    "unit-test": "fiori run --config ./ui5-mock.yaml --open 'test/unit/unitTests.qunit.html'",
+    "serve-mock": "fiori run --config ./ui5-mock.yaml --port 8085",
+    "test:unit": "node scripts/browser-test.mjs qunit http://localhost:8085/test/unit/unitTests.qunit.html",
+    "test:opa": "node scripts/browser-test.mjs qunit http://localhost:8085/test/integration/opaTests.qunit.html",
+    "test": "npm run test:unit && npm run test:opa"
   },
   "sapuxLayer": "CUSTOMER_BASE"
 }

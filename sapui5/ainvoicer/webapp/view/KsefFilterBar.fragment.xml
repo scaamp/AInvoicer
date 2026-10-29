@@ -1,0 +1,123 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:fb="sap.ui.comp.filterbar"
+>
+    <!-- Filtry nowej tabeli KSeF; działają na modelu JSON "ksef" (bez zapytań generowanych z tekstu). -->
+    <fb:FilterBar
+        id="ksefFilterBar"
+        useToolbar="false"
+        visible="{= !${ksefView>/legacyMode} }"
+        search=".onKsefSearch"
+        clear=".onKsefClear"
+        showClearOnFB="true"
+    >
+        <fb:filterGroupItems>
+            <fb:FilterGroupItem
+                name="Search"
+                label="{i18n>ksefFilterSearch}"
+                groupName="Ksef"
+                visibleInFilterBar="true"
+            >
+                <fb:control>
+                    <SearchField
+                        id="ksefSearchField"
+                        value="{ksefView>/filters/search}"
+                        placeholder="{i18n>ksefFilterSearchPlaceholder}"
+                        search=".onKsefSearch"
+                    />
+                </fb:control>
+            </fb:FilterGroupItem>
+            <fb:FilterGroupItem
+                name="OriginProcess"
+                label="{i18n>ksefFilterOrigin}"
+                groupName="Ksef"
+                visibleInFilterBar="true"
+            >
+                <fb:control>
+                    <MultiComboBox
+                        id="ksefOriginFilter"
+                        selectedKeys="{ksefView>/filters/originProcesses}"
+                        items="{ path: 'ksefView>/valueLists/originProcesses', templateShareable: false }"
+                    >
+                        <core:Item key="{ksefView>}" text="{ksefView>}" />
+                    </MultiComboBox>
+                </fb:control>
+            </fb:FilterGroupItem>
+            <fb:FilterGroupItem
+                name="CompanyCode"
+                label="{i18n>ksefFilterCompany}"
+                groupName="Ksef"
+                visibleInFilterBar="true"
+            >
+                <fb:control>
+                    <MultiComboBox
+                        id="ksefCompanyFilter"
+                        selectedKeys="{ksefView>/filters/companyCodes}"
+                        items="{ path: 'ksefView>/valueLists/companyCodes', templateShareable: false }"
+                    >
+                        <core:Item key="{ksefView>}" text="{ksefView>}" />
+                    </MultiComboBox>
+                </fb:control>
+            </fb:FilterGroupItem>
+            <fb:FilterGroupItem
+                name="KsefStatus"
+                label="{i18n>ksefFilterStatus}"
+                groupName="Ksef"
+                visibleInFilterBar="true"
+            >
+                <fb:control>
+                    <MultiComboBox
+                        id="ksefStatusFilter"
+                        selectedKeys="{ksefView>/filters/ksefStatuses}"
+                        items="{ path: 'ksefView>/valueLists/ksefStatuses', templateShareable: false }"
+                    >
+                        <core:Item key="{ksefView>key}" text="{ksefView>text}" />
+                    </MultiComboBox>
+                </fb:control>
+            </fb:FilterGroupItem>
+            <fb:FilterGroupItem
+                name="IssueDate"
+                label="{i18n>ksefFilterIssueDate}"
+                groupName="Ksef"
+                visibleInFilterBar="true"
+            >
+                <fb:control>
+                    <DateRangeSelection
+                        id="ksefIssueDateFilter"
+                        valueFormat="yyyy-MM-dd"
+                        change=".onKsefDateRangeChange"
+                    />
+                </fb:control>
+            </fb:FilterGroupItem>
+            <fb:FilterGroupItem
+                name="AmountFrom"
+                label="{i18n>ksefFilterAmountFrom}"
+                groupName="Ksef"
+                visibleInFilterBar="false"
+            >
+                <fb:control>
+                    <Input
+                        id="ksefAmountFromFilter"
+                        type="Number"
+                        value="{ksefView>/filters/amountFrom}"
+                    />
+                </fb:control>
+            </fb:FilterGroupItem>
+            <fb:FilterGroupItem
+                name="AmountTo"
+                label="{i18n>ksefFilterAmountTo}"
+                groupName="Ksef"
+                visibleInFilterBar="false"
+            >
+                <fb:control>
+                    <Input
+                        id="ksefAmountToFilter"
+                        type="Number"
+                        value="{ksefView>/filters/amountTo}"
+                    />
+                </fb:control>
+            </fb:FilterGroupItem>
+        </fb:filterGroupItems>
+    </fb:FilterBar>
+</core:FragmentDefinition>

@@ -1,0 +1,25 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+>
+    <!-- Wyjaśnienie, dlaczego akcje są (nie)dostępne dla zaznaczonej faktury i aktualnego backendu. -->
+    <ResponsivePopover
+        id="ksefAvailabilityPopover"
+        title="{i18n>ksefActionAvailability}"
+        placement="Bottom"
+        contentWidth="30rem"
+    >
+        <List
+            id="ksefAvailabilityList"
+            items="{ path: 'ksefView>/actionList', templateShareable: false }"
+        >
+            <StandardListItem
+                title="{ksefView>label}"
+                description="{ksefView>reason}"
+                icon="{= ${ksefView>enabled} ? 'sap-icon://accept' : 'sap-icon://locked' }"
+                highlight="{= ${ksefView>enabled} ? 'Success' : 'None' }"
+                wrapping="true"
+            />
+        </List>
+    </ResponsivePopover>
+</core:FragmentDefinition>

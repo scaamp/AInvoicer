@@ -1,0 +1,384 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:table="sap.ui.table"
+    xmlns:rowmodes="sap.ui.table.rowmodes"
+>
+    <!-- Nowa tabela nagłówków faktur: RAP ZC_AINV_INV_H + status operacji CAP (model JSON "ksef"). -->
+    <MessageStrip
+        id="ksefErrorStrip"
+        type="Error"
+        showIcon="true"
+        showCloseButton="true"
+        text="{ksefView>/error}"
+        visible="{= !${ksefView>/legacyMode} &amp;&amp; !!${ksefView>/error} }"
+        close=".onKsefErrorClose"
+        class="sapUiTinyMarginBottom"
+    />
+    <table:Table
+        id="ksefInvoiceTable"
+        visible="{= !${ksefView>/legacyMode} }"
+        rows="{ path: 'ksef>/invoices' }"
+        selectionMode="Single"
+        selectionBehavior="RowSelector"
+        rowSelectionChange=".onKsefRowSelectionChange"
+        busy="{ksefView>/busy}"
+        busyIndicatorDelay="0"
+        enableBusyIndicator="true"
+        noData="{= ${ksefView>/error} ? ${i18n>ksefNoDataError} : ${i18n>ksefNoData} }"
+        rowActionCount="1"
+        width="100%"
+        ariaLabelledBy="ksefTableTitle"
+    >
+        <table:rowMode>
+            <rowmodes:Fixed rowCount="12" rowContentHeight="52" />
+        </table:rowMode>
+        <table:extension>
+            <OverflowToolbar id="ksefToolbar">
+                <Title
+                    id="ksefTableTitle"
+                    text="{ parts: ['i18n>ksefTableTitle', 'ksefView>/rowCount'], formatter: '.formatMessage' }"
+                />
+                <ToolbarSpacer />
+                <Button
+                    id="ksefRefreshButton"
+                    text="{i18n>ksefActionRefresh}"
+                    icon="sap-icon://refresh"
+                    type="Transparent"
+                    press=".onKsefRefresh"
+                    enabled="{= !${ksefView>/busy} }"
+                />
+                <Button
+                    id="ksefSyncButton"
+                    text="{i18n>ksefActionSync}"
+                    icon="sap-icon://synchronize"
+                    type="Transparent"
+                    press=".onKsefSync"
+                    enabled="{ksefView>/actions/sync/enabled}"
+                    tooltip="{ksefView>/actions/sync/tooltip}"
+                />
+                <Button
+                    id="ksefSendButton"
+                    text="{i18n>ksefActionSend}"
+                    icon="sap-icon://outbox"
+                    type="Emphasized"
+                    press=".onKsefSend"
+                    enabled="{ksefView>/actions/send/enabled}"
+                    tooltip="{ksefView>/actions/send/tooltip}"
+                />
+                <Button
+                    id="ksefCheckStatusButton"
+                    text="{i18n>ksefActionCheckStatus}"
+                    icon="sap-icon://status-in-process"
+                    type="Transparent"
+                    press=".onKsefCheckStatus"
+                    enabled="{ksefView>/actions/checkStatus/enabled}"
+                    tooltip="{ksefView>/actions/checkStatus/tooltip}"
+                />
+                <Button
+                    id="ksefViewXmlButton"
+                    text="{i18n>ksefActionViewXml}"
+                    icon="sap-icon://source-code"
+                    type="Transparent"
+                    press=".onKsefViewXml"
+                    enabled="{ksefView>/actions/viewXml/enabled}"
+                    tooltip="{ksefView>/actions/viewXml/tooltip}"
+                />
+                <Button
+                    id="ksefDownloadUpoButton"
+                    text="{i18n>ksefActionDownloadUpo}"
+                    icon="sap-icon://download"
+                    type="Transparent"
+                    press=".onKsefDownloadUpo"
+                    enabled="{ksefView>/actions/downloadUpo/enabled}"
+                    tooltip="{ksefView>/actions/downloadUpo/tooltip}"
+                />
+                <Button
+                    id="ksefDetailsButton"
+                    text="{i18n>ksefActionViewDetails}"
+                    icon="sap-icon://detail-view"
+                    type="Transparent"
+                    press=".onKsefViewDetails"
+                    enabled="{ksefView>/actions/viewDetails/enabled}"
+                    tooltip="{ksefView>/actions/viewDetails/tooltip}"
+                />
+                <Button
+                    id="ksefHistoryButton"
+                    text="{i18n>ksefActionHistory}"
+                    icon="sap-icon://history"
+                    type="Transparent"
+                    press=".onKsefHistory"
+                    enabled="{ksefView>/actions/history/enabled}"
+                    tooltip="{ksefView>/actions/history/tooltip}"
+                />
+                <ToolbarSeparator />
+                <Button
+                    id="ksefAvailabilityButton"
+                    icon="sap-icon://hint"
+                    type="Transparent"
+                    tooltip="{i18n>ksefActionAvailability}"
+                    press=".onKsefShowAvailability"
+                >
+                    <layoutData>
+                        <OverflowToolbarLayoutData priority="NeverOverflow" />
+                    </layoutData>
+                </Button>
+                <Button
+                    id="ksefColumnsButton"
+                    icon="sap-icon://action-settings"
+                    type="Transparent"
+                    tooltip="{i18n>ksefActionColumns}"
+                    text="{i18n>ksefActionColumns}"
+                    press=".onKsefOpenColumns"
+                />
+                <Button
+                    id="ksefScanButton"
+                    icon="sap-icon://camera"
+                    type="Transparent"
+                    text="{i18n>ksefActionScan}"
+                    tooltip="{i18n>scanLegacyNotice}"
+                    press=".onKsefScan"
+                />
+            </OverflowToolbar>
+        </table:extension>
+        <table:rowActionTemplate>
+            <table:RowAction>
+                <table:RowActionItem
+                    type="Navigation"
+                    press=".onKsefRowAction"
+                />
+            </table:RowAction>
+        </table:rowActionTemplate>
+        <table:columns>
+            <table:Column
+                id="ksefColInvoiceNumber"
+                sortProperty="InvoiceNumber"
+                filterProperty="InvoiceNumber"
+                width="16rem"
+                visible="{ksefView>/columns/InvoiceNumber}"
+            >
+                <table:label>
+                    <Label text="{i18n>ksefColInvoiceNumber}" />
+                </table:label>
+                <table:template>
+                    <Text text="{ksef>InvoiceNumber}" wrapping="false" />
+                </table:template>
+            </table:Column>
+            <table:Column
+                id="ksefColDirection"
+                sortProperty="Direction"
+                filterProperty="Direction"
+                width="9rem"
+                visible="{ksefView>/columns/Direction}"
+            >
+                <table:label>
+                    <Label text="{i18n>ksefColDirection}" />
+                </table:label>
+                <table:template>
+                    <ObjectStatus
+                        text="{ksef>Direction}"
+                        icon="{ path: 'ksef>Direction', formatter: '.formatter.directionIcon' }"
+                        state="{ path: 'ksef>Direction', formatter: '.formatter.directionState' }"
+                    />
+                </table:template>
+            </table:Column>
+            <table:Column
+                id="ksefColOriginProcess"
+                sortProperty="OriginProcess"
+                filterProperty="OriginProcess"
+                width="8rem"
+                visible="{ksefView>/columns/OriginProcess}"
+            >
+                <table:label>
+                    <Label text="{i18n>ksefColOriginProcess}" />
+                </table:label>
+                <table:template>
+                    <Text text="{ksef>OriginProcess}" wrapping="false" />
+                </table:template>
+            </table:Column>
+            <table:Column
+                id="ksefColCompanyCode"
+                sortProperty="CompanyCode"
+                filterProperty="CompanyCode"
+                width="8rem"
+                visible="{ksefView>/columns/CompanyCode}"
+            >
+                <table:label>
+                    <Label text="{i18n>ksefColCompanyCode}" />
+                </table:label>
+                <table:template>
+                    <Text text="{ksef>CompanyCode}" wrapping="false" />
+                </table:template>
+            </table:Column>
+            <table:Column
+                id="ksefColSeller"
+                sortProperty="SellerName"
+                filterProperty="SellerName"
+                width="16rem"
+                visible="{ksefView>/columns/Seller}"
+            >
+                <table:label>
+                    <Label text="{i18n>ksefColSeller}" />
+                </table:label>
+                <table:template>
+                    <ObjectIdentifier
+                        title="{ksef>SellerName}"
+                        text="{ path: 'ksef>SellerNip', formatter: '.formatter.nip' }"
+                    />
+                </table:template>
+            </table:Column>
+            <table:Column
+                id="ksefColBuyer"
+                sortProperty="BuyerName"
+                filterProperty="BuyerName"
+                width="16rem"
+                visible="{ksefView>/columns/Buyer}"
+            >
+                <table:label>
+                    <Label text="{i18n>ksefColBuyer}" />
+                </table:label>
+                <table:template>
+                    <ObjectIdentifier
+                        title="{ksef>BuyerName}"
+                        text="{ path: 'ksef>BuyerNip', formatter: '.formatter.nip' }"
+                    />
+                </table:template>
+            </table:Column>
+            <table:Column
+                id="ksefColIssueDate"
+                sortProperty="IssueDate"
+                width="9rem"
+                visible="{ksefView>/columns/IssueDate}"
+            >
+                <table:label>
+                    <Label text="{i18n>ksefColIssueDate}" />
+                </table:label>
+                <table:template>
+                    <Text text="{ path: 'ksef>IssueDate', formatter: '.formatter.date' }" wrapping="false" />
+                </table:template>
+            </table:Column>
+            <table:Column
+                id="ksefColGrossAmount"
+                sortProperty="GrossAmount"
+                hAlign="End"
+                width="10rem"
+                visible="{ksefView>/columns/GrossAmount}"
+            >
+                <table:label>
+                    <Label text="{i18n>ksefColGrossAmount}" />
+                </table:label>
+                <table:template>
+                    <ObjectNumber
+                        number="{ path: 'ksef>GrossAmount', formatter: '.formatter.amount' }"
+                        unit="{ksef>CurrencyCode}"
+                        textAlign="End"
+                    />
+                </table:template>
+            </table:Column>
+            <table:Column
+                id="ksefColCurrencyCode"
+                sortProperty="CurrencyCode"
+                filterProperty="CurrencyCode"
+                width="6rem"
+                visible="{ksefView>/columns/CurrencyCode}"
+            >
+                <table:label>
+                    <Label text="{i18n>ksefColCurrencyCode}" />
+                </table:label>
+                <table:template>
+                    <Text text="{ksef>CurrencyCode}" wrapping="false" />
+                </table:template>
+            </table:Column>
+            <table:Column
+                id="ksefColInvoiceStatus"
+                sortProperty="InvoiceStatus"
+                filterProperty="InvoiceStatus"
+                width="8rem"
+                visible="{ksefView>/columns/InvoiceStatus}"
+            >
+                <table:label>
+                    <Label text="{i18n>ksefColInvoiceStatus}" />
+                </table:label>
+                <table:template>
+                    <ObjectStatus text="{ksef>InvoiceStatus}" />
+                </table:template>
+            </table:Column>
+            <table:Column
+                id="ksefColKsefStatus"
+                sortProperty="KsefStatus"
+                filterProperty="KsefStatus"
+                width="11rem"
+                visible="{ksefView>/columns/KsefStatus}"
+            >
+                <table:label>
+                    <Label text="{i18n>ksefColKsefStatus}" />
+                </table:label>
+                <table:template>
+                    <ObjectStatus
+                        text="{ path: 'ksef>KsefStatus', formatter: '.formatter.ksefStatusText' }"
+                        state="{ path: 'ksef>KsefStatus', formatter: '.formatter.ksefStatusState' }"
+                        icon="{ path: 'ksef>KsefStatus', formatter: '.formatter.ksefStatusIcon' }"
+                    />
+                </table:template>
+            </table:Column>
+            <table:Column
+                id="ksefColKsefNumber"
+                sortProperty="KsefNumber"
+                filterProperty="KsefNumber"
+                width="20rem"
+                visible="{ksefView>/columns/KsefNumber}"
+            >
+                <table:label>
+                    <Label text="{i18n>ksefColKsefNumber}" />
+                </table:label>
+                <table:template>
+                    <Text text="{ksef>KsefNumber}" wrapping="false" />
+                </table:template>
+            </table:Column>
+            <table:Column
+                id="ksefColKsefEnvironment"
+                sortProperty="KsefEnvironment"
+                filterProperty="KsefEnvironment"
+                width="9rem"
+                visible="{ksefView>/columns/KsefEnvironment}"
+            >
+                <table:label>
+                    <Label text="{i18n>ksefColKsefEnvironment}" />
+                </table:label>
+                <table:template>
+                    <ObjectStatus
+                        text="{ksef>KsefEnvironment}"
+                        state="{ path: 'ksef>KsefEnvironment', formatter: '.formatter.environmentState' }"
+                    />
+                </table:template>
+            </table:Column>
+            <table:Column
+                id="ksefColOperationReference"
+                sortProperty="OperationReference"
+                filterProperty="OperationReference"
+                width="16rem"
+                visible="{ksefView>/columns/OperationReference}"
+            >
+                <table:label>
+                    <Label text="{i18n>ksefColOperationReference}" />
+                </table:label>
+                <table:template>
+                    <Text text="{ksef>OperationReference}" wrapping="false" />
+                </table:template>
+            </table:Column>
+            <table:Column
+                id="ksefColLastUpdate"
+                sortProperty="LastUpdate"
+                width="12rem"
+                visible="{ksefView>/columns/LastUpdate}"
+            >
+                <table:label>
+                    <Label text="{i18n>ksefColLastUpdate}" />
+                </table:label>
+                <table:template>
+                    <Text text="{ path: 'ksef>LastUpdate', formatter: '.formatter.dateTime' }" wrapping="false" />
+                </table:template>
+            </table:Column>
+        </table:columns>
+    </table:Table>
+</core:FragmentDefinition>

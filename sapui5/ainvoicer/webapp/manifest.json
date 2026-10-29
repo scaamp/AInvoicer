@@ -49,12 +49,47 @@
       "minUI5Version": "1.133.3",
       "libs": {
         "sap.m": {},
-        "sap.ui.core": {}
+        "sap.ui.core": {},
+        "sap.ui.table": {},
+        "sap.ui.comp": {},
+        "sap.ui.unified": {},
+        "sap.ui.layout": {},
+        "sap.f": {}
       }
     },
     "contentDensities": {
       "compact": true,
       "cozy": true
+    },
+    "config": {
+      "ksefCockpit": {
+        "dataMode": "mock",
+        "targetEnvironment": "TEST",
+        "defaultView": "ALL",
+        "mock": {
+          "headersPath": "ainvoicer/localService/ksef/ZC_AINV_INV_H.json",
+          "operationsPath": "ainvoicer/localService/ksef/KsefOperations.json"
+        },
+        "cap": {
+          "serviceUrl": "/odata/v4/KsefService/",
+          "invoiceListUrl": null,
+          "invoiceDetailsUrl": null,
+          "actions": {
+            "send": null,
+            "sync": null,
+            "xml": null,
+            "upo": null,
+            "duplicate": null
+          }
+        },
+        "capabilities": {
+          "sendInvoice": false,
+          "syncInbound": false,
+          "viewXml": false,
+          "downloadUpo": false,
+          "checkDuplicate": false
+        }
+      }
     },
     "models": {
       "i18n": {

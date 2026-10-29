@@ -13,10 +13,12 @@ sap.ui.define([
     "sap/m/BusyDialog",
     'sap/ui/model/Filter',
     'sap/ui/model/FilterOperator',
-], (Controller, JSONModel, MessageBox, MessageToast, Fragment, DateFormat, BusyIndicator, CustomListItem, VBox, Text, Link, BusyDialog, Filter, FilterOperator) => {
+    "ainvoicer/controller/KsefCockpit"
+], (Controller, JSONModel, MessageBox, MessageToast, Fragment, DateFormat, BusyIndicator, CustomListItem, VBox, Text, Link, BusyDialog, Filter, FilterOperator, KsefCockpit) => {
     "use strict";
 
-    return Controller.extend("ainvoicer.controller.Main", {
+    // Kokpit KSeF jest dołączony jako mixin; istniejące metody Legacy/AI/Scanner pozostają poniżej.
+    return Controller.extend("ainvoicer.controller.Main", Object.assign({}, KsefCockpit, {
         onInit: function () {
             // Inicjalizacja modelu
             var oFileModel = new JSONModel({
@@ -46,6 +48,8 @@ sap.ui.define([
             this.oTable = this.getView().byId("invoiceTable");
             this.oFilterBar = this.getView().byId("filterbar");
 
+            // Nowy widok faktur KSeF (RAP nagłówki + operacje CAP); Legacy FI działa bez zmian.
+            this._initKsefCockpit();
         },
 
         onSearch: function () {
@@ -92,6 +96,12 @@ sap.ui.define([
             if (!sQuery) {
                 return;
             }
+            // Jedno zapytanie naraz: podwójne zdarzenie "search" (Enter + change) otwierało drugi
+            // BusyDialog, którego referencja nadpisywała pierwszy — ten blokował UI na stałe.
+            if (this._bAiQueryRunning) {
+                return;
+            }
+            this._bAiQueryRunning = true;
 
             var oHistoryModel = this.getView().getModel("history");
             var sCurrentContext = oHistoryModel.getProperty("/currentContext");
@@ -147,8 +157,22 @@ sap.ui.define([
                         },
                         body: JSON.stringify(oQuery)
                     })
-                        .then(res => res.json())
+                        .then(res => {
+                            if (!res.ok) {
+                                throw new Error("HTTP " + res.status);
+                            }
+                            return res.json();
+                        })
                         .then(data => {
+
+                            // Widok KSeF: ten sam kontrakt /filter, ale filtry przechodzą przez bezpieczny adapter
+                            // i trafiają do nowej tabeli. Tabela Legacy nie jest wtedy zmieniana.
+                            if (that._isKsefMode()) {
+                                that._completeAiConversation(iIndex, that._applyAiResultToKsef(data), data);
+                                resolve(data);
+                                that.onPlayTTS(data.description);
+                                return;
+                            }
 
                             const oODataModel = that.getOwnerComponent().getModel(); // lub inny sposób uzyskania modelu głównego
                             that.oTable.setModel(oODataModel);
@@ -226,15 +250,44 @@ sap.ui.define([
                             that.oTable.invalidate();
                             resolve(data); // na końcu
                             that.oBusyDialog.close();
+                            that._bAiQueryRunning = false;
                             that.onPlayTTS(data.description);
                         })
+                        .catch(function (error) {
+                            // Wcześniej błąd sieci zostawiał otwarty BusyDialog bez komunikatu.
+                            that._completeAiConversation(iIndex, that._ksefText("aiServiceError", [error.message]), null);
+                            resolve(null);
+                        });
                 }
                 else {
-                    sResponse = "Konktekst jeszcze nie obsługiwany."
+                    // Wcześniej: ReferenceError (sResponse) i niezamknięty BusyDialog.
+                    that._completeAiConversation(iIndex, that._ksefText("aiContextNotSupported"), null);
+                    resolve(null);
                 }
             }).catch(function (error) {
                 // reject(error);
             });
+        },
+
+        /**
+         * Zapisuje odpowiedź w historii rozmowy i zamyka wskaźnik zajętości.
+         * @param {int} iIndex indeks rozmowy
+         * @param {string} sResponse tekst odpowiedzi asystenta
+         * @param {object|null} oData surowa odpowiedź /filter (dla linku "View filters")
+         */
+        _completeAiConversation: function (iIndex, sResponse, oData) {
+            var oHistoryModel = this.getView().getModel("history");
+            var aConversations = oHistoryModel.getProperty("/conversations");
+            aConversations[iIndex].response = sResponse;
+            aConversations[iIndex].filters = oData ? oData.filters : null;
+            aConversations[iIndex].oConversationData = oData || {};
+            aConversations[iIndex].isProcessed = true;
+            oHistoryModel.setProperty("/conversations", aConversations);
+            this._updateHistoryList();
+            this._bAiQueryRunning = false;
+            if (this.oBusyDialog) {
+                this.oBusyDialog.close();
+            }
         },
 
         /**
@@ -509,8 +562,10 @@ sap.ui.define([
                     controller: this
                 }).then(function (oDialog) {
                     this._oAddDialog = oDialog;
-                    oView.addDependent(this._oAddDialog);
+                    // Model JSON przed addDependent: inaczej pola chwilowo wiążą się z modelem OData V4
+                    // (błędy "Failed to read path /CompanyCode" w konsoli).
                     this._oAddDialog.setModel(oDialogModel);
+                    oView.addDependent(this._oAddDialog);
                     this._oAddDialog.open();
                 }.bind(this));
             } else {
@@ -790,8 +845,12 @@ sap.ui.define([
                         oParsed = JSON.parse(cleaned); //odkom
 
                         // (1) Poprawka na polskie przecinki w liczbach
-                        oParsed.AmountDocument = oParsed.AmountDocument.replace(",", ".");
-                        oParsed.AmountLocal = oParsed.AmountLocal.replace(",", ".");
+                        if (typeof oParsed.AmountDocument === "string") {
+                            oParsed.AmountDocument = oParsed.AmountDocument.replace(",", ".");
+                        }
+                        if (typeof oParsed.AmountLocal === "string") {
+                            oParsed.AmountLocal = oParsed.AmountLocal.replace(",", ".");
+                        }
 
 
                         // oParsed = that._getSimulatedAIResponse();
@@ -799,6 +858,11 @@ sap.ui.define([
                     }
                     catch (err) {
                         console.error("Błąd parsowania JSON z odpowiedzi AI:", err);
+                        if (that.oBusyDialog) {
+                            that.oBusyDialog.close();
+                        }
+                        oFileModel.setProperty("/status", "Błąd: nie udało się odczytać odpowiedzi AI");
+                        return;
                     }
 
                     oFileModel.setProperty("/status", "Analiza zakończona");
@@ -806,6 +870,9 @@ sap.ui.define([
                     oFileModel.setProperty("/result", JSON.stringify(response, null, 2));
                 })
                 .catch(function (error) {
+                    if (that.oBusyDialog) {
+                        that.oBusyDialog.close();
+                    }
                     oFileModel.setProperty("/status", "Błąd: " + error.message);
                     MessageBox.error("Wystąpił błąd podczas analizy faktury: " + error.message);
                 });
@@ -998,13 +1065,22 @@ sap.ui.define([
                             },
                             body: JSON.stringify(requestImageUrl)
                         })
-                            .then(res => res.json())
-                            .then(data => resolve(data.result));
-                    });
-            })
-                .catch(function (error) {
-                    reject(error);
-                });
+                            .then(res => {
+                                if (!res.ok) {
+                                    throw new Error("HTTP " + res.status);
+                                }
+                                return res.json();
+                            })
+                            .then(data => {
+                                if (typeof data.result !== "string") {
+                                    throw new Error("Brak pola result w odpowiedzi /analyze");
+                                }
+                                resolve(data.result);
+                            })
+                            .catch(reject);
+                    })
+                    .catch(reject);
+            });
 
 
         },
@@ -1282,5 +1358,5 @@ sap.ui.define([
             .catch(err => console.error("Speech error:", err));
         }
         
-    });
+    }));
 })
