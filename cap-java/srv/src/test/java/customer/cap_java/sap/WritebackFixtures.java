@@ -40,6 +40,7 @@ final class WritebackFixtures {
         snap.put("itemsFingerprint", "b".repeat(64));
         snap.put("xmlSha256", snapshotHash);
         snap.put("xmlByteLength", 10);
+        snap.put("source", KsefInvoiceSnapshotRegistry.SOURCE_SAP_RAP);
         db.run(Insert.into(SapKsefResultWriteback.SNAPSHOTS).entry(snap));
         Map<String, Object> op = new LinkedHashMap<>();
         op.put("ID", id.toString());

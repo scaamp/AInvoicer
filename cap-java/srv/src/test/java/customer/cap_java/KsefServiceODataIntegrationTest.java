@@ -126,7 +126,7 @@ class KsefServiceODataIntegrationTest {
 			COLLECTION + "?$expand=invoice", null);
 		assertFalse(expand.is2xxSuccessful(), "Hidden association must not be expandable over public OData");
 
-		Map<String, Object> payload = operation(NIP_A, "SEND_INVOICE");
+		Map<String, Object> payload = operation(NIP_A, "CHECK_STATUS");
 		payload.put("invoice_ID", invoiceId);
 		assertFalse(create("operator-a", "test-a", COLLECTION, payload).is2xxSuccessful(),
 			"Public client must not set the hidden invoice foreign key");
@@ -134,7 +134,7 @@ class KsefServiceODataIntegrationTest {
 
 	@Test
 	void operatorCanCreateAndReadOnlyOwnTaxpayerOperations() throws Exception {
-		ODataResponse created = create("operator-a", "test-a", operation(NIP_A, "SEND_INVOICE"));
+		ODataResponse created = create("operator-a", "test-a", operation(NIP_A, "CHECK_STATUS"));
 		assertTrue(created.is2xxSuccessful(), () -> "CREATE failed: HTTP " + created.status() + " " + created.getBody());
 
 		ODataResponse visible = request("operator-a", "test-a", HttpMethod.GET, COLLECTION, null);
@@ -146,7 +146,7 @@ class KsefServiceODataIntegrationTest {
 
 	@Test
 	void operatorCannotCreateForAnotherTaxpayer() {
-		ODataResponse response = create("operator-a", "test-a", operation(NIP_B, "SEND_INVOICE"));
+		ODataResponse response = create("operator-a", "test-a", operation(NIP_B, "CHECK_STATUS"));
 		assertStatus(response, 400);
 	}
 
@@ -166,7 +166,7 @@ class KsefServiceODataIntegrationTest {
 	@Test
 	void operatorWithoutTaxpayerAttributeCannotCreateOrReadOperations() {
 		ODataResponse create = create(
-			"operator-without-taxpayer-attribute", "test-no-nip", operation(NIP_A, "SEND_INVOICE"));
+			"operator-without-taxpayer-attribute", "test-no-nip", operation(NIP_A, "CHECK_STATUS"));
 		assertStatus(create, 400);
 
 		ODataResponse read = request(
@@ -178,7 +178,7 @@ class KsefServiceODataIntegrationTest {
 
 	@Test
 	void invalidNipIsRejectedByCreateValidation() {
-		ODataResponse response = create("operator-a", "test-a", operation("1234567890", "SEND_INVOICE"));
+		ODataResponse response = create("operator-a", "test-a", operation("1234567890", "CHECK_STATUS"));
 		assertStatus(response, 400);
 	}
 
@@ -190,28 +190,28 @@ class KsefServiceODataIntegrationTest {
 
 	@Test
 	void missingOperationTypeIsRejected() {
-		Map<String, Object> data = operation(NIP_A, "SEND_INVOICE");
+		Map<String, Object> data = operation(NIP_A, "CHECK_STATUS");
 		data.remove("operationType");
 		assertStatus(create("operator-a", "test-a", data), 400);
 	}
 
 	@Test
 	void blankIdempotencyKeyIsRejected() {
-		Map<String, Object> data = operation(NIP_A, "SEND_INVOICE");
+		Map<String, Object> data = operation(NIP_A, "CHECK_STATUS");
 		data.put("idempotencyKey", "   ");
 		assertStatus(create("operator-a", "test-a", data), 400);
 	}
 
 	@Test
 	void unsupportedDirectionIsRejected() {
-		Map<String, Object> data = operation(NIP_A, "SEND_INVOICE");
+		Map<String, Object> data = operation(NIP_A, "CHECK_STATUS");
 		data.put("direction", "SIDEWAYS");
 		assertStatus(create("operator-a", "test-a", data), 400);
 	}
 
 	@Test
 	void createOverwritesClientStatusAndTrimsIdempotencyKey() throws Exception {
-		Map<String, Object> data = operation(NIP_A, "SEND_INVOICE");
+		Map<String, Object> data = operation(NIP_A, "CHECK_STATUS");
 		data.put("status", "ACCEPTED");
 		data.put("environment", "PROD");
 		data.put("idempotencyKey", "  " + data.get("idempotencyKey") + "  ");
@@ -227,7 +227,7 @@ class KsefServiceODataIntegrationTest {
 
 	@Test
 	void updateAndDeleteAreNotGrantedByPublicService() throws Exception {
-		ODataResponse created = create("operator-a", "test-a", operation(NIP_A, "SEND_INVOICE"));
+		ODataResponse created = create("operator-a", "test-a", operation(NIP_A, "CHECK_STATUS"));
 		assertTrue(created.is2xxSuccessful());
 		String id = created.getBody().path("ID").asText();
 		assertFalse(id.isBlank(), "CREATE response must include the generated ID");
@@ -244,11 +244,11 @@ class KsefServiceODataIntegrationTest {
 	@Test
 	void duplicateTaxpayerAndIdempotencyKeyIsRejectedByDatabaseConstraint() {
 		String idempotencyKey = "duplicate-" + UUID.randomUUID();
-		Map<String, Object> first = operation(NIP_A, "SEND_INVOICE");
+		Map<String, Object> first = operation(NIP_A, "CHECK_STATUS");
 		first.put("idempotencyKey", idempotencyKey);
 		assertTrue(create("operator-a", "test-a", first).is2xxSuccessful());
 
-		Map<String, Object> duplicate = operation(NIP_A, "SEND_INVOICE");
+		Map<String, Object> duplicate = operation(NIP_A, "CHECK_STATUS");
 		duplicate.put("idempotencyKey", idempotencyKey);
 		assertStatus(create("operator-a", "test-a", duplicate), 409);
 	}

@@ -17,11 +17,19 @@ cds:
           roles: [KsefOperator]
           attributes:
             taxpayerNips: ["1234567802"]
+            companyCodes: ["1000"]
         - name: operator-b
           password: test-b
           roles: [KsefOperator]
           attributes:
             taxpayerNips: ["9876543210"]
+            companyCodes: ["2000"]
+        - name: operator-other-company
+          password: test-cc
+          roles: [KsefOperator]
+          attributes:
+            taxpayerNips: ["1234567802"]
+            companyCodes: ["2000"]
         - name: user-without-ksef-role
           password: test-user
           roles: [authenticated-user]
@@ -30,3 +38,8 @@ cds:
         - name: operator-without-taxpayer-attribute
           password: test-no-nip
           roles: [KsefOperator]
+ainv:
+  sap-write:
+    # Testy wywołują sweep() jawnie; tło nie może tworzyć zleceń w trakcie asercji innych testów.
+    sweeper:
+      enabled: false

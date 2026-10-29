@@ -82,6 +82,18 @@ public class KsefInvoiceSnapshotRegistry {
      */
     public UUID register(SapInvoiceSnapshot sap, String taxpayerNip, String companyCode, String environment,
             String schemaVersion, byte[] xml) {
+        return register(sap, taxpayerNip, companyCode, environment, schemaVersion, xml, SOURCE_UNVERIFIED);
+    }
+
+    /** Pochodzenie migawki: tylko odczyt RAP wykonany przez CAP daje prawo do późniejszego writebacku. */
+    public static final String SOURCE_SAP_RAP = "SAP_RAP";
+    public static final String SOURCE_UNVERIFIED = "UNVERIFIED";
+
+    public UUID register(SapInvoiceSnapshot sap, String taxpayerNip, String companyCode, String environment,
+            String schemaVersion, byte[] xml, String source) {
+        if (!SOURCE_SAP_RAP.equals(source) && !SOURCE_UNVERIFIED.equals(source)) {
+            throw new IllegalArgumentException("SNAPSHOT_SOURCE_INVALID");
+        }
         var header = sap.header();
         if (xml == null || xml.length == 0 || xml.length > MAX_XML_BYTES
                 || !"TEST".equals(environment) || !"FA(3)".equals(schemaVersion)
@@ -96,10 +108,14 @@ public class KsefInvoiceSnapshotRegistry {
             throw new IllegalArgumentException("SNAPSHOT_ITEM_SCOPE_INVALID");
         }
         String hash = sha256Hex(xml);
-        var existing = db.run(Select.from(SapKsefResultWriteback.SNAPSHOTS).columns("ID").where(s ->
+        var existing = db.run(Select.from(SapKsefResultWriteback.SNAPSHOTS).columns("ID", "source").where(s ->
                 s.get("invoiceUUID").eq(invoiceId.toString()).and(s.get("environment").eq(environment))
                         .and(s.get("taxpayerNip").eq(taxpayerNip)).and(s.get("xmlSha256").eq(hash)))).first();
         if (existing.isPresent()) {
+            // Ten sam dokument nie może zmienić pochodzenia (np. fixture nie staje się „zweryfikowanym RAP”).
+            if (!source.equals(existing.get().get("source"))) {
+                throw new IllegalArgumentException("SNAPSHOT_SOURCE_CONFLICT");
+            }
             return UUID.fromString((String) existing.get().get("ID"));
         }
         UUID id = UUID.randomUUID();
@@ -115,6 +131,7 @@ public class KsefInvoiceSnapshotRegistry {
         row.put("itemsFingerprint", itemsFingerprint(sap.items()));
         row.put("xmlSha256", hash);
         row.put("xmlByteLength", xml.length);
+        row.put("source", source);
         db.run(Insert.into(SapKsefResultWriteback.SNAPSHOTS).entry(row));
         return id;
     }

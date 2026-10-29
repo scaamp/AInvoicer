@@ -45,6 +45,17 @@ ainv:
     token: ${AINV_KSEF_TOKEN:}
     test-xades: false
     local-store: ${AINV_KSEF_LOCAL_STORE:}
+    # Jawna polityka requestSend (ADR-0005): nowa próba wyłącznie po potwierdzonym, zamkniętym
+    # odrzuceniu przez KSeF, nigdy po RECONCILIATION_REQUIRED ani możliwym duplikacie (440).
+    send:
+      retry-after-rejection: true
+      max-attempts: 3
+    # Dane FA(3) spoza RAP (adresy, JST/GV) per NIP; puste = requestSend zwraca KSEF_PARTY_DATA_MISSING.
+    # Przykład: party-data.sellers."1234563218": { country-code: PL, line1: "ul. Testowa 1", line2: "00-001 Warszawa" }
+    #           party-data.buyers."<NIP>": { country-code: PL, line1: "...", jst-subordinate-unit: false, vat-group-member: false }
+    party-data:
+      sellers: {}
+      buyers: {}
   sap-write:
     # Włączenie rzeczywistego HTTP WRITE dopiero w odrębnie zatwierdzonym CAP-04D.
     enabled: false
@@ -62,6 +73,11 @@ ainv:
     max-attempts: 5
     # Po tym czasie PENDING bez postępu jest zgłaszany jako osierocony.
     stale-after: PT10M
+    # Odtwarzanie brakujących zleceń: ACCEPTED (migawka SAP_RAP) bez SapResultWrites. Przy starcie i okresowo.
+    sweeper:
+      enabled: true
+      interval: PT5M
+      batch-size: 50
 logging:
   level:
     # CAP 5.2 loguje tu surowe body błędów zdalnych. Zostawiamy tylko nasze bezpieczne kody.

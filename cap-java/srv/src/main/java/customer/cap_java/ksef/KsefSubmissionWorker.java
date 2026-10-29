@@ -51,13 +51,15 @@ public class KsefSubmissionWorker implements EventHandler {
     private final KsefOnlineSession session;
     private final KsefDocumentStore documents;
     private final KsefFa3Documents fa3;
+    private final KsefAcceptedWriteback acceptedWriteback;
     private final Clock clock;
     private final boolean enabled;
     private final String configuredNip;
 
     public KsefSubmissionWorker(PersistenceService db, CdsRuntime runtime,
             @Qualifier("KsefSubmissionOutbox") OutboxService outbox, KsefAuthentication authentication,
-            KsefOnlineSession session, KsefDocumentStore documents, KsefFa3Documents fa3, Clock clock,
+            KsefOnlineSession session, KsefDocumentStore documents, KsefFa3Documents fa3,
+            KsefAcceptedWriteback acceptedWriteback, Clock clock,
             @Value("${ainv.ksef.enabled:false}") boolean enabled,
             @Value("${ainv.ksef.nip:}") String configuredNip) {
         this.db = db;
@@ -67,6 +69,7 @@ public class KsefSubmissionWorker implements EventHandler {
         this.session = session;
         this.documents = documents;
         this.fa3 = fa3;
+        this.acceptedWriteback = acceptedWriteback;
         this.clock = clock;
         this.enabled = enabled;
         this.configuredNip = configuredNip;
@@ -192,6 +195,8 @@ public class KsefSubmissionWorker implements EventHandler {
                         throw KsefFailure.invalid("KSEF_ACCEPTANCE_PROOF_INVALID");
                     }
                     save(claim, "ACCEPTED", Map.of("ksefNumber", status.getKsefNumber(), "lastCode", "KSEF_ACCEPTED_200"));
+                    // ACCEPTED jest już zatwierdzone; zlecenie SAP w osobnej transakcji, bez wpływu na close/UPO.
+                    acceptedWriteback.request(claim.id);
                 }
             }
             if (Set.of("ACCEPTED", "INVOICE_REJECTED").contains(row.get("state"))) {
@@ -249,6 +254,7 @@ public class KsefSubmissionWorker implements EventHandler {
                 if (found.getStatus().getCode() != 200 || found.getKsefNumber() == null) { return; }
                 save(claim, "ACCEPTED", Map.of("invoiceReference", found.getReferenceNumber(), "ksefNumber", found.getKsefNumber()));
                 save(claim, "WAITING_UPO", Map.of("closeConfirmed", true));
+                acceptedWriteback.request(claim.id);
             } else {
                 save(claim, "POLLING", Map.of("invoiceReference", found.getReferenceNumber(), "lastCode", "KSEF_SEND_RECONCILED"));
             }
@@ -371,6 +377,11 @@ public class KsefSubmissionWorker implements EventHandler {
         row.put("state", state);
         row.put("code", code);
         db.run(Insert.into(HISTORY).entry(row));
+    }
+
+    /** Czy transport KSeF TEST jest włączony i skonfigurowany dla tego kontekstu NIP (bez ujawniania konfiguracji). */
+    public boolean acceptsContext(String taxpayerNip) {
+        return enabled && !configuredNip.isBlank() && configuredNip.equals(taxpayerNip);
     }
 
     private void requireEnabled() {

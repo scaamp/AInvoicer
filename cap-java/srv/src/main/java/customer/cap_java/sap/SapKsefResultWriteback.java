@@ -132,7 +132,16 @@ public class SapKsefResultWriteback implements EventHandler {
         }
         var snapshot = db.run(Select.from(SNAPSHOTS).byId(operation.get("snapshot_ID"))).first()
                 .orElseThrow(() -> new IllegalStateException("DOCUMENT_SNAPSHOT_INVALID"));
-        UUID invoiceId = UUID.fromString((String) operation.get("sapDocumentRef"));
+        // Writeback wyłącznie dla dokumentu, który CAP sam odczytał z RAP (nie dla fixture SDK).
+        if (!KsefInvoiceSnapshotRegistry.SOURCE_SAP_RAP.equals(snapshot.get("source"))) {
+            throw new IllegalStateException("RAP_LINK_UNVERIFIED");
+        }
+        UUID invoiceId;
+        try {
+            invoiceId = UUID.fromString((String) operation.get("sapDocumentRef"));
+        } catch (RuntimeException notUuid) {
+            throw new IllegalStateException("RAP_LINK_UNVERIFIED");
+        }
         if (!invoiceId.equals(UUID.fromString((String) snapshot.get("invoiceUUID")))
                 || !operation.get("taxpayerNip").equals(snapshot.get("taxpayerNip"))
                 || !"OUTBOUND".equals(snapshot.get("direction"))
