@@ -89,6 +89,12 @@ class KsefServiceODataIntegrationTest {
 		assertFalse(response.body().contains("SapResultWrites"));
 		assertFalse(response.body().contains("SapResultWriteHistory"));
 		assertFalse(response.body().contains("ApplyKsefResult"));
+		// Migawka dokumentu, skrót potwierdzony przez KSeF i stany operacyjne writebacku pozostają wewnętrzne.
+		assertFalse(response.body().contains("KsefInvoiceSnapshots"));
+		assertFalse(response.body().contains("confirmedXmlSha256"));
+		assertFalse(response.body().contains("snapshot_ID"));
+		assertFalse(response.body().contains("claimToken"));
+		assertFalse(response.body().contains("RETRY_EXHAUSTED"));
 	}
 
 	@Test

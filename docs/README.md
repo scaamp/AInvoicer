@@ -15,7 +15,9 @@ AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijan
 - [STATUS — aktualny stan i najbliższe kroki](STATUS.md).
 - [ROADMAP — plan rozwoju](ROADMAP.md).
 - [Dziennik: CAP-04C — eksport SAP i trwały writeback CAP → SAP](journal/2026-10-28-cap-04c-sap-result-writeback.md).
-- [ADR-0003 — persistent outbox, niezmienny payload i rozstrzygnięcia zapisu](decisions/ADR-0003-cap-sap-result-writeback.md).
+- [ADR-0003 — persistent outbox, niezmienny payload i rozstrzygnięcia zapisu](decisions/ADR-0003-cap-sap-result-writeback.md) (aktualizacja hardening 2026-10-29).
+- [Dziennik: CAP-04 Hardening — claim/finalize, recovery, integralność](journal/2026-10-29-cap-04-hardening.md).
+- [Przewodnik: dostęp zapisu communication user, polityka DCL (propozycja), integralność XML](guides/SAP_WRITE_ACCESS_AND_READ_POLICY.md).
 - [Dziennik: CAP-04B — kontrakt zapisu wyniku KSeF w SAP RAP](journal/2026-10-28-cap-04b-rap-write-contract.md).
 - [ADR-0002 — statyczna akcja z blokowaną akcją instancyjną, CAS i autoryzacja](decisions/ADR-0002-sap-ksef-result-write-contract.md).
 - [Dziennik: CAP-03 — integracja SAP H01](journal/2026-10-27-cap-03-sap-remote-integration.md).

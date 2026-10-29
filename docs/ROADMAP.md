@@ -1,6 +1,6 @@
 ---
 title: "AInvoicer — plan rozwoju"
-date: 2026-10-28
+date: 2026-10-29
 type: roadmap
 status: aktywny
 tags: [ainvoicer, roadmap, cap-java, ksef]
@@ -52,6 +52,8 @@ Statusy wskazują środowisko i zakres dowodu: lokalny CAP LIVE nie oznacza CAP 
 
 - [x] **CAP-04B (2026-10-28): SAP RAP `ApplyKsefResult` aktywna w H01.** OUTBOUND/TEST, cztery readonly pola, CAS po blokadzie, wyniki idempotencji/konfliktów, odrębne prawa akcji i CRUD. EML 18/18, prototyp blokowania 7/7 (w tym root enqueue między sesjami), ATC dziesięciu obiektów kontraktu 0 ustaleń, surowy runtime EDMX HTTP200. Uprawnienie bez nadania. Bez HTTP WRITE/commit i pełnego testu dwóch równoległych zapisów. [Dowody](journal/2026-10-28-cap-04b-rap-write-contract.md), [ADR-0002](decisions/ADR-0002-sap-ksef-result-write-contract.md).
 - [x] **CAP-04C (2026-10-28):** CAP Write Adapter, interpretacja `Outcome`, wersja 100 ns, niezmienne zlecenie, persistent outbox/worker i historia. Testy rollback/konkurencji/restartu z mockiem, lokalny kontrakt HTTP i regresja READ H01 PASS. Transport OFF, brak prawdziwego producenta ACCEPTED i HTTP WRITE. 429/Retry-After oraz wyczerpane retry wymagają obsługi operacyjnej. [Dowody](journal/2026-10-28-cap-04c-sap-result-writeback.md).
+- [x] **CAP-04 Hardening (2026-10-29, lokalnie, bez commit):** claim/finalize bez blokady podczas HTTP, `RETRY_EXHAUSTED` + wewnętrzne wznowienie z Retry-After, migawka dokumentu z SHA-256 i unikalność numeru KSeF per środowisko, testy mock CAP-04D, bramkowany test LIVE WRITE (nie uruchomiony). 71/71 PASS H2/mock. [Dziennik](journal/2026-10-29-cap-04-hardening.md).
+- [ ] **Do decyzji po hardeningu:** polityka odczytu DCL ([propozycja](guides/SAP_WRITE_ACCESS_AND_READ_POLICY.md)), nadanie principalowi zapisu, interfejs operacyjny `resume`, `total etag` dla pozycji, producent migawek/potwierdzeń (Phase 4).
 - [ ] **CAP-04D — WYMAGA OSOBNEJ ZGODY:** ograniczone nadanie ACTVT16/NIP/CompanyCode, HTTP WRITE na uzgodnionych danych, persisted ETag/no-op, testy prawdziwym principalem i pełne równoległe zapisy akcji.
 - [x] CAP-03 live H01 preview (2026-10-27): aktywny binding OData V4 `ZAPI_AINV_INV_H_O4` / `0001`; `$metadata` HTTP 200 i encje/nawigacje potwierdzone. Autoryzowany read z `$expand=_Items,_References` zwrócił 4/9/6 i UUID zgodne z seedem. To odczyt przez MCP OAuth, nie przez CAP.
 - [x] Dodano CDS model zewnętrzny, CAP Remote Service Destination `AINV_H01`, read-only adapter CQN, test kontraktu adaptera i blokadę publicznego dostępu do zewnętrznego modelu; `mvn clean verify -Dcds.cds.skipVersionCheck=true` PASS (22 testy).

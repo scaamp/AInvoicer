@@ -36,7 +36,8 @@ public class SapInvoiceRemoteAdapter {
 		"BuyerName", "NetAmount", "TaxAmount", "GrossAmount", "CurrencyCode");
 	private static final List<String> ITEM_COLUMNS = List.of(
 		"ItemUUID", "InvoiceUUID", "ItemNo", "MaterialId", "Description", "Quantity", "UnitCode",
-		"UnitPrice", "NetAmount", "TaxRate", "TaxCategory", "TaxAmount", "GrossAmount", "CurrencyCode");
+		"UnitPrice", "NetAmount", "TaxRate", "TaxCategory", "TaxAmount", "GrossAmount", "CurrencyCode",
+		"LocalLastChangedAt");
 	private static final List<String> REFERENCE_COLUMNS = List.of(
 		"RefUUID", "InvoiceUUID", "SourceSystem", "SourceModule", "ReferenceRole", "SourceDocNo",
 		"SourceFiscalYear", "SourceItemNo");

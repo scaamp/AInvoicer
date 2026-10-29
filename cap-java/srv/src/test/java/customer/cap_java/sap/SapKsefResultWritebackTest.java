@@ -38,7 +38,7 @@ import customer.cap_java.sap.SapKsefResultWriteAdapter.WriteResult;
 @ActiveProfiles("test")
 class SapKsefResultWritebackTest {
     static final String OPS = "customer.cap_java.KsefOperations";
-    static final Instant VERSION = Instant.parse("2026-10-28T10:11:12.1234567Z");
+    static final Instant VERSION = WritebackFixtures.VERSION;
     @Autowired CdsRuntime runtime;
     @Autowired PersistenceService db;
     @Autowired SapKsefResultWriteback writeback;
@@ -56,9 +56,7 @@ class SapKsefResultWritebackTest {
     }
 
     static void seed(PersistenceService db, UUID id, UUID invoice) {
-        db.run(Insert.into(OPS).entry(Map.of("ID", id.toString(), "sapDocumentRef", invoice.toString(),
-                "taxpayerNip", "1234567802", "direction", "OUTBOUND", "operationType", "SEND_INVOICE",
-                "status", "ACCEPTED", "ksefNumber", "1234567802-TEST-123", "idempotencyKey", id.toString())));
+        WritebackFixtures.seed(db, id, invoice);
     }
 
     private <T> T tx(Supplier<T> work) {
@@ -68,8 +66,8 @@ class SapKsefResultWritebackTest {
 
     @Test void persistsCommandAndOutboxAtomicallyWithoutCallingSap() {
         tx(() -> {
-            assertEquals(id, writeback.enqueue(id, "TST1", VERSION));
-            assertEquals(id, writeback.enqueue(id, "TST1", VERSION));
+            assertEquals(id, writeback.enqueue(id));
+            assertEquals(id, writeback.enqueue(id));
             return null;
         });
         assertEquals(VERSION.toString(), row().get("expectedVersion"));
@@ -80,7 +78,7 @@ class SapKsefResultWritebackTest {
 
     @Test void rollbackRemovesCommandHistoryAndOutboxMessage() {
         assertThrows(IllegalStateException.class, () -> tx(() -> {
-            writeback.enqueue(id, "TST1", VERSION);
+            writeback.enqueue(id);
             throw new IllegalStateException("ROLLBACK_TEST");
         }));
         assertTrue(db.run(Select.from(SapKsefResultWriteback.WRITES).byId(id.toString())).first().isEmpty());
@@ -91,8 +89,8 @@ class SapKsefResultWritebackTest {
 
     @Test void concurrentEnqueueHasOneDurableCommandAndOneOutboxEntry() throws Exception {
         try (var pool = Executors.newFixedThreadPool(2)) {
-            var a = pool.submit(() -> tx(() -> writeback.enqueue(id, "TST1", VERSION)));
-            var b = pool.submit(() -> tx(() -> writeback.enqueue(id, "TST1", VERSION)));
+            var a = pool.submit(() -> tx(() -> writeback.enqueue(id)));
+            var b = pool.submit(() -> tx(() -> writeback.enqueue(id)));
             assertEquals(id, a.get());
             assertEquals(id, b.get());
         }
@@ -101,8 +99,11 @@ class SapKsefResultWritebackTest {
     }
 
     @Test void changedPayloadCannotReplaceExistingCommand() {
-        tx(() -> writeback.enqueue(id, "TST1", VERSION));
-        assertThrows(IllegalStateException.class, () -> tx(() -> writeback.enqueue(id, "TST2", VERSION)));
+        tx(() -> writeback.enqueue(id));
+        // Zmiana migawki po utrwaleniu polecenia nie może po cichu zmienić już zakolejkowanego payloadu.
+        tx(() -> db.run(Update.entity(SapKsefResultWriteback.SNAPSHOTS).data("companyCode", "TST2")
+                .byId(snapshotId().toString())));
+        assertThrows(IllegalStateException.class, () -> tx(() -> writeback.enqueue(id)));
         assertEquals("TST1", row().get("companyCode"));
         assertEquals(1, outboxCount());
     }
@@ -111,7 +112,7 @@ class SapKsefResultWritebackTest {
         for (var change : Map.of("status", "NEW", "direction", "INBOUND", "operationType", "CHECK_STATUS",
                 "environment", "PROD").entrySet()) {
             tx(() -> { db.run(Update.entity(OPS).data(change.getKey(), change.getValue()).byId(id.toString())); return null; });
-            assertThrows(IllegalStateException.class, () -> tx(() -> writeback.enqueue(id, "TST1", VERSION)));
+            assertThrows(IllegalStateException.class, () -> tx(() -> writeback.enqueue(id)));
             tx(() -> { db.run(Update.entity(OPS).data(Map.of("status", "ACCEPTED", "direction", "OUTBOUND",
                     "operationType", "SEND_INVOICE", "environment", "TEST")).byId(id.toString())); return null; });
         }
@@ -119,17 +120,17 @@ class SapKsefResultWritebackTest {
     }
 
     @Test void refusesUserContextAndMissingTransaction() {
-        assertThrows(IllegalStateException.class, () -> writeback.enqueue(id, "TST1", VERSION));
+        assertThrows(IllegalStateException.class, () -> writeback.enqueue(id));
         var user = com.sap.cds.services.request.UserInfo.create().setName("operator-a")
                 .setIsAuthenticated(true).setIsSystemUser(false);
         assertThrows(IllegalStateException.class, () -> runtime.requestContext().user(user)
                 .run((RequestContext ctx) -> runtime.changeSetContext().run(cs -> {
-                    return writeback.enqueue(id, "TST1", VERSION);
+                    return writeback.enqueue(id);
                 })));
     }
 
     @Test void successAndDuplicateDeliveryKeepOneTerminalHistoryEntry() {
-        tx(() -> writeback.enqueue(id, "TST1", VERSION));
+        tx(() -> writeback.enqueue(id));
         when(adapter.apply(any())).thenAnswer(call -> {
             var command = (SapKsefResultCommand) call.getArgument(0);
             return new WriteResult(Outcome.ALREADY_APPLIED, invoice, command.ksefNumber(), "TEST", VERSION, id);
@@ -143,7 +144,7 @@ class SapKsefResultWritebackTest {
     }
 
     @Test void domainConflictRequiresReconciliationWithoutRetry() {
-        tx(() -> writeback.enqueue(id, "TST1", VERSION));
+        tx(() -> writeback.enqueue(id));
         when(adapter.apply(any())).thenReturn(new WriteResult(Outcome.VERSION_CONFLICT, invoice, null, null, null, null));
         process();
         assertEquals("RECONCILIATION_REQUIRED", row().get("state"));
@@ -153,7 +154,7 @@ class SapKsefResultWritebackTest {
     }
 
     @Test void ambiguousTransportRetryKeepsOriginalRequestIdAndVersion() {
-        tx(() -> writeback.enqueue(id, "TST1", VERSION));
+        tx(() -> writeback.enqueue(id));
         when(adapter.apply(any())).thenThrow(new WriteFailure("SAP_TRANSPORT_UNKNOWN", true))
                 .thenReturn(new WriteResult(Outcome.ALREADY_APPLIED, invoice, "1234567802-TEST-123", "TEST", VERSION, id));
         assertThrows(WriteFailure.class, this::process);
@@ -168,7 +169,7 @@ class SapKsefResultWritebackTest {
     }
 
     @Test void permanentTransportRefusalIsRecorded() {
-        tx(() -> writeback.enqueue(id, "TST1", VERSION));
+        tx(() -> writeback.enqueue(id));
         when(adapter.apply(any())).thenThrow(new WriteFailure("SAP_HTTP_403", false));
         process();
         assertEquals("RECONCILIATION_REQUIRED", row().get("state"));
@@ -176,7 +177,7 @@ class SapKsefResultWritebackTest {
     }
 
     @Test void rateLimitDeadlineIsPersistedForControlledResume() {
-        tx(() -> writeback.enqueue(id, "TST1", VERSION));
+        tx(() -> writeback.enqueue(id));
         Instant deadline = Instant.parse("2026-10-29T12:00:00Z");
         when(adapter.apply(any())).thenThrow(new WriteFailure("SAP_HTTP_429", false, deadline));
         process();
@@ -195,6 +196,10 @@ class SapKsefResultWritebackTest {
             assertTrue(context.isCompleted());
             return null;
         });
+    }
+
+    private UUID snapshotId() {
+        return UUID.fromString((String) db.run(Select.from(OPS).byId(id.toString())).single().get("snapshot_ID"));
     }
 
     private Map<String, Object> row() {

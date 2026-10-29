@@ -6,7 +6,7 @@ service KsefService {
     { grant: 'CREATE', to: 'KsefOperator', where: (taxpayerNip = $user.taxpayerNips) },
     { grant: 'READ', to: 'KsefOperator', where: (taxpayerNip = $user.taxpayerNips) }
   ])
-  entity KsefOperations as projection on db.KsefOperations excluding { invoice };
+  entity KsefOperations as projection on db.KsefOperations excluding { invoice, snapshot, confirmedXmlSha256 };
 
   @(restrict: [
     { grant: 'READ', to: 'KsefOperator', where: (taxpayerNip = $user.taxpayerNips) }

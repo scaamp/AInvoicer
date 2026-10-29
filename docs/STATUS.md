@@ -1,6 +1,6 @@
 ---
 title: "AInvoicer — aktualny stan"
-date: 2026-10-28
+date: 2026-10-29
 type: status
 status: w-trakcie
 tags: [ainvoicer, cap-java, status]
@@ -8,7 +8,7 @@ tags: [ainvoicer, cap-java, status]
 
 # Stan projektu
 
-[Dziennik CAP-04B — kontrakt zapisu RAP](journal/2026-10-28-cap-04b-rap-write-contract.md) · [ADR-0002](decisions/ADR-0002-sap-ksef-result-write-contract.md) · [Dziennik CAP-03 — integracja SAP H01](journal/2026-10-27-cap-03-sap-remote-integration.md)
+[Dziennik CAP-04 Hardening](journal/2026-10-29-cap-04-hardening.md) · [Dziennik CAP-04B — kontrakt zapisu RAP](journal/2026-10-28-cap-04b-rap-write-contract.md) · [ADR-0002](decisions/ADR-0002-sap-ksef-result-write-contract.md) · [Dziennik CAP-03 — integracja SAP H01](journal/2026-10-27-cap-03-sap-remote-integration.md)
 
 [Project Home](README.md) · [Roadmapa](ROADMAP.md) · [Workflow abapGit](guides/ABAPGIT_WORKFLOW.md) · [Model RAP faktur](guides/ABAP_RAP_INVOICE_MODEL.md) · [Dziennik próby tworzenia ABAP FS](journal/2026-10-25-abapfs-create-probe.md) · [Dziennik kompozycji RAP](journal/2026-10-24-abap-rap-composition.md) · [Dziennik pierwszego eksportu](journal/2026-10-24-abapgit-rap-initial-export.md) · [Dziennik bootstrapu](journal/2026-10-23-cap-java-bootstrap.md) · [Weryfikacja Phase 1](journal/2026-10-24-cap-java-bootstrap-verification.md) · [Model KsefOperations](journal/2026-10-24-ksef-operations-model.md) · [Usługa i CRUD OData](journal/2026-10-24-ksef-service-definition.md) · [Walidacja i autoryzacja KsefOperations](journal/2026-10-24-ksef-operations-validation-authorization.md)
 
@@ -18,11 +18,15 @@ Phase 3 — SAP Remote Integration: **CAP-04B opublikowany i CAP-04C zaimplement
 
 CAP → SAP H01 READ ma **LIVE PASS**, ponownie potwierdzony 2026-10-28 po imporcie EDMX: lokalny CAP, Destination przez env `destinations`, 4/9/6 i zgodne UUID. CAP na Cloud Foundry z Destination Service pozostaje nieprzetestowany. Nie testowano dwóch równoległych zapisów akcji SAP, commit/ETag ani praw użytkownika komunikacyjnego do zapisu. CAP-04D wymaga osobnej zgody.
 
+**CAP-04 Hardening (2026-10-29), bez commit:** worker bez blokady rekordu podczas HTTP (claim z dzierżawą → HTTP → finalizacja), stan `RETRY_EXHAUSTED`, wewnętrzne API wznowienia z Retry-After, niezmienna migawka dokumentu z SHA-256 XML i unikalnością numeru KSeF per środowisko. Pełny build **71/71 PASS** (H2/mock). **Nie dowiedziono** LIVE: commit/ETag, równoległość i prawa principala w SAP; test LIVE WRITE przygotowany, wyłączony, nie uruchomiony. MCP ABAP FS był niedostępny — stan H01, IAM i DCL **NOT VERIFIED**; DCL `where TRUE` bez zmian, polityka odczytu czeka na decyzję ([przewodnik](guides/SAP_WRITE_ACCESS_AND_READ_POLICY.md)). Baza wyjściowa miała 1 padający test (wyścig w teście), naprawiony.
+
 ## Architecture
 
 SAPUI5 → OData V4 → CAP Java + Spring Boot → Java SDK KSeF w jednej JVM. SAP przez Remote OData/Destination jest źródłem danych finansowych; CAP przechowuje proces KSeF. H2 lokalnie, SAP HANA Cloud i SAP BTP Cloud Foundry docelowo. Szczegóły: [ADR-0001](decisions/ADR-0001-cap-java-ksef-architecture.md).
 
 ## Completed
+
+- 2026-10-29: **CAP-04 Hardening** — zob. akapit w Current Phase i [dziennik](journal/2026-10-29-cap-04-hardening.md). Zmiana kontraktu wewnętrznego: `enqueue(operationId)` wymaga migawki dokumentu.
 
 - 2026-10-28: **CAP-04C** — import rzeczywistego EDMX, CAP Remote Action, atomowe zlecenie i native persistent outbox, historia, stabilny request ID i wersja 100 ns, autoryzowane wewnętrzne enqueue, retry i rekoncyliacja. Nowe environment operacji readonly TEST. Testy HTTP lokalne, transakcji, równoległego enqueue, restartu, bezpieczeństwa i regresji READ potwierdzone w [dzienniku](journal/2026-10-28-cap-04c-sap-result-writeback.md). SAP WRITE/KSeF/CF poza testami.
 - 2026-10-28: publikacja CAP-04B — dokumentacja `8de662f`, eksport SAP `525e48d` (31 plików), potwierdzone remote refs/status i fast-forward lokalnego branchu. Bez niepowiązanych usunięć i scenariusza komunikacyjnego; [kontynuacja](journal/2026-10-28-cap-04b-rap-write-contract.md).
@@ -71,7 +75,7 @@ SAPUI5 → OData V4 → CAP Java + Spring Boot → Java SDK KSeF w jednej JVM. S
 1. CAP-04D po osobnej zgodzie: ograniczone nadanie, HTTP WRITE na uzgodnionych danych, commit/ETag/no-op, autoryzacja rzeczywistym principalem i pełne dwa równoległe wywołania akcji.
 2. Po odrębnym zleceniu rozwijać producenta potwierdzonych wyników przez SDK; bez utożsamiania gotowego workera SAP z gotową wysyłką KSeF.
 3. Przed wdrożeniem: trwała baza, obsługa operacyjna retry/konfliktów/Retry-After i testy HANA/CF. Domyślna baza development jest in-memory.
-4. Osobne zaległości: izolacja odczytu DCL, sekwencyjny rerun seeda i kompleksowa ścieżka wiązania operacji z fakturą w CAP. CAP-04C sprawdza zgodność istniejącego powiązania przy enqueue.
+4. Decyzje po hardeningu: wariant polityki odczytu DCL, nadanie principalowi zapisu (NIP/CompanyCode), chroniony interfejs `resume`, `total etag` w BDEF. Osobne zaległości: izolacja odczytu DCL, sekwencyjny rerun seeda i kompleksowa ścieżka wiązania operacji z fakturą w CAP. CAP-04C sprawdza zgodność istniejącego powiązania przy enqueue.
 
 Dla narzędzi agentowych: w następnej sesji Claude Code uruchomić `/reload-skills`, sprawdzić trzy komendy `/ainvoicer-*` i odczyt kanonicznych plików; osobno potwierdzić automatyczny dobór w czterech scenariuszach z dziennika.
 
@@ -105,4 +109,4 @@ Dla narzędzi agentowych: w następnej sesji Claude Code uruchomić `/reload-ski
 
 ## Last Updated
 
-2026-10-28 (Europe/Warsaw): po zgodzie użytkownika opublikowano CAP-04B i wdrożono CAP-04C. Wyniki lokalne i LIVE READ rozdzielono w dzienniku/ADR-0003. Bez HTTP WRITE, nadania praw SAP, wywołań KSeF, zmian UI5/Node/Python i deployu. CAP-04D nie rozpoczęto.
+2026-10-29 (Europe/Warsaw): CAP-04 Hardening zaimplementowany lokalnie (niezacommitowany); wyniki rozdzielone na H2/mock i LIVE NOT RUN. Poprzednio 2026-10-28 (Europe/Warsaw): po zgodzie użytkownika opublikowano CAP-04B i wdrożono CAP-04C. Wyniki lokalne i LIVE READ rozdzielono w dzienniku/ADR-0003. Bez HTTP WRITE, nadania praw SAP, wywołań KSeF, zmian UI5/Node/Python i deployu. CAP-04D nie rozpoczęto.

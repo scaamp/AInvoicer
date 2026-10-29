@@ -66,7 +66,7 @@ class SapResultOutboxRecoveryTest {
             runtime.requestContext().systemUser().run((RequestContext request) ->
                     runtime.changeSetContext().run(cs -> {
                         SapKsefResultWritebackTest.seed(db, id, invoice);
-                        app.getBean(SapKsefResultWriteback.class).enqueue(id, "TST1", SapKsefResultWritebackTest.VERSION);
+                        app.getBean(SapKsefResultWriteback.class).enqueue(id);
                         assertTrue(CALLS.isEmpty(), "worker cannot run before commit");
                     }));
             assertEquals(1, db.run(Select.from("cds.outbox.Messages")
@@ -92,6 +92,13 @@ class SapResultOutboxRecoveryTest {
             assertEquals(CALLS.getFirst(), CALLS.getLast());
             assertEquals(id, CALLS.getFirst().requestId());
             assertEquals(SapKsefResultWritebackTest.VERSION, CALLS.getFirst().expectedVersion());
+            // CAP usuwa wiadomość po zakończeniu własnej transakcji, niezależnie od stanu zapisanego
+            // przez workera; czekamy na opróżnienie kolejki zamiast zakładać natychmiastowość.
+            long drain = System.nanoTime() + Duration.ofSeconds(10).toNanos();
+            while (System.nanoTime() < drain && !db.run(Select.from("cds.outbox.Messages")
+                    .where(r -> r.get("target").eq("SapResultOutbox"))).list().isEmpty()) {
+                Thread.sleep(50);
+            }
             assertTrue(db.run(Select.from("cds.outbox.Messages")
                     .where(r -> r.get("target").eq("SapResultOutbox"))).list().isEmpty());
             // Dajemy zakończyć się callbackom collectora przed zamknięciem puli H2.

@@ -8,7 +8,7 @@ tags: [ainvoicer, cap-java, rap, outbox, idempotency]
 
 # ADR-0003 — CAP writeback przez persistent outbox
 
-[Project Home](../README.md) · [ADR-0002](ADR-0002-sap-ksef-result-write-contract.md) · [Dziennik CAP-04C](../journal/2026-10-28-cap-04c-sap-result-writeback.md)
+[Project Home](../README.md) · [ADR-0002](ADR-0002-sap-ksef-result-write-contract.md) · [Dziennik CAP-04C](../journal/2026-10-28-cap-04c-sap-result-writeback.md) · [Hardening 2026-10-29](../journal/2026-10-29-cap-04-hardening.md)
 
 ## Context
 
@@ -37,3 +37,12 @@ Transport ma domyślnie `ainv.sap-write.enabled=false`. Opcjonalny profil `write
 Nie tworzymy własnego pollera, tabeli lease ani mikroserwisu. Nie używamy pamięciowej kolejki lub `@Async` jako mechanizmu niezawodności. Native outbox zapewnia trwały dispatch, a własny rekord umożliwia niezmienny payload, rozstrzygnięcie i historię.
 
 Po wyczerpaniu retry CAP zachowuje nieobsłużony wpis z licznikiem i bezpiecznym błędem; własne polecenie może pozostać PENDING. Potrzebna jest obsługa operacyjna takich wpisów. Bez SDK i prawdziwego potwierdzenia nie ma jeszcze rzeczywistego producenta ACCEPTED. CAP-04C dostarcza wewnętrzny punkt wejścia i worker, nie pełny proces KSeF. Testy pojedynczej instancji/H2 nie dowodzą działania HANA, multitenancy ani wielu instancji CF. CAP-04D pozostaje osobno zatwierdzanym etapem.
+
+## Aktualizacja 2026-10-29 — CAP-04 Hardening
+
+Zmienia fragmenty decyzji powyżej; szczegóły i dowody w [dzienniku](../journal/2026-10-29-cap-04-hardening.md).
+
+- **Brak HTTP pod blokadą.** Worker nie trzyma `SELECT ... FOR UPDATE` na poleceniu podczas HTTP (potwierdzone sondą na poprzednim kodzie). Przetwarzanie: claim z dzierżawą i tokenem (commit) → HTTP → finalizacja warunkowana tokenem (commit), każde w osobnej transakcji. Wygasła dzierżawa pozwala odzyskać porzucone polecenie; ponowne wywołanie SAP z tym samym `WriteRequestId` jest bezpieczne. Wciąż używamy natywnego outboxa, bez własnego schedulera.
+- **Wyczerpanie prób.** CAP po osiągnięciu limitu zostawia wiadomość bez dalszych dostaw, a polecenie `PENDING`. Budżet prób HTTP liczy teraz aplikacja (`RETRY_EXHAUSTED`); limit CAP jest wyższy. Wznowienie tylko przez wewnętrzne API Java (`SapKsefResultWriteRecovery`), z respektowaniem Retry-After, wyłącznie dla przyczyn po stronie SAP i poleceń osieroconych.
+- **Integralność.** `enqueue(operationId)` wymaga niezmiennej migawki dokumentu (`KsefInvoiceSnapshots`) i zgodnego skrótu SHA-256 XML potwierdzonego przez KSeF; spółka i wersja pochodzą z migawki. Zastępuje poprzednią sygnaturę `enqueue(operationId, companyCode, expectedVersion)`. Unikalność `(environment, ksefNumber)` tylko dla zapisów do SAP; globalny UNIQUE numeru KSeF jest odrzucony.
+- **Granice.** Wszystko poza LIVE jest dowiedzione na H2/mock. Brak producenta migawek, brak interfejsu operacyjnego `resume`, brak dowodu zachowania SAP przy zapisie.

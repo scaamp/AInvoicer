@@ -23,7 +23,7 @@
 
 		<cds.install-node.downloadUrl>https://nodejs.org/dist/</cds.install-node.downloadUrl>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<ainv.excludedGroups>live-sap</ainv.excludedGroups>
+		<ainv.excludedGroups>live-sap,live-sap-write</ainv.excludedGroups>
 	</properties>
 
 	<modules>
@@ -109,7 +109,8 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>3.6.0</version>
 				<configuration>
-					<!-- Testy LIVE SAP (tag live-sap) są domyślnie wyłączone; uruchom: -Dainv.excludedGroups=none -->
+					<!-- Testy LIVE SAP (tagi live-sap, live-sap-write) są domyślnie wyłączone; uruchom: -Dainv.excludedGroups=none.
+				     live-sap-write wymaga dodatkowo AINV_H01_LIVE_WRITE=true i jawnej zgody na konkretną fakturę. -->
 					<excludedGroups>${ainv.excludedGroups}</excludedGroups>
 				</configuration>
 			</plugin>

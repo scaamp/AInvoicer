@@ -21,7 +21,10 @@ cds:
   outbox:
     services:
       SapResultOutbox:
-        maxAttempts: 5
+        # Limit CAP jest celowo wyższy niż ainv.sap-write.max-attempts: budżet prób HTTP liczy
+        # i egzekwuje aplikacja (stan RETRY_EXHAUSTED), a CAP-owi zostaje margines na dostarczenia
+        # bez wywołania SAP (np. aktywna dzierżawa innego workera).
+        maxAttempts: 12
   remote.services:
     AinvoicerH01:
       model: com.sap.gateway.srvd_a2x.zapi_ainv_inv_h_o4.v0001
@@ -37,6 +40,13 @@ ainv:
   sap-write:
     # Włączenie rzeczywistego HTTP WRITE dopiero w odrębnie zatwierdzonym CAP-04D.
     enabled: false
+    # Czas ważności przejęcia polecenia. Po restarcie lub zawieszeniu workera polecenie jest odzyskiwane
+    # dopiero po tym terminie; ponowne wywołanie SAP jest bezpieczne dzięki stałemu WriteRequestId.
+    lease: PT2M
+    # Liczba prób HTTP przed RETRY_EXHAUSTED (licznik zerowany kontrolowanym wznowieniem).
+    max-attempts: 5
+    # Po tym czasie PENDING bez postępu jest zgłaszany jako osierocony.
+    stale-after: PT10M
 logging:
   level:
     # CAP 5.2 loguje tu surowe body błędów zdalnych. Zostawiamy tylko nasze bezpieczne kody.
