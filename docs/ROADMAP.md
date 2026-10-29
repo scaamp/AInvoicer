@@ -90,12 +90,24 @@ ABAP Environment jest tu źródłem symulacyjnych danych aplikacyjnych; nie zak�
 
 ## Phase 4 — KSeF SDK Integration
 
-- [ ] Wybór i przypięcie wersji oficjalnego SDK MF, audyt zgodności z CAP/Spring Boot; adapter w tej samej JVM.
-- [ ] TEST: autoryzacja właściwego kontekstu podatnika, bezpieczne przechowywanie credentiali i obsługa JWT po stronie backendu.
-- [ ] Poprawny XML FA(3) według oficjalnego XSD; sesje i kryptografia obsługiwane przez SDK.
-- [ ] Wysyłka przez trwały worker; bez długiego pollingu w transakcji żądania OData.
-- [ ] Status końcowy i numer KSeF, zamknięcie sesji, UPO oraz metadane/ref. do trwałego magazynu dokumentów.
-- [ ] Retry tylko bezpiecznych odczytów i sklasyfikowanych błędów, backoff/jitter, 429/Retry-After oraz rekoncyliacja po utracie odpowiedzi.
+**IN PROGRESS — Agent A, `feature/ksef-auth`, 2026-10-29:** SDK 3.0.29,
+auth/sesje, trwały worker/checkpointy i rekoncyliacja; **141 testów lokalnych PASS** po integracji A+B.
+LIVE auth TEST (XAdES → 200 → redeem → chroniony READ → refresh) PASS.
+**LIVE E2E CAP/SDK PASS** na oficjalnym fixture: jedna faktura
+`1234563218-20261029-7DC8A1C00000-CD`, UPO 5528 bajtów, RESUME po restarcie.
+FA(3) B połączono ze snapshotem i outboxem (`7075c01` → `657c285`), z pełną kontrolą
+dużych maxOccurs na granicy wysyłki. Źródło LIVE H01 i LIVE send XML wygenerowanego
+przez B pozostają niepotwierdzone (NIP/PartyData; bez drugiej wysyłki).
+[Dziennik](journal/2026-10-29-agent-a-ksef-sdk.md).
+
+- [x] SDK MF 3.0.29 przypięte, zbudowane ze źródeł i użyte w JVM CAP/Boot 4; mock/HTTP i LIVE TEST PASS (Agent A).
+- [x] TEST lokalnie: XAdES, biznesowe 200, redeem, JWT w pamięci, refresh i autoryzowany READ PASS; zarządzane credentiale BTP przed CF.
+- [x] **Poprawny XML FA(3) według oficjalnego XSD (Agent B, 2026-10-29, `feature/ksef-fa3`):** generator podstawowej faktury VAT, walidacja XSD 1-0E offline + domenowa, bajty i SHA-256 dla migawki CAP, adapter SAP. Lokalnie 112/112 PASS; przyjęcie przez KSeF niezweryfikowane. [Przewodnik](guides/FA3_XML_GENERATION.md).
+- [x] Sesje i kryptografia SDK; dokładne bajty B → snapshot → storage → send potwierdzone testem A+B; LIVE jedna faktura z oficjalnego fixture.
+- [ ] Źródło danych spoza RAP dla FA(3): adres sprzedawcy/nabywcy, JST/GV; poprawne NIP-y w seedzie H01.
+- [x] Trwały worker/outbox, checkpointy przed HTTP, lokalne testy rollback/konkurencji/restartu PASS; brak blokad biznesowych podczas sieci.
+- [x] TEST lokalnie: status 200/hash/numer, close i UPO; plikowa H2 i jawny lokalny magazyn TEST. Zarządzany storage przed CF pozostaje osobnym zadaniem.
+- [x] TEST/H2: bezpieczne odczyty z limitem/backoff/jitter/Retry-After, rekoncyliacja hash/ref i brak ponownego send/close po niejednoznacznej odpowiedzi; CF/HANA osobno.
 - [ ] Pierwszy vertical slice: jedna syntetyczna faktura SAP Remote OData → CAP → SDK → KSeF TEST → numer KSeF i UPO; wysyłka tylko po jawnej zgodzie.
 
 HTTP 202 nie oznacza przyjęcia faktury. Eksperyment na `feature/ksef-java-e2e-runner` jest referencją według kontekstu projektu; nie zalicza tego etapu.
