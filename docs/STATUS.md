@@ -14,6 +14,12 @@ tags: [ainvoicer, cap-java, status]
 
 ## Current Phase
 
+**CAP-05 — audyt i uzupełnienie (2026-10-29), `feature/cap-05-integration` (baza audytu `2e0ee37`) + poprawki audytu:** kod A+B scalony (`f49153b`), runner C przeniesiony (`0cd7440`). Po audycie użytkownik osobno zlecił commit i push gałęzi; wpis publikacji w dzienniku CAP-05. CAP: requestSend z atomową rezerwacją DB per faktura/TEST, role i NIP/CompanyCode, dokładne FA(3)/snapshot/outbox; ACCEPTED commitowany przed osobną transakcją writebacku, sweeper odtwarza brakujące zlecenia tylko dla SAP_RAP. Naprawiono historyczne NEW/FAILED/nieznane SEND, izolację odczytu spółki, duplikat 440, dowody recovery i maskowanie błędów SAP. **Clean verify: 173/173 PASS**, H2/mock, LIVE tagi wykluczone. UI5: named RAP V4 model, paging/filter/sort, priorytet RAP, blokada Send przy braku/ucięciu historii CAP; build i browser testy PASS (szczegóły raportu). AI/Scanner/Legacy: OPA 13/13 PASS.
+
+**Bramka live:** RAP UI / DCL / IAM **BLOCKED**. Przygotowano odrębne read-only CDS/DCL/SRVD i patch testów edycji/usunięcia; nie aktywowano ich w SAP. MCP 2.13.3 nie oferuje tworzenia bindingu V4, a zakres business usera wymaga administratora. Web API H01 READ przez MCP OAuth ponownie HTTP200, 4/9/6; root DCL `where TRUE` nie jest izolacją. Domyślny UI pozostaje mock. Nowy KSeF LIVE SEND i H01 HTTP WRITE **NOT EXECUTED**. [Pełna macierz i blokery](audits/2026-10-29-cap-05-implementation-review.md), [dziennik](journal/2026-10-29-cap-05-integration-review.md), [ADT/IAM](patches/cap05-rap-ui/README.md).
+
+Poniższe wyniki CAP-04 i agentów są historią, nie bieżącym licznikiem testów.
+
 Phase 3 — SAP Remote Integration: **CAP-04B opublikowany i CAP-04C zaimplementowany.** SAP `ApplyKsefResult` aktywna; eksport `525e48d`. CAP ma Write Adapter, niezmienne polecenie, persistent outbox/worker i historię. Pełny build 46/46 PASS; uzupełniający przebieg ochrony modelu 2/2 oraz LIVE READ H01 1/1 PASS (4/9/6). Test restartu plikowej H2 i rzeczywistego collectora PASS z mockiem SAP. **HTTP WRITE nadal nie wykonano**, transport domyślnie wyłączony, prawo SAP bez nadania. [CAP-04C](journal/2026-10-28-cap-04c-sap-result-writeback.md), [ADR-0003](decisions/ADR-0003-cap-sap-result-writeback.md).
 
 CAP → SAP H01 READ ma **LIVE PASS**, ponownie potwierdzony 2026-10-28 po imporcie EDMX: lokalny CAP, Destination przez env `destinations`, 4/9/6 i zgodne UUID. CAP na Cloud Foundry z Destination Service pozostaje nieprzetestowany. Nie testowano dwóch równoległych zapisów akcji SAP, commit/ETag ani praw użytkownika komunikacyjnego do zapisu. CAP-04D wymaga osobnej zgody.
@@ -39,7 +45,7 @@ a granica wysyłki przywraca 12 oryginalnych dużych limitów XSD. Bez LIVE H01
 READ/WRITE i bez drugiej wysyłki z B. [Dowody](journal/2026-10-29-agent-a-ksef-sdk.md),
 [runbook](guides/KSEF_TEST_RUNBOOK.md).
 
-SAPUI5 → OData V4 → CAP Java + Spring Boot → Java SDK KSeF w jednej JVM. SAP przez Remote OData/Destination jest źródłem danych finansowych; CAP przechowuje proces KSeF. H2 lokalnie, SAP HANA Cloud i SAP BTP Cloud Foundry docelowo. Szczegóły: [ADR-0001](decisions/ADR-0001-cap-java-ksef-architecture.md).
+SAPUI5 → RAP UI (dane i wynik biznesowy; live BLOCKED) + CAP (akcje/statusy) → Java SDK KSeF w jednej JVM → trwały writeback CAP → RAP Web API. SAP przez Remote OData/Destination jest źródłem danych finansowych; CAP przechowuje proces KSeF. H2 lokalnie, SAP HANA Cloud i SAP BTP Cloud Foundry docelowo. Aktualny podział: [ADR-0005](decisions/ADR-0005-rap-business-status-cap-integration-status.md).
 
 ## Completed
 
@@ -132,5 +138,9 @@ Dla narzędzi agentowych: w następnej sesji Claude Code uruchomić `/reload-ski
 | KSeF TEST / UPO przez CAP | LIVE PASS 2026-10-29, Agent A: auth/XAdES/redeem/refresh, jedna syntetyczna faktura `1234563218-20261029-7DC8A1C00000-CD`, numer/hash, close, UPO 5528 bajtów i RESUME po restarcie. Oficjalny fixture + lokalna migawka, bez H01 i generatora B. |
 
 ## Last Updated
+
+2026-10-29 (Europe/Warsaw): CAP-05 z lokalnymi poprawkami audytu, 173/173 CAP PASS, UI5/browser PASS; RAP UI/IAM BLOCKED. Najmniejszy krok: ADT V4 UI + ograniczone IAM i testy odczytu business userami, następnie osobno zatwierdzony LIVE E2E. Istniejąca trwała baza wymaga kontrolowanej migracji CompanyCode/source/rezerwacji — nie wykonano migracji danych użytkownika.
+
+Historyczny wpis Agenta A:
 
 2026-10-29 (Europe/Warsaw): A+B na `feature/ksef-auth`, 141/141 PASS; LIVE auth i jedna syntetyczna wysyłka TEST z numerem/UPO przez CAP, generator B połączony ze snapshotem/outboxem i niezależnie zwalidowany. Pełny H01 → KSeF nadal oczekuje z powodu danych NIP/PartyData. H01 WRITE i deployment poza zakresem. Historyczne wyniki zachowano powyżej.

@@ -34,7 +34,8 @@ Nowy moduł `cap-java/` jest docelową lokalizacją backendu; zanim utworzysz pr
 
 ```text
 SAPUI5 / Fiori
-      │ OData V4
+      ├── RAP OData V4 UI → dane faktury i biznesowy wynik zapisany w SAP
+      │ OData V4 → akcje i monitoring integracji
       ▼
 CAP Java + Spring Boot (SAP BTP Cloud Foundry)
       ├── CDS / CAP services, handlers, business workflow
@@ -50,15 +51,17 @@ node/ i python/ = istniejące, niezależne funkcje AI; nie są właścicielami K
 - **ABAP/RAP**: pozostaje systemowym adapterem do danych SAP, wystawia OData/released APIs, ewentualnie operacje SAP wymagające ABAP. Nie rozwijaj nowej kryptografii ani pełnego workflow KSeF w ABAP.
 - **CAP Java**: główny backend biznesowy AInvoicer; model CDS, OData V4, reguły i walidacje, zlecenia wysyłki, statusy, import faktur, audyt, trwałość i odczyt z SAP Remote Services.
 - **KSeF SDK w CAP Java**: obsługuje uwierzytelnienie, certyfikaty/token KSeF, JWT, RSA-OAEP SHA-256, AES-256-CBC, sesje, faktury, statusy, UPO. Ukryj szczegóły SDK za interfejsem aplikacji; nie dodawaj warstwy REST pomiędzy CAP Java a SDK w tej samej JVM.
-- **SAPUI5**: frontend OData V4; stopniowo przepinany na CAP bez naruszania istniejących ekranów, kiedy odpowiednie API CAP będzie gotowe.
+- **SAPUI5**: named model `rap` czyta listę/szczegóły z osobnej usługi RAP UI; CAP dostarcza akcje i stan integracji. Nie twórz CAP proxy listy SAP. Tryb live dopiero po weryfikacji bindingu UI, DCL i IAM; istniejący Web API pozostaje dla CAP. Szczegóły: [ADR-0005](docs/decisions/ADR-0005-rap-business-status-cap-integration-status.md).
 - **Node.js / Python**: zachowaj istniejące OCR/AI/NLP/TTS i inne funkcje. Nie przenoś ich do CAP bez osobnego zadania.
 
-Nie próbuj otwierać JDBC/SQL bezpośrednio do wewnętrznych tabel bazy ABAP Environment. CAP CDS nie daje automatycznie dostępu do tabel ABAP. Importuj zweryfikowany kontrakt z dostępnego API OData i użyj CAP Java Remote Services / SAP Cloud SDK Destinations. Nie wykonuj fikcyjnych JOIN-ów SQL między zdalnym OData a lokalną bazą CAP. Obecny eksport RAP obejmuje tylko nagłówek; pozycje i referencje nie są jeszcze wystawione jako dzieci/nawigacje OData.
+Nie próbuj otwierać JDBC/SQL bezpośrednio do wewnętrznych tabel bazy ABAP Environment. CAP CDS nie daje automatycznie dostępu do tabel ABAP. Importuj zweryfikowany kontrakt z dostępnego API OData i użyj CAP Java Remote Services / SAP Cloud SDK Destinations. Nie wykonuj fikcyjnych JOIN-ów SQL między zdalnym OData a lokalną bazą CAP. Web API ma nagłówek, `_Items`, `_References` i `ApplyKsefResult` (runtime READ potwierdzony ponownie 2026-10-29); osobna usługa UI pozostaje BLOCKED.
 
 ## 4. Dane i model domenowy
 
 - ABAP Environment utrzymuje własne dane symulacyjne faktur w `ZAINV_INV_H` (nagłówki), `ZAINV_INV_I` (pozycje) i `ZAINV_INV_REF` (powiązania do symulowanych źródeł). Nie są to standardowe tabele księgowe S/4HANA.
 - CAP jest źródłem prawdy dla procesu integracji KSeF: `KsefOperations`, `KsefInvoices`, referencje sesji/faktury, numer KSeF, status, audit trail, idempotency key, korelacja do dokumentu SAP.
+- RAP jest właścicielem biznesowego wyniku po writebacku: `KsefNumber`, `KsefEnvironment`, `KsefRecordedAt`, `KsefWriteRequestId`. Integracja nie zmienia `InvoiceStatus` i nie dodaje `KsefBusinessStatus`.
+- `requestSend(invoiceUUID)` ustala dane z RAP, sprawdza NIP i CompanyCode i atomowo rezerwuje `(InvoiceUUID, TEST)` w DB. RECONCILIATION_REQUIRED nie zwalnia rezerwacji. Potwierdzenie ACCEPTED commituj przed osobną transakcją writebacku; sweeper odtwarza brakujące zlecenia tylko dla migawek `SAP_RAP`. UPO jest niezależne od wyniku SAP.
 - Rozdziel dane faktury i stan operacji, wysyłkę i odbiór, stan techniczny i biznesowy.
 - Duże XML FA(3)/UPO przechowuj wyłącznie w świadomie wybranym trwałym magazynie (np. repozytorium dokumentów); w DB trzymaj odpowiednie metadane i referencje. Nie używaj lokalnego dysku Cloud Foundry jako trwałego storage.
 - Lokalnie dopuszczalna lekka baza testowa (preferuj H2 dla CAP Java); produkcyjna persystencja wymaga odpowiedniej usługi i sprawdzonych entitlementów, np. SAP HANA Cloud. Nie traktuj BTP Trial jako środowiska produkcyjnego.

@@ -185,11 +185,16 @@ public class KsefSubmissionWorker implements EventHandler {
                 var status = session.status((String) row.get("sessionReference"), (String) row.get("invoiceReference"), tokens);
                 int code = status.getStatus().getCode();
                 if (code == 100 || code == 150) { throw pending("KSEF_INVOICE_PENDING"); }
+                // 440 to duplikat, 500/nieznany kod nie dowodzą końcowego odrzucenia tej faktury.
+                // Nie otwieramy ścieżki retry SEND na podstawie niejednoznacznego wyniku.
+                if (code == 440 || code != 200 && !Set.of(405, 410, 415, 430, 435, 450, 550).contains(code)) {
+                    throw KsefFailure.invalid("KSEF_INVOICE_RECONCILIATION_" + code);
+                }
                 if (code != 200) {
                     save(claim, "INVOICE_REJECTED", Map.of("lastCode", "KSEF_INVOICE_REJECTED_" + code));
                 } else {
                     String expectedHash = Base64.getEncoder().encodeToString(HexFormat.of().parseHex((String) row.get("xmlSha256")));
-                    if (status.getKsefNumber() == null || status.getKsefNumber().isBlank()
+                    if (!validKsefNumber(status.getKsefNumber(), (String) row.get("taxpayerNip"))
                             || !expectedHash.equals(status.getInvoiceHash())
                             || !row.get("invoiceReference").equals(status.getReferenceNumber())) {
                         throw KsefFailure.invalid("KSEF_ACCEPTANCE_PROOF_INVALID");
@@ -247,11 +252,17 @@ public class KsefSubmissionWorker implements EventHandler {
             String hash = Base64.getEncoder().encodeToString(HexFormat.of().parseHex((String) row.get("xmlSha256")));
             var found = session.findByHash((String) row.get("sessionReference"), hash, tokens);
             if (found == null || found.getReferenceNumber() == null) { return; }
+            // Ponowna kontrola dowodu także na ścieżce recovery; nie ufamy samemu wynikowi wyszukania.
+            if (!hash.equals(found.getInvoiceHash()) || row.get("invoiceReference") != null
+                    && !row.get("invoiceReference").equals(found.getReferenceNumber())) {
+                throw KsefFailure.invalid("KSEF_ACCEPTANCE_PROOF_INVALID");
+            }
             // Utracony send został rozpoznany po hashu w tej samej sesji, bez ponownej wysyłki.
             if (Boolean.TRUE.equals(row.get("closeAttempted"))) {
                 int status = session.sessionStatus((String) row.get("sessionReference"), tokens);
                 if (status != 200) { return; }
-                if (found.getStatus().getCode() != 200 || found.getKsefNumber() == null) { return; }
+                if (found.getStatus().getCode() != 200
+                        || !validKsefNumber(found.getKsefNumber(), (String) row.get("taxpayerNip"))) { return; }
                 save(claim, "ACCEPTED", Map.of("invoiceReference", found.getReferenceNumber(), "ksefNumber", found.getKsefNumber()));
                 save(claim, "WAITING_UPO", Map.of("closeConfirmed", true));
                 acceptedWriteback.request(claim.id);
@@ -330,10 +341,9 @@ public class KsefSubmissionWorker implements EventHandler {
                 db.run(Update.entity(OPERATIONS).byId(claim.id.toString()).data(Map.of("status", "ACCEPTED",
                         "ksefNumber", data.get("ksefNumber"), "referenceNumber", data.getOrDefault("invoiceReference", claim.row.get("invoiceReference")),
                         "confirmedXmlSha256", claim.row.get("xmlSha256"))));
-                updateInvoice(claim.id, Map.of("businessStatus", "ACCEPTED", "ksefNumber", data.get("ksefNumber")));
+                // OUTBOUND: dowód próby pozostaje w operacji, wynik biznesowy zapisuje RAP (ADR-0005).
             } else if ("INVOICE_REJECTED".equals(state)) {
                 db.run(Update.entity(OPERATIONS).byId(claim.id.toString()).data(Map.of("status", "REJECTED", "errorCode", data.get("lastCode"))));
-                updateInvoice(claim.id, Map.of("businessStatus", "REJECTED"));
             } else if ("RECONCILIATION_REQUIRED".equals(state)) {
                 // Potwierdzonego ACCEPTED nie cofamy, gdy niepewne jest tylko close/UPO.
                 db.run(Update.entity(OPERATIONS).data(Map.of("status", state, "errorCode", data.get("lastCode")))
@@ -386,6 +396,12 @@ public class KsefSubmissionWorker implements EventHandler {
 
     private void requireEnabled() {
         if (!enabled || configuredNip.isBlank()) { throw KsefFailure.invalid("KSEF_TRANSPORT_DISABLED"); }
+    }
+
+    /** Format numeru z OpenAPI MF i zgodność NIP; brak poprawnego dowodu nie daje ACCEPTED. */
+    private static boolean validKsefNumber(String number, String nip) {
+        return number != null && number.matches("[0-9]{10}-[0-9]{8}-[0-9A-F]{12}-[0-9A-F]{2}")
+                && number.startsWith(nip + "-");
     }
 
     static KsefFailure pending(String code) { return new KsefFailure(code, false, true, null); }

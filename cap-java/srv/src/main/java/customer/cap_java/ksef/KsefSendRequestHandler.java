@@ -45,8 +45,6 @@ import customer.cap_java.sap.SapInvoiceSnapshot;
 public class KsefSendRequestHandler implements EventHandler {
     static final String RESERVATIONS = "customer.cap_java.KsefSendReservations";
     static final String ENVIRONMENT = "TEST";
-    /** Stany operacji SEND, które bez rezerwacji (dane sprzed CAP-05) i tak blokują nową wysyłkę. */
-    private static final Set<String> BLOCKING = Set.of("QUEUED", "SUBMITTED", "ACCEPTED", "RECONCILIATION_REQUIRED");
     /** Kody odrzucenia, które mogą oznaczać duplikat w KSeF — wymagają uzgodnienia, nie ponownej wysyłki. */
     private static final Set<String> POSSIBLE_DUPLICATE = Set.of("KSEF_INVOICE_REJECTED_440");
 
@@ -80,14 +78,14 @@ public class KsefSendRequestHandler implements EventHandler {
 
         // (1) Dane faktury wyłącznie z RAP; przeglądarka niczego nie dostarcza poza kluczem.
         SapInvoiceSnapshot invoice;
+        java.util.Optional<SapInvoiceSnapshot> found;
         try {
-            invoice = sap.readInvoice(invoiceId).orElseThrow(() -> fail(ErrorStatuses.NOT_FOUND, "KSEF_INVOICE_NOT_FOUND"));
-        } catch (ServiceException known) {
-            throw known;
+            found = sap.readInvoice(invoiceId);
         } catch (RuntimeException unavailable) {
             // Bez treści zdalnego błędu (może zawierać URL/konfigurację Destination).
             throw fail(ErrorStatuses.BAD_GATEWAY, "SAP_INVOICE_READ_FAILED");
         }
+        invoice = found.orElseThrow(() -> fail(ErrorStatuses.NOT_FOUND, "KSEF_INVOICE_NOT_FOUND"));
         Map<String, Object> header = invoice.header();
         String nip = text(header.get("SellerNip"));
         String companyCode = text(header.get("CompanyCode"));
@@ -125,6 +123,7 @@ public class KsefSendRequestHandler implements EventHandler {
         operation.put("ID", operationId.toString());
         operation.put("sapDocumentRef", invoiceId.toString());
         operation.put("taxpayerNip", nip);
+        operation.put("companyCode", companyCode);
         operation.put("direction", "OUTBOUND");
         operation.put("environment", ENVIRONMENT);
         operation.put("operationType", "SEND_INVOICE");
@@ -147,6 +146,16 @@ public class KsefSendRequestHandler implements EventHandler {
      * (CAS) po poprzednim operationId i numerze próby; wyścig dwóch ponowień wygrywa jeden.
      */
     private int reserve(UUID invoiceId, String nip, String companyCode, UUID operationId) {
+        // Także starsza próba (NEW/FAILED/nieznana) musi blokować, nawet gdy rezerwacja wskazuje nowszą.
+        var unresolved = db.run(Select.from(KsefSubmissionWorker.OPERATIONS).columns("status")
+                .where(o -> o.get("sapDocumentRef").eq(invoiceId.toString()).and(o.get("environment").eq(ENVIRONMENT))
+                        .and(o.get("operationType").eq("SEND_INVOICE")).and(o.get("status").ne("REJECTED")))
+                .limit(1)).first();
+        if (unresolved.isPresent()) {
+            String status = text(unresolved.get().get("status"));
+            throw fail(ErrorStatuses.CONFLICT, "ACCEPTED".equals(status) ? "KSEF_ALREADY_ACCEPTED"
+                    : "RECONCILIATION_REQUIRED".equals(status) ? "KSEF_RECONCILIATION_REQUIRED" : "KSEF_SEND_IN_PROGRESS");
+        }
         var existing = db.run(Select.from(RESERVATIONS).where(r -> r.get("invoiceUUID").eq(invoiceId.toString())
                 .and(r.get("environment").eq(ENVIRONMENT))).lock()).first();
         if (existing.isEmpty()) {
@@ -208,7 +217,7 @@ public class KsefSendRequestHandler implements EventHandler {
     private void requireNoLegacySend(UUID invoiceId) {
         var blocking = db.run(Select.from(KsefSubmissionWorker.OPERATIONS).columns("status")
                 .where(o -> o.get("sapDocumentRef").eq(invoiceId.toString()).and(o.get("environment").eq(ENVIRONMENT))
-                        .and(o.get("operationType").eq("SEND_INVOICE")).and(o.get("status").in(List.copyOf(BLOCKING))))
+                        .and(o.get("operationType").eq("SEND_INVOICE")))
                 .limit(1)).first();
         if (blocking.isPresent()) {
             throw fail(ErrorStatuses.CONFLICT, "ACCEPTED".equals(blocking.get().get("status"))

@@ -108,7 +108,7 @@ public class SapKsefResultWriteback implements EventHandler {
     }
 
     /**
-     * Zaufany backend wywołuje po utrwaleniu potwierdzenia KSeF w tej samej transakcji.
+     * Zaufany backend wywołuje w nowej transakcji PO commit potwierdzenia KSeF (KsefAcceptedWriteback).
      * Operacja musi mieć ACCEPTED, SEND_INVOICE, OUTBOUND i numer KSeF; NEW jest odrzucane.
      * Oczekiwana wersja i spółka pochodzą wyłącznie z niezmiennej migawki dokumentu wysłanego
      * do KSeF, a skrót XML potwierdzony przy akceptacji musi być identyczny ze skrótem migawki.

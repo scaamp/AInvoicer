@@ -12,7 +12,7 @@ tags: [ainvoicer, sapui5, ksef, cap-java, frontend]
 
 Rozszerzenie istniejącej aplikacji `sapui5/ainvoicer` (SAPUI5 freestyle, SAP Horizon) o kokpit faktur zakupowych i sprzedażowych KSeF 2.0. To nie jest nowa aplikacja: AI Assistant, Voice Input, historia rozmów, FilterBar, tabela SAP FI (`ZC_FI_ACDOCA`), Add/Copy/Delete i Scanner działają jak wcześniej.
 
-**Stan (2026-10-29):** kokpit działa w trybie **demo** na lokalnych danych o kształcie rzeczywistych kontraktów RAP/CAP. Nie istnieje jeszcze bezpieczne API CAP z listą faktur dla UI (luka G-01), więc tryb `cap` jest przygotowany, ale nieuruchamiany. Żadna akcja nie wysyła faktury i nie łączy się z KSeF.
+**Stan CAP-05 (2026-10-29):** domyślnie bezpieczny tryb **mock**. Gotowy named OData V4 model `rap` i adapter: lista/szczegóły z RAP UI, stan integracji i `requestSend(invoiceUUID)` z CAP. Serwerowe paging/filter/sort RAP potwierdzono lokalnym mockserverem; rzeczywista usługa RAP UI i IAM są **BLOCKED**, dlatego nie przełączono domyślnej aplikacji na live. [Audyt i wyniki](../audits/2026-10-29-cap-05-implementation-review.md), [źródła i czynności ADT](../patches/cap05-rap-ui/README.md).
 
 ## 1. Układ
 
@@ -41,7 +41,7 @@ Domyślny widok to `All Invoices` (`sap.ui5/config/ksefCockpit/defaultView`). Wi
 | `webapp/model/ksef/KsefActionRules.js` | Czyste reguły dostępności akcji z kodami przyczyn i luk. |
 | `webapp/model/ksef/KsefFilterBuilder.js` | Filtry klienckie z paska filtrów i przełącznika widoku. |
 | `webapp/model/ksef/KsefAiFilterAdapter.js` | Bezpieczne tłumaczenie odpowiedzi `/filter` na filtry tabeli KSeF. |
-| `webapp/model/ksef/KsefDataAdapter.js` | Źródło danych: `mock` (JSON) lub `cap` (CAP OData V4 przez `fetch` w sesji aplikacji). |
+| `webapp/model/ksef/KsefDataAdapter.js` | Źródło danych: `mock` (JSON) lub `rap` (named V4 RAP + odczyt/akcje CAP w sesji aplikacji). |
 | `webapp/model/formatter.js` | Daty, kwoty, NIP, stany `ObjectStatus`, teksty statusów. |
 | `webapp/view/KsefFilterBar.fragment.xml`, `KsefInvoiceTable.fragment.xml` | Fragmenty osadzone w `Main.view.xml`. |
 | `webapp/view/KsefInvoiceDetails.fragment.xml`, `KsefColumns.fragment.xml`, `KsefActionAvailability.fragment.xml` | Dialog szczegółów, personalizacja kolumn, popover przyczyn. Ładowane leniwie. |
@@ -53,7 +53,8 @@ Domyślny widok to `All Invoices` (`sap.ui5/config/ksefCockpit/defaultView`). Wi
 | Model | Typ | Zawartość |
 | --- | --- | --- |
 | `""` (domyślny) | OData V4 | Legacy `ZC_FI_ACDOCA` (`/sap/opu/odata4/sap/zui_fi_acdoca_o4/...`). Bez zmian. |
-| `ksef` | JSON | `/invoices` — wiersze widoku (sekcja 5). Filtrowanie i sortowanie po stronie klienta. |
+| `rap` | OData V4 | RAP UI przez logiczną trasę `/rap-ui/`; lista, szczegóły, `_Items`, `_References`. |
+| `ksef` | JSON | `/invoices` — tylko bieżąca strona po połączeniu RAP ze stanem CAP; Previous/Next nie kumulują całej listy. |
 | `ksefView` | JSON | Widok (`viewKey`, `legacyMode`), `busy`, `error`, liczniki, kolumny, stan filtrów, listy wartości, `actions/<akcja>/{enabled,tooltip,reason}`. |
 | `ksefDetails` | JSON | Dialog szczegółów: `invoice`, `operations`, stany ładowania i błędów. |
 | `history`, `search`, `file` | JSON | Istniejące modele AI Assistant i Scanner. Bez zmian. |
@@ -66,23 +67,22 @@ Domyślny widok to `All Invoices` (`sap.ui5/config/ksefCockpit/defaultView`). Wi
 {
   "dataMode": "mock",
   "targetEnvironment": "TEST",
-  "defaultView": "ALL",
-  "mock": { "headersPath": "...ZC_AINV_INV_H.json", "operationsPath": "...KsefOperations.json" },
+  "rap": { "dataSource": "/rap-ui/", "entitySet": "Invoices", "pageSize": 50 },
   "cap": {
     "serviceUrl": "/odata/v4/KsefService/",
-    "invoiceListUrl": null,
-    "invoiceDetailsUrl": null,
-    "actions": { "send": null, "sync": null, "xml": null, "upo": null, "duplicate": null }
+    "integrationStatus": "InvoiceIntegrationStatus",
+    "actions": { "send": "requestSend", "sync": null, "xml": null, "upo": null, "duplicate": null }
   },
-  "capabilities": { "sendInvoice": false, "syncInbound": false, "viewXml": false, "downloadUpo": false, "checkDuplicate": false }
+  "capabilities": { "sendInvoice": true, "syncInbound": false, "viewXml": false, "downloadUpo": false, "checkDuplicate": false }
 }
 ```
 
-- **mock** (domyślny): `ZC_AINV_INV_H.json` ma kształt odpowiedzi `ZC_AINV_INV_H?$expand=_Items,_References` z H01 (`ZAPI_AINV_INV_H_O4/0001`; zweryfikowano z `cap-java/srv/external/AinvoicerH01.edmx`). Cztery rekordy `AINV-TEST-SEED-2026-*` mają wartości z `ZCL_AINV_TEST_DATA` (UUID syntetyczne). Cztery rekordy `AINV-DEMO-*` istnieją tylko w pliku i pokazują stany ACCEPTED, PROCESSING, REJECTED i RECEIVED. `KsefOperations.json` ma kształt `KsefService.KsefOperations`. W tym trybie UI nie zmienia stanu żadnej akcji.
-- **cap**: lista wymaga endpointu G-01 (`invoiceListUrl`). Bez niego tabela pokazuje błąd *contract G-01 is missing* zamiast pustych lub fikcyjnych danych. Historia i kontrola statusu korzystają z istniejącego `GET KsefService/KsefOperations?$filter=sapDocumentRef eq '<uuid>'`.
-- Akcja zmieniająca stan jest aktywna tylko wtedy, gdy w trybie `cap` jest włączona flaga `capabilities.*` **oraz** skonfigurowany endpoint. Docelowe środowisko inne niż TEST/DEMO zawsze blokuje akcje w UI.
-- Przeglądarka używa wyłącznie sesji aplikacji (`credentials: same-origin`, CSRF przez `X-CSRF-Token: Fetch`). Nie ma nagłówka `Authorization`, tokenów KSeF, JWT ani poświadczeń SAP w JS. Wewnętrzny CAP RemoteService `AinvoicerH01` (`@requires: 'internal-user'`) nie jest wywoływany z UI.
-- **Przed wdrożeniem produkcyjnym** ustaw `dataMode: "cap"`. Pliki demo trafiają do `dist/`, ale baner wyraźnie oznacza tryb demo.
+- **mock** (domyślny): lokalne JSON nagłówków i operacji. Flagi nie włączają mutacji w mock; Send jest zawsze wyłączony. Dane demo nie są dowodem działania H01/KSeF.
+- **rap**: `getModel("rap")`, lista `/Invoices`, szczegóły z `_Items,_References`. Filtry i sortowanie RAP wykonuje serwer; stabilny porządek kończy się InvoiceUUID. Pamięć UI zawiera jedną stronę (domyślnie 50, maksymalnie 200). Stan CAP jest pobierany wyłącznie dla UUID tej strony, z limitem 200 i kontrolą `$count`/nextLink. Ucięta lub niedostępna historia blokuje Send, zachowując dane SAP. CAP nie jest proxy listy.
+- **cap**: historyczny wariant nie obsługuje już listy/szczegółów; zwraca BACKEND_MISSING także po podaniu starego invoiceListUrl. Nie konfigurować `KsefCockpitService`.
+- `/rap-ui/` to trasa aplikacji i lokalnego mockservera; runtime H01 musi pochodzić z faktycznego bindingu. W `ui5-local.yaml` dodano proxy CAP do localhost:8080; trasa RAP UI wymaga skonfigurowania po aktywacji. Docelowy approuter zapewnia tożsamość business usera dla RAP i CAP. Przeglądarka nie dostaje credentiali communication usera.
+- **Ograniczenie jawne w UI:** filtr statusu KSeF działa na bieżącej stronie, podobnie sortowanie pól CAP (`OperationReference`, `LastUpdate`). Globalny filtr CAP → UUID → RAP pozostaje rozszerzeniem. Pola CAP nie trafiają do nieobsługiwanego `$filter/$orderby` RAP.
+- CAP wymaga roli KsefOperator i obu atrybutów taxpayerNips/companyCodes. READ operacji/faktur/statusu jest filtrowany po obu. Stare rekordy bez CompanyCode są ukryte do zaufanej migracji. Ukrycie przycisku Send nie stanowi zabezpieczenia.
 
 ## 5. Mapowanie pól
 
@@ -98,7 +98,7 @@ Domyślny widok to `All Invoices` (`sap.ui5/config/ksefCockpit/defaultView`). Wi
 | Gross Amount | `GrossAmount` | RAP | `Edm.Decimal` (string) → liczba do sortowania i filtrów; wyświetlane z walutą |
 | Currency | `CurrencyCode` | RAP | ukryta domyślnie |
 | SAP Status | `InvoiceStatus` | RAP | domena nieopublikowana; stan neutralny, bez logiki akcji |
-| KSeF Status | `KsefStatus` | CAP / RAP / UI | najnowsza operacja CAP (`status`) → `RECORDED_IN_SAP` (gdy RAP ma `KsefNumber`) → `NO_OPERATION` |
+| KSeF Status | `KsefStatus` | CAP / RAP / UI | numer RAP → RECORDED_IN_SAP; bez numeru: rozstrzygająca próba SEND (ACCEPTED → ACCEPTED_SAP_SYNC, potem rekoncyliacja/aktywna/odrzucona); brak dowodu → NO_OPERATION |
 | KSeF Number | `KsefNumber` | RAP, potem CAP | `ZC_AINV_INV_H.KsefNumber` (writeback `ApplyKsefResult`), w przeciwnym razie `KsefOperations.ksefNumber` |
 | KSeF Environment | `KsefEnvironment` | RAP, potem CAP | wyłącznie prezentacja; PROD wyróżniony stanem Error |
 | Operation Reference | `OperationReference` | CAP | `KsefOperations.referenceNumber` najnowszej operacji |
@@ -157,24 +157,20 @@ Akcje zmieniające stan po udostępnieniu kontraktu: potwierdzenie (`MessageBox.
 - W toolbarze KSeF przycisk **Scan Invoice (Legacy FI)** otwiera ten sam dialog. Dialog informuje, że *Save* tworzy pozycję SAP FI w `ZC_FI_ACDOCA`, a **nie** fakturę KSeF. Pola ACDOCA nie są mapowane na model RAP faktur.
 - Poprawki: widoczny status analizy; zamknięcie `BusyDialog` przy błędzie HTTP lub parsowania (wcześniej `reject` był poza zasięgiem i powodował `ReferenceError`); odporność na brak `AmountDocument/AmountLocal`; model JSON ustawiany przed `addDependent` (koniec błędów `Failed to read path /CompanyCode`); pole waluty używa typu `String` zamiast typu złożonego `Currency` (`FormatException`, puste pole po analizie AI).
 
-## 9. Backend contract gaps (dla Agenta A)
+## 9. Kontrakt i pozostałe luki
 
-| ID | Potrzeba UI | Stan dziś | Proponowany kontrakt CAP (do decyzji Agenta A) |
-| --- | --- | --- | --- |
-| G-01 | Lista nagłówków faktur dla UI | Brak. `AinvoicerH01` jest `internal-user`; publiczny `KsefService` ma tylko `KsefOperations`/`KsefInvoices` (bez danych nagłówka SAP). | Read-only encja np. `KsefCockpitService.Invoices` (`@requires: 'KsefOperator'`) nad Remote RAP `ZC_AINV_INV_H`, filtrowana serwerowo po `SellerNip`/`BuyerNip` ∈ `$user.taxpayerNips` (DCL RAP `where TRUE` nie izoluje NIP), pola jak w sekcji 5, `$top/$skip/$filter/$orderby`. Opcjonalnie wyliczone `KsefStatus` i `LatestOperation*`. |
-| G-02 | Zlecenie wysyłki | Brak akcji. Istniejący `CREATE KsefOperations` przyjmuje od klienta `sapDocumentRef`, `taxpayerNip` i `idempotencyKey` bez weryfikacji z SAP, więc UI go **nie używa**. | Bound action `Invoices(<uuid>)/requestSend()` → zwraca `KsefOperations` (NEW/QUEUED). Serwer: odczyt SAP, `OUTBOUND`, środowisko TEST, idempotencja serwerowa, snapshot/FA(3), outbox po commit; HTTP 409 dla operacji w toku. |
-| G-03 | Wymuszenie kontroli statusu | Odczyt `KsefOperations` działa (UI z niego korzysta). Brak triggera. | Opcjonalnie `requestStatusCheck()`; inaczej worker CAP odpytuje sam, a UI tylko czyta. |
-| G-04 | Synchronizacja zakupów z KSeF | Brak | Unbound action `requestInboundSync(from, to)` → operacja `RECEIVE_INVOICE`; NIP z kontekstu użytkownika. |
-| G-05 | Podgląd XML | `xmlStorageRef` celowo nie jest publikowany | `GET Invoices(<uuid>)/xml` (`application/xml`, stream) z autoryzacją NIP. |
-| G-06 | Pobranie UPO | `upoStorageRef` nie jest publikowany | `GET Invoices(<uuid>)/upo` (XML/PDF) po `ACCEPTED`. |
-| G-07 | Oś czasu operacji | `KsefOperations` READ + `$filter=sapDocumentRef eq …` działa; `SapResultWriteHistory` nie jest publiczna | Opcjonalnie read-only `KsefOperationEvents` (bez danych wrażliwych). |
-| G-08 | Duplikaty / dopasowanie zakupów | Brak | `Invoices(<uuid>)/checkDuplicate()` → wynik dopasowania. |
-| G-09 | AI Search dla pól KSeF | Python `/filter` zna tylko `ZC_FI_ACDOCA` | Rozszerzenie usługi AI (osobny branch) o katalog pól z sekcji 5; UI jest gotowe na natywne ścieżki. |
-| G-10 | Szczegóły z pozycjami i referencjami | Brak publicznego API | `Invoices(<uuid>)?$expand=Items,References` (to samo źródło co G-01). |
-| G-11 | Katalog statusów | Potwierdzone tylko `NEW`, `ACCEPTED` | Opublikowany enum/stała statusów operacji i ich terminalności. |
-| G-12 | Routing i autoryzacja UI → CAP | Brak approutera/`xs-app.json` dla `/odata/v4/` w `sapui5/` | Trasa approutera do CAP, rola `KsefOperator` i atrybut `taxpayerNips` w XSUAA. |
+| ID | Stan CAP-05 |
+| --- | --- |
+| G-01 / G-10 | Named RAP model i adapter paging/details gotowe lokalnie; binding V4 UI, DCL/IAM i trasa business usera BLOCKED. Źródła w docs/patches/cap05-rap-ui, bez aktywacji. |
+| G-02 | CAP action `POST /odata/v4/KsefService/requestSend`, payload wyłącznie `{ "invoiceUUID": "..." }`, wynik `{operationId,status:"QUEUED",attempt}`. Dane z RAP, NIP/CompanyCode, atomowa rezerwacja DB, FA(3)/snapshot/outbox. Ponowienie w toku/przyjęte/nieznane → 409. |
+| G-03 / G-07 | `InvoiceIntegrationStatus?$filter=invoiceUUID eq '...'` z limitem, autoryzacją i stanem writeback/UPO. UI odświeża odczyt; brak publicznego triggera pollingu. |
+| G-04 / G-08 | Odbiór zakupów i duplicate matching poza obecnym vertical slice; akcje wyłączone. |
+| G-05 / G-06 | Publicznego pobrania XML/UPO nadal brak. Worker zapisuje UPO niezależnie od SAP; projekcja publikuje upoAvailable bez referencji magazynu. Przyciski wyłączone. |
+| G-09 | AI współpracuje z istniejącym `/filter`; natywne pola w Python wymagają osobnego rozszerzenia. |
+| G-11 | NEW/QUEUED/SUBMITTED/ACCEPTED/REJECTED/RECONCILIATION_REQUIRED w katalogu UI. Potwierdzony wynik RAP ma priorytet nad CAP. |
+| G-12 | Lokalny proxy CAP gotowy; live approuter, IAS/XSUAA i zgodny zakres RAP/CAP wymagają konfiguracji i testów rzeczywistymi principalami. |
 
-Po wdrożeniu G-01 i G-02 wystarczy konfiguracja w manifeście (`dataMode: "cap"`, `invoiceListUrl`, `actions.send`, `capabilities.sendInvoice: true`) i ewentualna korekta mapowania w `KsefInvoiceMapper`.
+Finalna kontrola Send jest w CAP. Niedostępne CAP, ucięta historia i przyjęta/aktywna/nieznana próba SEND blokują przycisk. Nowszy CHECK_STATUS nie ukrywa starszego SEND. Domyślna polityka backendu nie dopuszcza retry po odrzuceniu; samo REJECTED w UI nie gwarantuje zgody serwera.
 
 ## 10. Uruchamianie
 

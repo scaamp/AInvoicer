@@ -23,6 +23,8 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -35,9 +37,18 @@ import com.sap.cds.ql.Insert;
 import com.sap.cds.ql.Select;
 import com.sap.cds.ql.Update;
 import com.sap.cds.services.persistence.PersistenceService;
+import com.sap.cds.services.outbox.OutboxMessage;
+import com.sap.cds.services.outbox.OutboxMessageEventContext;
 
 import customer.cap_java.sap.SapInvoiceRemoteAdapter;
 import customer.cap_java.sap.SapInvoiceSnapshot;
+import customer.cap_java.sap.SapKsefResultWriteAdapter;
+import customer.cap_java.sap.SapKsefResultWriteAdapter.Outcome;
+import customer.cap_java.sap.SapKsefResultWriteAdapter.WriteResult;
+import customer.cap_java.sap.SapKsefResultWriteback;
+import customer.cap_java.sap.KsefInvoiceSnapshotRegistry;
+import pl.akmf.ksef.sdk.client.model.StatusInfo;
+import pl.akmf.ksef.sdk.client.model.session.SessionInvoiceStatusResponse;
 
 /**
  * CAP-05 Etap 3: requestSend przez prawdziwe OData V4 + Spring Security (mock users) + H2 + generator B.
@@ -62,10 +73,12 @@ class KsefSendRequestTest {
     @LocalServerPort int port;
     @Autowired PersistenceService db;
     @Autowired KsefSubmissionWorker worker;
+    @Autowired SapKsefResultWriteback writeback;
     @MockitoBean SapInvoiceRemoteAdapter sap;
     @MockitoBean KsefAuthentication authentication;
     @MockitoBean KsefOnlineSession session;
     @MockitoBean KsefDocumentStore store;
+    @MockitoBean SapKsefResultWriteAdapter sapWrite;
     private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper json = new ObjectMapper();
     private UUID invoice;
@@ -103,7 +116,7 @@ class KsefSendRequestTest {
         List<Integer> statuses = new ArrayList<>();
         try (var executor = Executors.newFixedThreadPool(2)) {
             Future<Response> first = executor.submit(() -> send("operator-a", "test-a", invoice));
-            Future<Response> second = executor.submit(() -> send("operator-a", "test-a", invoice));
+            Future<Response> second = executor.submit(() -> send("operator-peer", "test-peer", invoice));
             statuses.add(first.get(30, TimeUnit.SECONDS).status());
             statuses.add(second.get(30, TimeUnit.SECONDS).status());
         }
@@ -126,6 +139,59 @@ class KsefSendRequestTest {
         assertEquals(1, count(KsefSubmissionWorker.SNAPSHOTS, invoice));
     }
 
+    @ParameterizedTest
+    @EnumSource(value = Outcome.class, names = { "APPLIED", "ALREADY_APPLIED", "VERSION_CONFLICT" })
+    void requestThroughAcceptanceUpoAndSapWritebackUsesExactGeneratedBytes(Outcome outcome) throws Exception {
+        // Pełny lokalny przepływ: OData/Security -> RAP mock -> realny FA(3)/H2/outbox -> SDK mock -> SAP mock.
+        var stored = new java.util.concurrent.atomic.AtomicReference<byte[]>();
+        when(store.put(any())).thenAnswer(call -> { stored.set(call.getArgument(0)); return "document.xml"; });
+        when(store.get(anyString())).thenAnswer(call -> stored.get());
+        when(authentication.refreshIfNeeded(any())).thenAnswer(call -> call.getArgument(0));
+        when(session.open(any(), any())).thenReturn("session-ref");
+        when(session.send(anyString(), any(), any(), any())).thenReturn("invoice-ref");
+        String number = "1234567802-20261029-" + invoice.toString().replace("-", "").substring(0, 12).toUpperCase() + "-AB";
+        when(session.status(anyString(), anyString(), any())).thenAnswer(call -> {
+            var result = new SessionInvoiceStatusResponse();
+            var status = new StatusInfo(); status.setCode(200); result.setStatus(status);
+            result.setReferenceNumber("invoice-ref"); result.setKsefNumber(number);
+            result.setInvoiceHash(Base64.getEncoder().encodeToString(java.util.HexFormat.of().parseHex(
+                    KsefInvoiceSnapshotRegistry.sha256Hex(stored.get()))));
+            return result;
+        });
+        when(session.sessionStatus(anyString(), any())).thenReturn(200);
+        when(session.upoReady(anyString(), any())).thenReturn(true);
+        when(session.upo(anyString(), anyString(), any())).thenReturn("<Potwierdzenie/>".getBytes(StandardCharsets.UTF_8));
+        UUID operationId = sendOk();
+        byte[] exactXml = stored.get().clone();
+        worker.process(operationId);
+        assertEquals("COMPLETED", worker.status(operationId).get("state"));
+        assertNotNull(worker.status(operationId).get("upoStorageRef"));
+        verify(session).send(eq("session-ref"), eq(exactXml), any(), any());
+        var pending = get("operator-a", "test-a", "InvoiceIntegrationStatus?$filter=invoiceUUID eq '" + invoice + "'")
+                .body().get("value").get(0);
+        assertEquals("ACCEPTED", pending.get("integrationStatus").asText());
+        assertEquals("PENDING", pending.get("writebackState").asText());
+        assertTrue(pending.get("upoAvailable").asBoolean());
+        when(sapWrite.apply(any())).thenReturn(outcome == Outcome.VERSION_CONFLICT
+                ? new WriteResult(outcome, invoice, null, null, null, null)
+                : new WriteResult(outcome, invoice, number, "TEST", Instant.now(), operationId));
+        worker.tx(() -> {
+            var context = OutboxMessageEventContext.create("applyConfirmedResult");
+            context.setIsInbound(true);
+            var message = OutboxMessage.create(); message.setParams(Map.of("writeId", operationId.toString()));
+            context.setMessage(message); writeback.process(context);
+            return null;
+        });
+        var finished = get("operator-a", "test-a", "InvoiceIntegrationStatus?$filter=invoiceUUID eq '" + invoice + "'")
+                .body().get("value").get(0);
+        assertEquals("ACCEPTED", finished.get("integrationStatus").asText());
+        assertEquals(number, finished.get("ksefNumber").asText());
+        assertEquals(outcome == Outcome.VERSION_CONFLICT ? "RECONCILIATION_REQUIRED" : "SUCCEEDED",
+                finished.get("writebackState").asText());
+        assertEquals(409, send("operator-peer", "test-peer", invoice).status());
+        verify(session, times(1)).send(anyString(), any(), any(), any());
+    }
+
     @Test void rapWithConfirmedKsefNumberIsConflictWithoutWrites() throws Exception {
         rap(SapInvoiceTestData.invoice(invoice, h -> {
             h.put("KsefNumber", "1234567802-20261029-ABCDEF012345-AB");
@@ -144,6 +210,20 @@ class KsefSendRequestTest {
         var response = send("operator-a", "test-a", invoice);
         assertEquals(409, response.status());
         assertEquals("KSEF_ALREADY_ACCEPTED", code(response));
+    }
+
+    @Test void legacyNewFailedAndUnknownSendsWithoutReservationBlockNewAttempt() throws Exception {
+        UUID legacyId = UUID.randomUUID();
+        worker.tx(() -> db.run(Insert.into(KsefSubmissionWorker.OPERATIONS).entry(Map.of(
+                "ID", legacyId.toString(), "sapDocumentRef", invoice.toString(), "taxpayerNip", "1234567802",
+                "direction", "OUTBOUND", "environment", "TEST", "operationType", "SEND_INVOICE",
+                "status", "NEW", "idempotencyKey", legacyId.toString()))));
+        for (String state : List.of("NEW", "FAILED", "UNKNOWN", "READ_RETRY_EXHAUSTED", "ACCEPTED", "REJECTED")) {
+            setOperationStatus(legacyId, state);
+            assertEquals(409, send("operator-a", "test-a", invoice).status(), state);
+        }
+        assertEquals(0, count(KsefSendRequestHandler.RESERVATIONS));
+        verifyNoInteractions(session);
     }
 
     @Test void unknownStateNeverUnlocksAnotherSend() throws Exception {
@@ -243,6 +323,16 @@ class KsefSendRequestTest {
         assertEquals(0, count(KsefSendRequestHandler.RESERVATIONS));
     }
 
+    @Test void remoteServiceExceptionNeverExposesDestinationOrSapResponse() throws Exception {
+        when(sap.readInvoice(invoice)).thenThrow(new com.sap.cds.services.ServiceException(
+                com.sap.cds.services.ErrorStatuses.BAD_GATEWAY, "private SAP response and credential location"));
+        var failed = send("operator-a", "test-a", invoice);
+        assertEquals(502, failed.status());
+        assertEquals("SAP_INVOICE_READ_FAILED", code(failed));
+        assertFalse(failed.body().toString().contains("private SAP"));
+        assertTrue(sendOperations().isEmpty());
+    }
+
     @Test void rawCreateOfSendOperationIsRejected() throws Exception {
         var response = post("operator-a", "test-a", "KsefOperations", Map.of("taxpayerNip", "1234567802",
                 "direction", "OUTBOUND", "operationType", "SEND_INVOICE", "idempotencyKey", UUID.randomUUID().toString(),
@@ -263,6 +353,11 @@ class KsefSendRequestTest {
         assertTrue(row.get("writebackState").isNull());
         var foreign = get("operator-b", "test-b", "InvoiceIntegrationStatus?$filter=invoiceUUID eq '" + invoice + "'");
         assertEquals(0, foreign.body().get("value").size());
+        // Ten sam NIP, lecz inna spółka: obie publiczne ścieżki odczytu muszą odmawiać.
+        var otherCompany = get("operator-other-company", "test-cc", "InvoiceIntegrationStatus?$filter=invoiceUUID eq '" + invoice + "'");
+        assertEquals(0, otherCompany.body().get("value").size());
+        var legacyRead = get("operator-other-company", "test-cc", "KsefOperations?$filter=sapDocumentRef eq '" + invoice + "'");
+        assertEquals(0, legacyRead.body().get("value").size());
         var metadata = rawGet("operator-a", "test-a", "$metadata");
         for (String hidden : List.of("xmlStorageRef", "upoStorageRef", "claimToken", "confirmedXmlSha256", "snapshot_ID",
                 "KsefSubmissions", "SapResultWrites", "KsefSendReservations", "GrossAmount", "SellerName")) {

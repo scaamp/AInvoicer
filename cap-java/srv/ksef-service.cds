@@ -3,13 +3,13 @@ using { customer.cap_java as db } from '../db/schema';
 @requires: 'authenticated-user'
 service KsefService {
   @(restrict: [
-    { grant: 'CREATE', to: 'KsefOperator', where: (taxpayerNip = $user.taxpayerNips) },
-    { grant: 'READ', to: 'KsefOperator', where: (taxpayerNip = $user.taxpayerNips) }
+    { grant: 'CREATE', to: 'KsefOperator', where: (taxpayerNip = $user.taxpayerNips and companyCode = $user.companyCodes) },
+    { grant: 'READ', to: 'KsefOperator', where: (taxpayerNip = $user.taxpayerNips and companyCode = $user.companyCodes) }
   ])
   entity KsefOperations as projection on db.KsefOperations excluding { invoice, snapshot, confirmedXmlSha256, submission, writeback };
 
   @(restrict: [
-    { grant: 'READ', to: 'KsefOperator', where: (taxpayerNip = $user.taxpayerNips) }
+    { grant: 'READ', to: 'KsefOperator', where: (taxpayerNip = $user.taxpayerNips and companyCode = $user.companyCodes) }
   ])
   @readonly entity KsefInvoices as projection on db.KsefInvoices excluding { xmlStorageRef, upoStorageRef };
 
@@ -19,7 +19,7 @@ service KsefService {
    * (`invoiceUUID eq ... or ...`); limit chroni przed pobraniem całej historii.
    */
   @(restrict: [
-    { grant: 'READ', to: 'KsefOperator', where: (taxpayerNip = $user.taxpayerNips) }
+    { grant: 'READ', to: 'KsefOperator', where: (taxpayerNip = $user.taxpayerNips and companyCode = $user.companyCodes) }
   ])
   @readonly
   @cds.query.limit: { default: 100, max: 200 }
@@ -27,6 +27,7 @@ service KsefService {
     key ID                        as operationId,
         sapDocumentRef            as invoiceUUID,
         taxpayerNip,
+        companyCode,
         direction,
         environment,
         operationType,

@@ -52,7 +52,7 @@ Proces jest konserwatywny: awaria po otwarciu sesji przed send może wymagać r�
 uzgodnienia, ponieważ materiał szyfrowania nie jest utrwalany. To koszt uniknięcia
 persistencji sekretów i automatycznego duplikowania faktur. H2/single tenant testuje
 lokalną niezawodność; HANA, wiele instancji CF i zarządzany storage pozostają poza
-potwierdzonym zakresem. Nie uruchamiamy automatycznie writeback do SAP.
+potwierdzonym zakresem. Historycznie nie uruchamiano automatycznie writebacku; CAP-05 wprowadza ten most zgodnie z [ADR-0005](ADR-0005-rap-business-status-cap-integration-status.md), wyłącznie dla zweryfikowanego powiązania RAP, po osobnym commit ACCEPTED. Transport HTTP WRITE pozostaje domyślnie OFF.
 
 ## Uzupełnienie — integracja B
 

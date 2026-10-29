@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MOCK (CAP-05): odwzorowanie aktywnych w H01 CDS ZC_AINV_INV_H_UI/_I_UI/_REF_UI i SRVD ZUI_AINV_INV_H_O4
+     (odata_v4_ui, aliasy Invoices/InvoiceItems/InvoiceReferences). Binding V4 UI nie jest jeszcze opublikowany,
+     więc to NIE jest pobrany runtime $metadata. Brak akcji: usługa jest tylko do odczytu. -->
+<edmx:Edmx Version="4.0" xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx">
+  <edmx:DataServices>
+    <Schema Namespace="com.sap.gateway.srvd.zui_ainv_inv_h_o4.v0001" xmlns="http://docs.oasis-open.org/odata/ns/edm">
+      <EntityType Name="InvoicesType">
+        <Key><PropertyRef Name="InvoiceUUID"/></Key>
+        <Property Name="InvoiceUUID" Type="Edm.Guid" Nullable="false"/>
+        <Property Name="InvoiceNumber" Type="Edm.String" Nullable="false"/>
+        <Property Name="OriginProcess" Type="Edm.String" Nullable="false"/>
+        <Property Name="Direction" Type="Edm.String" Nullable="false"/>
+        <Property Name="InvoiceKind" Type="Edm.String" Nullable="false"/>
+        <Property Name="InvoiceStatus" Type="Edm.String" Nullable="false"/>
+        <Property Name="KsefNumber" Type="Edm.String" Nullable="false"/>
+        <Property Name="KsefEnvironment" Type="Edm.String" Nullable="false"/>
+        <Property Name="KsefRecordedAt" Type="Edm.DateTimeOffset" Nullable="true" Precision="7"/>
+        <Property Name="KsefWriteRequestId" Type="Edm.Guid" Nullable="true"/>
+        <Property Name="CompanyCode" Type="Edm.String" Nullable="false"/>
+        <Property Name="IssueDate" Type="Edm.Date" Nullable="true"/>
+        <Property Name="PostingDate" Type="Edm.Date" Nullable="true"/>
+        <Property Name="DueDate" Type="Edm.Date" Nullable="true"/>
+        <Property Name="SellerNip" Type="Edm.String" Nullable="false"/>
+        <Property Name="SellerName" Type="Edm.String" Nullable="false"/>
+        <Property Name="BuyerNip" Type="Edm.String" Nullable="false"/>
+        <Property Name="BuyerName" Type="Edm.String" Nullable="false"/>
+        <Property Name="NetAmount" Type="Edm.Decimal" Nullable="false" Precision="23" Scale="3"/>
+        <Property Name="TaxAmount" Type="Edm.Decimal" Nullable="false" Precision="23" Scale="3"/>
+        <Property Name="GrossAmount" Type="Edm.Decimal" Nullable="false" Precision="23" Scale="3"/>
+        <Property Name="CurrencyCode" Type="Edm.String" Nullable="false"/>
+        <Property Name="LocalLastChangedAt" Type="Edm.DateTimeOffset" Nullable="true" Precision="7"/>
+        <Property Name="LastChangedAt" Type="Edm.DateTimeOffset" Nullable="true" Precision="7"/>
+        <NavigationProperty Name="_Items" Type="Collection(com.sap.gateway.srvd.zui_ainv_inv_h_o4.v0001.InvoiceItemsType)"/>
+        <NavigationProperty Name="_References" Type="Collection(com.sap.gateway.srvd.zui_ainv_inv_h_o4.v0001.InvoiceReferencesType)"/>
+      </EntityType>
+      <EntityType Name="InvoiceItemsType">
+        <Key><PropertyRef Name="ItemUUID"/></Key>
+        <Property Name="ItemUUID" Type="Edm.Guid" Nullable="false"/>
+        <Property Name="InvoiceUUID" Type="Edm.Guid" Nullable="false"/>
+        <Property Name="ItemNo" Type="Edm.String" Nullable="false"/>
+        <Property Name="MaterialId" Type="Edm.String" Nullable="false"/>
+        <Property Name="Description" Type="Edm.String" Nullable="false"/>
+        <Property Name="Quantity" Type="Edm.Decimal" Nullable="false" Precision="23" Scale="3"/>
+        <Property Name="UnitCode" Type="Edm.String" Nullable="false"/>
+        <Property Name="UnitPrice" Type="Edm.Decimal" Nullable="false" Precision="23" Scale="3"/>
+        <Property Name="NetAmount" Type="Edm.Decimal" Nullable="false" Precision="23" Scale="3"/>
+        <Property Name="TaxRate" Type="Edm.Decimal" Nullable="false" Precision="23" Scale="3"/>
+        <Property Name="TaxCategory" Type="Edm.String" Nullable="false"/>
+        <Property Name="TaxAmount" Type="Edm.Decimal" Nullable="false" Precision="23" Scale="3"/>
+        <Property Name="GrossAmount" Type="Edm.Decimal" Nullable="false" Precision="23" Scale="3"/>
+        <Property Name="CurrencyCode" Type="Edm.String" Nullable="false"/>
+        <Property Name="LocalLastChangedAt" Type="Edm.DateTimeOffset" Nullable="true" Precision="7"/>
+        <NavigationProperty Name="_Parent" Type="com.sap.gateway.srvd.zui_ainv_inv_h_o4.v0001.InvoicesType" Nullable="false"/>
+      </EntityType>
+      <EntityType Name="InvoiceReferencesType">
+        <Key><PropertyRef Name="RefUUID"/></Key>
+        <Property Name="RefUUID" Type="Edm.Guid" Nullable="false"/>
+        <Property Name="InvoiceUUID" Type="Edm.Guid" Nullable="false"/>
+        <Property Name="SourceSystem" Type="Edm.String" Nullable="false"/>
+        <Property Name="SourceModule" Type="Edm.String" Nullable="false"/>
+        <Property Name="ReferenceRole" Type="Edm.String" Nullable="false"/>
+        <Property Name="SourceDocNo" Type="Edm.String" Nullable="false"/>
+        <Property Name="SourceFiscalYear" Type="Edm.String" Nullable="false"/>
+        <Property Name="SourceItemNo" Type="Edm.String" Nullable="false"/>
+        <NavigationProperty Name="_Parent" Type="com.sap.gateway.srvd.zui_ainv_inv_h_o4.v0001.InvoicesType" Nullable="false"/>
+      </EntityType>
+      <EntityContainer Name="Container">
+        <EntitySet Name="Invoices" EntityType="com.sap.gateway.srvd.zui_ainv_inv_h_o4.v0001.InvoicesType">
+          <NavigationPropertyBinding Path="_Items" Target="InvoiceItems"/>
+          <NavigationPropertyBinding Path="_References" Target="InvoiceReferences"/>
+        </EntitySet>
+        <EntitySet Name="InvoiceItems" EntityType="com.sap.gateway.srvd.zui_ainv_inv_h_o4.v0001.InvoiceItemsType">
+          <NavigationPropertyBinding Path="_Parent" Target="Invoices"/>
+        </EntitySet>
+        <EntitySet Name="InvoiceReferences" EntityType="com.sap.gateway.srvd.zui_ainv_inv_h_o4.v0001.InvoiceReferencesType">
+          <NavigationPropertyBinding Path="_Parent" Target="Invoices"/>
+        </EntitySet>
+      </EntityContainer>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>

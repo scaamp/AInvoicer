@@ -62,7 +62,7 @@
             </fb:FilterGroupItem>
             <fb:FilterGroupItem
                 name="KsefStatus"
-                label="{i18n>ksefFilterStatus}"
+                label="{= ${ksefView>/mode} === 'rap' ? ${i18n>ksefFilterStatusPage} : ${i18n>ksefFilterStatus} }"
                 groupName="Ksef"
                 visibleInFilterBar="true"
             >

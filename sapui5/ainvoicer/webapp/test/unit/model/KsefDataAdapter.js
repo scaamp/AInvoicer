@@ -109,7 +109,7 @@ sap.ui.define([
         });
     });
 
-    QUnit.test("list + operations are merged when the G-01 endpoint is configured", function (assert) {
+    QUnit.test("legacy CAP list proxy is refused even when an endpoint is configured", function (assert) {
         var fnFetch = fakeFetch(function (sUrl) {
             if (sUrl === "/odata/v4/KsefCockpitService/Invoices") {
                 return { status: 200, body: { value: [{ InvoiceUUID: UUID, InvoiceNumber: "X", Direction: "OUTBOUND", GrossAmount: "10.50" }] } };
@@ -120,9 +120,11 @@ sap.ui.define([
             return null;
         });
         return new KsefDataAdapter({ dataMode: "cap", cap: { invoiceListUrl: "/odata/v4/KsefCockpitService/Invoices" } }, fnFetch)
-            .loadInvoices().then(function (aRows) {
-                assert.strictEqual(aRows[0].KsefStatus, "QUEUED");
-                assert.strictEqual(aRows[0].GrossAmount, 10.5);
+            .loadInvoices().then(function () {
+                assert.ok(false, "CAP must not provide the SAP invoice list");
+            }, function (oError) {
+                assert.strictEqual(oError.code, "BACKEND_MISSING");
+                assert.strictEqual(fnFetch.calls.length, 0, "no SAP proxy or unbounded history request");
             });
     });
 
@@ -161,13 +163,15 @@ sap.ui.define([
         var oAdapter = new KsefDataAdapter({
             dataMode: "cap",
             capabilities: { sendInvoice: true },
-            cap: { actions: { send: "Invoices({InvoiceUUID})/KsefCockpitService.requestSend" } }
+            cap: { actions: { send: "requestSend" } }
         }, fnFetch);
         assert.strictEqual(oAdapter.getCapabilities().sendInvoice, true);
         return oAdapter.requestSend(UUID).then(function (oResult) {
             var aPosts = fnFetch.calls.filter(function (c) { return c.options.method === "POST"; });
             assert.strictEqual(aPosts.length, 1, "exactly one POST — no client-side retry");
-            assert.strictEqual(aPosts[0].url, "/odata/v4/KsefService/Invoices(" + UUID + ")/KsefCockpitService.requestSend");
+            assert.strictEqual(aPosts[0].url, "/odata/v4/KsefService/requestSend");
+            assert.deepEqual(JSON.parse(aPosts[0].options.body), { invoiceUUID: UUID },
+                "only InvoiceUUID is sent — no NIP, environment, XML or idempotency key from the browser");
             assert.strictEqual(aPosts[0].options.headers["X-CSRF-Token"], "csrf-123");
             assert.strictEqual(oResult.status, "QUEUED");
         });

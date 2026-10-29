@@ -145,7 +145,7 @@ try {
                 total: tests.length,
                 failed: tests.filter((li) => li.classList.contains('fail')).map((li) => ({
                     name: li.querySelector('.module-name')?.innerText + ' :: ' + li.querySelector('.test-name')?.innerText,
-                    messages: [...li.querySelectorAll('.fail .test-message')].map((m) => m.innerText).slice(0, 5)
+                    messages: [...li.querySelectorAll('li.fail')].map((m) => m.innerText).slice(0, 5)
                 })),
                 passed: tests.filter((li) => li.classList.contains('pass')).map((li) =>
                     li.querySelector('.module-name')?.innerText + ' :: ' + li.querySelector('.test-name')?.innerText)

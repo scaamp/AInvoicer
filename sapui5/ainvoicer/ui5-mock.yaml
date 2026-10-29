@@ -39,4 +39,10 @@ server:
             metadataPath: ./webapp/localService/mainService/metadata.xml
             mockdataPath: ./webapp/localService/mainService/data
             generateMockData: true
+          # CAP-05: mock usługi RAP UI (ZUI_AINV_INV_H_O4) dla named modelu "rap" — testy paging/filter/sort.
+          # Lokalna trasa testowa. Nie jest adresem opublikowanego bindingu H01.
+          - urlPath: /rap-ui
+            metadataPath: ./webapp/localService/rapUi/metadata.xml
+            mockdataPath: ./webapp/localService/rapUi/data
+            generateMockData: false
         annotations: []

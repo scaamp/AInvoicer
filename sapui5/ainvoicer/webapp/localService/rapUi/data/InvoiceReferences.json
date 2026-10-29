@@ -1,0 +1,102 @@
+[
+  {
+    "RefUUID": "ad7a1e0c-5994-5c5f-be5b-a0c72e589e3f",
+    "InvoiceUUID": "f363a00c-e4d4-522d-9062-4b0c5095f5db",
+    "SourceSystem": "AInvoicer-SIM",
+    "SourceModule": "FI",
+    "ReferenceRole": "ACCOUNTING_DOC",
+    "SourceDocNo": "SIM-FI-AP-2026-001",
+    "SourceFiscalYear": "2026",
+    "SourceItemNo": "000010"
+  },
+  {
+    "RefUUID": "cc63e3bd-adc2-5e8f-827f-cd85895b7740",
+    "InvoiceUUID": "f7ac01d0-ac15-5b56-a77b-ec4e718ced7d",
+    "SourceSystem": "AInvoicer-SIM",
+    "SourceModule": "FI",
+    "ReferenceRole": "ACCOUNTING_DOC",
+    "SourceDocNo": "SIM-FI-AR-2026-001",
+    "SourceFiscalYear": "2026",
+    "SourceItemNo": "000010"
+  },
+  {
+    "RefUUID": "33f5f742-5486-5ee4-9194-842277c84df5",
+    "InvoiceUUID": "4ad9fdd1-99e9-55e2-9da3-233e8f148dbc",
+    "SourceSystem": "AInvoicer-SIM",
+    "SourceModule": "MM",
+    "ReferenceRole": "PURCHASE_ORDER",
+    "SourceDocNo": "SIM-MM-PO-2026-001",
+    "SourceFiscalYear": "2026",
+    "SourceItemNo": "000010"
+  },
+  {
+    "RefUUID": "db2edf35-ac21-5c77-8b1c-ef8b73ebb677",
+    "InvoiceUUID": "4ad9fdd1-99e9-55e2-9da3-233e8f148dbc",
+    "SourceSystem": "AInvoicer-SIM",
+    "SourceModule": "MM",
+    "ReferenceRole": "GOODS_RECEIPT",
+    "SourceDocNo": "SIM-MM-GR-2026-001",
+    "SourceFiscalYear": "2026",
+    "SourceItemNo": "000010"
+  },
+  {
+    "RefUUID": "493eeb3c-0b96-5acc-8e46-a9a61a37b79d",
+    "InvoiceUUID": "55ac244b-67e8-596f-a22f-7f20c57197cb",
+    "SourceSystem": "AInvoicer-SIM",
+    "SourceModule": "SD",
+    "ReferenceRole": "SALES_ORDER",
+    "SourceDocNo": "SIM-SD-SO-2026-001",
+    "SourceFiscalYear": "2026",
+    "SourceItemNo": "000010"
+  },
+  {
+    "RefUUID": "9d4a0f3b-b1e7-52ce-a81b-07b5d359207e",
+    "InvoiceUUID": "55ac244b-67e8-596f-a22f-7f20c57197cb",
+    "SourceSystem": "AInvoicer-SIM",
+    "SourceModule": "SD",
+    "ReferenceRole": "DELIVERY",
+    "SourceDocNo": "SIM-SD-DL-2026-001",
+    "SourceFiscalYear": "2026",
+    "SourceItemNo": "000010"
+  },
+  {
+    "RefUUID": "f9eb1168-df7d-5acb-9ad0-f2d120c15a91",
+    "InvoiceUUID": "b64e07e0-960d-5b7d-a685-10d32807bc70",
+    "SourceSystem": "AInvoicer-SIM",
+    "SourceModule": "FI",
+    "ReferenceRole": "ACCOUNTING_DOC",
+    "SourceDocNo": "DEMO-FI-AR-2026-002",
+    "SourceFiscalYear": "2026",
+    "SourceItemNo": "000010"
+  },
+  {
+    "RefUUID": "def2b80f-1e42-5f6f-93bb-0236c70cde21",
+    "InvoiceUUID": "efc41e89-0d21-529f-a27d-5e1ba87ba129",
+    "SourceSystem": "AInvoicer-SIM",
+    "SourceModule": "SD",
+    "ReferenceRole": "SALES_ORDER",
+    "SourceDocNo": "DEMO-SD-SO-2026-002",
+    "SourceFiscalYear": "2026",
+    "SourceItemNo": "000010"
+  },
+  {
+    "RefUUID": "91b0a9fd-44b9-5e74-97c2-16e4091ea480",
+    "InvoiceUUID": "66b11c97-9cea-5e91-9655-3ef8da9f3fcf",
+    "SourceSystem": "AInvoicer-SIM",
+    "SourceModule": "FI",
+    "ReferenceRole": "ACCOUNTING_DOC",
+    "SourceDocNo": "DEMO-FI-AR-2026-003",
+    "SourceFiscalYear": "2026",
+    "SourceItemNo": "000010"
+  },
+  {
+    "RefUUID": "f686308f-70d3-542b-82b3-234d82148f1e",
+    "InvoiceUUID": "aba1ef32-7d38-5976-b510-a75aeb5616b8",
+    "SourceSystem": "AInvoicer-SIM",
+    "SourceModule": "MM",
+    "ReferenceRole": "PURCHASE_ORDER",
+    "SourceDocNo": "DEMO-MM-PO-2026-002",
+    "SourceFiscalYear": "2026",
+    "SourceItemNo": "000010"
+  }
+]

@@ -63,17 +63,46 @@ sap.ui.define([
             return iB - iA;
         },
 
+        /** @returns {object[]} wszystkie próby SEND_INVOICE (najnowsze pierwsze) — nie tylko najnowsza operacja */
+        sendOperations: function (aOperations) {
+            return (aOperations || []).filter(function (oOperation) {
+                return oOperation && oOperation.operationType === KsefContract.OperationType.SEND_INVOICE;
+            }).sort(KsefInvoiceMapper.compareOperationsDesc);
+        },
+
         /**
-         * Wylicza status KSeF prezentowany w tabeli.
-         * Priorytet: najnowsza operacja CAP → numer KSeF zapisany w SAP → brak operacji.
+         * Próba SEND rozstrzygająca o stanie integracji: ACCEPTED > RECONCILIATION_REQUIRED > w toku/nieznana
+         * > najnowsza (np. REJECTED). Późniejsza operacja innego typu (CHECK_STATUS) niczego nie ukrywa.
+         */
+        decisiveSend: function (aSendOperations) {
+            var aOps = aSendOperations || [];
+            function first(fnTest) {
+                return aOps.filter(fnTest)[0] || null;
+            }
+            return first(function (o) { return o.status === "ACCEPTED"; })
+                || first(function (o) { return o.status === "RECONCILIATION_REQUIRED"; })
+                || first(function (o) { return !KsefContract.isTerminalStatus(o.status); })
+                || aOps[0] || null;
+        },
+
+        /**
+         * Status prezentowany w tabeli (ADR-0005). Priorytet: (1) numer KSeF w RAP — wynik biznesowy;
+         * (2) CAP ACCEPTED bez numeru w RAP — synchronizacja z SAP; (3–5) stan próby SEND w CAP;
+         * (6) brak potwierdzenia. Stan CAP nigdy nie nadpisuje potwierdzonego wyniku RAP.
+         * @param {object} oHeader nagłówek RAP
+         * @param {object[]} aOperations operacje CAP faktury (dowolne typy)
          * @returns {{status: string, source: string}}
          */
-        deriveKsefStatus: function (oHeader, oLatestOperation) {
-            if (oLatestOperation && oLatestOperation.status) {
-                return { status: oLatestOperation.status, source: KsefContract.Source.CAP };
-            }
+        deriveKsefStatus: function (oHeader, aOperations) {
             if (oHeader && oHeader.KsefNumber) {
                 return { status: KsefContract.DerivedStatus.RECORDED_IN_SAP, source: KsefContract.Source.RAP };
+            }
+            var oSend = KsefInvoiceMapper.decisiveSend(KsefInvoiceMapper.sendOperations(aOperations));
+            if (oSend && oSend.status === "ACCEPTED") {
+                return { status: KsefContract.DerivedStatus.ACCEPTED_SAP_SYNC, source: KsefContract.Source.CAP };
+            }
+            if (oSend && oSend.status) {
+                return { status: oSend.status, source: KsefContract.Source.CAP };
             }
             return { status: KsefContract.DerivedStatus.NO_OPERATION, source: KsefContract.Source.UI };
         },
@@ -83,13 +112,16 @@ sap.ui.define([
          * @param {object[]} aOperations operacje CAP tej faktury, posortowane malejąco
          * @returns {object} wiersz modelu widoku kokpitu
          */
-        toInvoiceRow: function (oHeader, aOperations) {
+        toInvoiceRow: function (oHeader, aOperations, bIntegrationAvailable) {
             var aOps = (aOperations || []).slice().sort(KsefInvoiceMapper.compareOperationsDesc);
             var oLatest = aOps[0] || null;
-            var oStatus = KsefInvoiceMapper.deriveKsefStatus(oHeader, oLatest);
-            // SAP jest źródłem prawdy numeru KSeF po writeback; operacja CAP może go znać wcześniej.
-            var sKsefNumber = oHeader.KsefNumber || (oLatest && oLatest.ksefNumber) || "";
-            var sEnvironment = oHeader.KsefEnvironment || (oLatest && oLatest.environment) || "";
+            var aSendOps = KsefInvoiceMapper.sendOperations(aOps);
+            var oSend = KsefInvoiceMapper.decisiveSend(aSendOps);
+            var oStatus = KsefInvoiceMapper.deriveKsefStatus(oHeader, aOps);
+            // SAP jest źródłem prawdy numeru KSeF po writeback; potwierdzona próba CAP może go znać wcześniej.
+            var oAccepted = oSend && oSend.status === "ACCEPTED" ? oSend : null;
+            var sKsefNumber = oHeader.KsefNumber || (oAccepted && oAccepted.ksefNumber) || "";
+            var sEnvironment = oHeader.KsefEnvironment || (oSend && oSend.environment) || "";
 
             return {
                 // --- RAP: ZC_AINV_INV_H ---
@@ -135,7 +167,12 @@ sap.ui.define([
                 KsefEnvironment: sEnvironment,
                 OperationReference: (oLatest && oLatest.referenceNumber) || "",
                 LatestOperation: oLatest,
+                SendOperation: oSend,
+                SendOperations: aSendOps,
+                WritebackState: (oSend && oSend.writebackState) || "",
                 OperationCount: aOps.length,
+                // false = CAP niedostępny: stan integracji nieznany, więc Send musi być zablokowany.
+                IntegrationAvailable: bIntegrationAvailable !== false,
 
                 // --- UI ---
                 LastUpdate: latestTimestamp([
@@ -151,11 +188,11 @@ sap.ui.define([
          * Łączy listę nagłówków RAP z operacjami CAP.
          * @returns {object[]} wiersze modelu widoku
          */
-        toInvoiceRows: function (aHeaders, aOperations) {
+        toInvoiceRows: function (aHeaders, aOperations, bIntegrationAvailable) {
             var mOperations = KsefInvoiceMapper.groupOperationsByInvoice(aOperations);
             return (aHeaders || []).map(function (oHeader) {
                 var sKey = String(oHeader.InvoiceUUID || "").toLowerCase();
-                return KsefInvoiceMapper.toInvoiceRow(oHeader, mOperations[sKey] || []);
+                return KsefInvoiceMapper.toInvoiceRow(oHeader, mOperations[sKey] || [], bIntegrationAvailable);
             });
         }
     };

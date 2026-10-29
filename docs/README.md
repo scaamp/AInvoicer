@@ -12,6 +12,8 @@ AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijan
 
 ## Od czego zacząć
 
+- [CAP-05 — audyt implementacji Claude Code, poprawki i macierz akceptacji](audits/2026-10-29-cap-05-implementation-review.md).
+- [Dziennik CAP-05](journal/2026-10-29-cap-05-integration-review.md) · [ADR-0005](decisions/ADR-0005-rap-business-status-cap-integration-status.md) · [RAP UI: patch i blokery ADT/IAM](patches/cap05-rap-ui/README.md).
 - [Agent A — oficjalny SDK KSeF i auth TEST w CAP](journal/2026-10-29-agent-a-ksef-sdk.md).
 - [Integracja KSeF Java SDK](guides/KSEF_JAVA_SDK_INTEGRATION.md) i [runbook TEST](guides/KSEF_TEST_RUNBOOK.md).
 - [ADR-0004 — SDK MF, checkpointy i rekoncyliacja](decisions/ADR-0004-ksef-test-sdk-workflow.md).
@@ -53,7 +55,8 @@ Ten spis jest indeksem dzienników i decyzji. Przy dodaniu nowego wpisu dodaj tu
 ## Docelowa architektura
 
 ```text
-SAPUI5 / Fiori ── OData V4 ──► CAP Java + Spring Boot (jedna JVM)
+SAPUI5 / Fiori ── OData V4 ──► RAP UI (lista, szczegóły, wynik biznesowy; BLOCKED)
+        └─────── OData V4 ──► CAP Java + Spring Boot (akcje/monitoring, jedna JVM)
                                ├── CDS / Event Handlers / proces KSeF
                                ├── H2 lokalnie → SAP HANA Cloud docelowo
                                ├── Remote Service / Destination / OAuth2

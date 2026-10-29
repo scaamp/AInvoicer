@@ -15,6 +15,15 @@
         close=".onKsefErrorClose"
         class="sapUiTinyMarginBottom"
     />
+    <!-- Tryb rap: dane SAP widoczne, ale stan integracji CAP nieznany — Send zablokowany regułą. -->
+    <MessageStrip
+        id="ksefIntegrationStrip"
+        type="Warning"
+        showIcon="true"
+        text="{ksefView>/integrationError}"
+        visible="{= !${ksefView>/legacyMode} &amp;&amp; !!${ksefView>/integrationError} }"
+        class="sapUiTinyMarginBottom"
+    />
     <table:Table
         id="ksefInvoiceTable"
         visible="{= !${ksefView>/legacyMode} }"
@@ -22,6 +31,7 @@
         selectionMode="Single"
         selectionBehavior="RowSelector"
         rowSelectionChange=".onKsefRowSelectionChange"
+        sort=".onKsefSort"
         busy="{ksefView>/busy}"
         busyIndicatorDelay="0"
         enableBusyIndicator="true"
@@ -40,6 +50,20 @@
                     text="{ parts: ['i18n>ksefTableTitle', 'ksefView>/rowCount'], formatter: '.formatMessage' }"
                 />
                 <ToolbarSpacer />
+                <Button
+                    id="ksefPreviousPageButton"
+                    text="{i18n>ksefPreviousPage}"
+                    press=".onKsefPreviousPage"
+                    visible="{= ${ksefView>/mode} === 'rap' }"
+                    enabled="{= ${ksefView>/hasPrevious} &amp;&amp; !${ksefView>/busy} }"
+                />
+                <Button
+                    id="ksefLoadMoreButton"
+                    text="{i18n>ksefLoadMore}"
+                    icon="sap-icon://drill-down"
+                    visible="{ksefView>/hasMore}"
+                    press=".onKsefLoadMore"
+                />
                 <Button
                     id="ksefRefreshButton"
                     text="{i18n>ksefActionRefresh}"

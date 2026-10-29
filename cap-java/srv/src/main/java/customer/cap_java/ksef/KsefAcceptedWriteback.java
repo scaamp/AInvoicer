@@ -21,6 +21,7 @@ import org.springframework.stereotype.Component;
 
 import com.sap.cds.ql.Insert;
 import com.sap.cds.ql.Select;
+import com.sap.cds.ql.Update;
 import com.sap.cds.services.persistence.PersistenceService;
 import com.sap.cds.services.request.RequestContext;
 import com.sap.cds.services.runtime.CdsRuntime;
@@ -90,7 +91,14 @@ public class KsefAcceptedWriteback {
                 if (tx(() -> writeExists(operationId))) {
                     return Outcome.QUEUED;
                 }
-                tx(() -> recordOnce(operationId, CODE_FAILED + safeCode(failure)));
+                tx(() -> {
+                    recordOnce(operationId, CODE_FAILED + safeCode(failure));
+                    // Rotacja partii: trwale wadliwe pierwsze zlecenia nie mogą zagłodzić kolejnych.
+                    // Zmieniamy wyłącznie czas technicznego sprawdzenia, nigdy dowód ACCEPTED.
+                    db.run(Update.entity(KsefSubmissionWorker.OPERATIONS).byId(operationId.toString())
+                            .data("modifiedAt", clock.instant()));
+                    return null;
+                });
             } catch (RuntimeException unavailable) {
                 // DB niedostępna: sweeper ponowi; w logu tylko kod, bez treści wyjątku.
                 LOG.warn("SAP_WRITEBACK_REQUEST_NOT_RECORDED");

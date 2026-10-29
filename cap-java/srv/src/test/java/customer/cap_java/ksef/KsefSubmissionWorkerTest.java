@@ -102,6 +102,24 @@ class KsefSubmissionWorkerTest {
         verify(session, times(1)).close(eq("session-ref"), any());
     }
 
+    @Test void outboundKeepsBusinessResultInRapAndIntegrationProofInOperation() {
+        String invoiceId = UUID.randomUUID().toString();
+        worker.tx(() -> {
+            var operation = db.run(Select.from(KsefSubmissionWorker.OPERATIONS).byId(id.toString())).single();
+            db.run(Insert.into(KsefSubmissionWorker.INVOICES).entry(Map.of("ID", invoiceId,
+                    "taxpayerNip", "1234563218", "companyCode", "1000", "direction", "OUTBOUND",
+                    "sapDocumentRef", operation.get("sapDocumentRef"), "businessStatus", "UNCONFIRMED")));
+            db.run(Update.entity(KsefSubmissionWorker.OPERATIONS).byId(id.toString()).data("invoice_ID", invoiceId));
+            return null;
+        });
+        enqueue(); worker.process(id);
+        var invoice = db.run(Select.from(KsefSubmissionWorker.INVOICES).byId(invoiceId)).single();
+        assertEquals("UNCONFIRMED", invoice.get("businessStatus"));
+        assertNull(invoice.get("ksefNumber"), "no second OUTBOUND business source of truth");
+        assertNotNull(invoice.get("upoStorageRef"));
+        assertEquals("ACCEPTED", db.run(Select.from(KsefSubmissionWorker.OPERATIONS).byId(id.toString())).single().get("status"));
+    }
+
     @Test void sendTimeoutIsReconciledByHashWithoutAnotherSend() {
         enqueue();
         when(session.send(anyString(), any(), any(), any())).thenThrow(new KsefFailure("KSEF_SEND_IO", true, false, null));
@@ -189,12 +207,44 @@ class KsefSubmissionWorkerTest {
         assertNotEquals("ACCEPTED", db.run(Select.from(KsefSubmissionWorker.OPERATIONS).byId(id.toString())).single().get("status"));
     }
 
-    @Test void duplicate440IsRejectedAndClosedOnce() {
+    @Test void acceptanceFromAnotherTaxpayerNeverCreatesAcceptedCheckpoint() {
+        enqueue();
+        var foreign = status(200, hash);
+        foreign.setKsefNumber("9876543210-20261029-ABCDEF012345-AB");
+        when(session.status(anyString(), anyString(), any())).thenReturn(foreign);
+        worker.process(id);
+        assertEquals("RECONCILIATION_REQUIRED", worker.status(id).get("state"));
+        assertNull(db.run(Select.from(KsefSubmissionWorker.OPERATIONS).byId(id.toString())).single().get("ksefNumber"));
+    }
+
+    @Test void unknownBusinessErrorCannotEnableRejectionRetry() {
+        enqueue();
+        when(session.status(anyString(), anyString(), any())).thenReturn(status(500, hash));
+        worker.process(id);
+        assertEquals("RECONCILIATION_REQUIRED", worker.status(id).get("state"));
+        verify(session, never()).close(anyString(), any());
+    }
+
+    @Test void reconciliationRefusesMismatchedHashAfterUncertainClose() {
+        enqueue();
+        doThrow(new KsefFailure("KSEF_CLOSE_IO", true, false, null)).when(session).close(anyString(), any());
+        worker.process(id);
+        when(session.findByHash(anyString(), anyString(), any())).thenReturn(status(200, "f".repeat(64)));
+        assertThrows(KsefFailure.class, () -> worker.reconcile(id));
+        assertEquals("RECONCILIATION_REQUIRED", worker.status(id).get("state"));
+        assertEquals("ACCEPTED", db.run(Select.from(KsefSubmissionWorker.OPERATIONS).byId(id.toString())).single().get("status"));
+        verify(session, never()).upo(anyString(), anyString(), any());
+    }
+
+    @Test void duplicate440RequiresReconciliationAndCannotBeResent() {
         enqueue();
         when(session.status(anyString(), anyString(), any())).thenReturn(status(440, hash));
         worker.process(id);
-        assertEquals("REJECTED", worker.status(id).get("state"));
-        verify(session, times(1)).close(anyString(), any());
+        assertEquals("RECONCILIATION_REQUIRED", worker.status(id).get("state"));
+        assertEquals("RECONCILIATION_REQUIRED", db.run(Select.from(KsefSubmissionWorker.OPERATIONS).byId(id.toString())).single().get("status"));
+        worker.process(id);
+        verify(session, times(1)).send(anyString(), any(), any(), any());
+        verify(session, never()).close(anyString(), any());
         verify(session, never()).upo(anyString(), anyString(), any());
     }
 

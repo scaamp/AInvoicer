@@ -8,6 +8,18 @@ tags: [ainvoicer, ksef, cap-java, java, sdk]
 
 # KSeF Java SDK w CAP
 
+**CAP-05 (2026-10-29):** [ADR-0005](../decisions/ADR-0005-rap-business-status-cap-integration-status.md) zastępuje wcześniejszy brak automatycznego writebacku. `requestSend(invoiceUUID)` pobiera RAP i sprawdza NIP/CompanyCode, rezerwuje `(InvoiceUUID, TEST)` w DB i atomowo zapisuje operację, dokładne bajty FA(3), snapshot `SAP_RAP`, zlecenie i outbox. Publiczny CREATE SEND_INVOICE jest zablokowany. [Audyt i wyniki](../audits/2026-10-29-cap-05-implementation-review.md).
+
+`KsefAcceptedWriteback` działa dopiero po commit ACCEPTED, w nowym ChangeSet; zlecenie i SapResultOutbox powstają razem. Błąd enqueue nie cofa przyjęcia ani UPO. Sweeper przy starcie i okresowo odtwarza brakujące zlecenia (stabilny ID operacji/WriteRequestId), z rotacją niepoprawnych rekordów, aby nie blokowały kolejnych partii. Fixture `UNVERIFIED` nie trafia do SAP.
+
+| Domena | Stan i źródło |
+| --- | --- |
+| Biznesowy wynik SAP | RAP: KsefNumber/Environment/RecordedAt/WriteRequestId; InvoiceStatus niezależny |
+| Integracja | CAP KsefOperations + KsefSubmissions; ACCEPTED zachowuje dowód przy problemie SAP/close/UPO |
+| SAP writeback | SapResultWrites: PENDING/PROCESSING/SUCCEEDED/RETRY_EXHAUSTED/RECONCILIATION_REQUIRED |
+
+Worker sprawdza numer KSeF (format i NIP), hash i referencję również przy recovery. Kod faktury **440** i nieznane statusy (np. 500) oznaczają rekoncyliację; nie są podstawą retry SEND. Kontrakt kodów potwierdzono w [wdrożonym TEST OpenAPI](https://api-test.ksef.mf.gov.pl/docs/v2/openapi.json). VERSION_CONFLICT nie pozwala na automatyczne pominięcie CAS ani zmianę oczekiwanej wersji; wewnętrzne `SapKsefResultWriteRecovery.diagnose` wykonuje tylko odczyt. Transport H01 WRITE nadal OFF; ta sesja nie wykonała SEND KSeF ani HTTP WRITE SAP.
+
 [Runbook TEST](KSEF_TEST_RUNBOOK.md) · [Dziennik Agenta A](../journal/2026-10-29-agent-a-ksef-sdk.md)
 · [ADR-0004](../decisions/ADR-0004-ksef-test-sdk-workflow.md)
 
@@ -123,8 +135,7 @@ Zmiana schematu istniejącej bazy wymaga migracji, nie automatycznego odtwarzani
 Domyślny profil development nadal używa H2 in-memory.
 
 API Java enqueue jest wewnętrzne, przeznaczone dla zaufanego producenta po walidacji
-FA(3). Generator Agenta B pozostaje właścicielem mapowania i XSD. Nie dodano
-publicznego endpointu auth/send ani automatycznego SAP writeback. H01 WRITE pozostaje OFF.
+FA(3). Generator Agenta B pozostaje właścicielem mapowania i XSD. Nie ma publicznego endpointu auth/JWT. CAP-05 dodaje akcję zlecenia requestSend i automatyczne wewnętrzne zlecenie writebacku po commit ACCEPTED; transport H01 WRITE pozostaje OFF. OUTBOUND nie aktualizuje KsefInvoices.businessStatus — dowód integracji jest w KsefOperations, wynik biznesowy w RAP.
 
 ## Integracja Agenta B
 

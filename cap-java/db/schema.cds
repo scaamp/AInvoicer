@@ -9,6 +9,8 @@ type KsefDirection : String enum {
 
 entity KsefInvoices : cuid, managed {
   taxpayerNip    : String(10) not null;
+  // Brak zakresu w historycznym rekordzie oznacza brak publicznego dostępu (fail closed).
+  companyCode    : String(4);
   direction      : KsefDirection not null;
   sapDocumentRef : String(120);
   invoiceNumber  : String(100);
@@ -62,6 +64,7 @@ entity KsefSendReservations : managed {
 entity KsefOperations : cuid, managed {
   sapDocumentRef  : String(120);
   taxpayerNip     : String(10) not null;
+  companyCode     : String(4);
   direction       : KsefDirection not null;
   environment     : String(4) not null default 'TEST';
   operationType   : String(40) not null;

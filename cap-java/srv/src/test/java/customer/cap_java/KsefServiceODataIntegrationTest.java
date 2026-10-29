@@ -276,6 +276,7 @@ class KsefServiceODataIntegrationTest {
 		Map<String, Object> invoice = new HashMap<>();
 		invoice.put("ID", UUID.fromString(id));
 		invoice.put("taxpayerNip", nip);
+		invoice.put("companyCode", NIP_A.equals(nip) ? "1000" : "2000");
 		invoice.put("direction", "OUTBOUND");
 		invoice.put("sapDocumentRef", "SAP-" + invoiceNumber);
 		invoice.put("invoiceNumber", invoiceNumber);
@@ -293,6 +294,7 @@ class KsefServiceODataIntegrationTest {
 		KsefOperations operation = KsefOperations.create();
 		operation.setId(id);
 		operation.setTaxpayerNip(nip);
+		operation.setCompanyCode(NIP_A.equals(nip) ? "1000" : "2000");
 		operation.setDirection("OUTBOUND");
 		operation.setOperationType("SEND_INVOICE");
 		operation.setIdempotencyKey(UUID.randomUUID().toString());
@@ -334,6 +336,7 @@ class KsefServiceODataIntegrationTest {
 	private Map<String, Object> operation(String nip, String operationType) {
 		Map<String, Object> operation = new HashMap<>();
 		operation.put("taxpayerNip", nip);
+		operation.put("companyCode", NIP_A.equals(nip) ? "1000" : "2000");
 		operation.put("direction", "OUTBOUND");
 		operation.put("operationType", operationType);
 		operation.put("idempotencyKey", UUID.randomUUID().toString());

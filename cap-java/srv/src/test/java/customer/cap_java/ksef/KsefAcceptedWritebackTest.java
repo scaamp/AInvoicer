@@ -115,6 +115,30 @@ class KsefAcceptedWritebackTest {
         verifyNoInteractions(session, authentication, adapter);
     }
 
+    @Test void invalidFirstBatchCannotStarveLaterAcceptedOperation() {
+        var poison = new java.util.ArrayList<UUID>();
+        try {
+            for (int i = 0; i < 52; i++) {
+                id = UUID.randomUUID(); invoice = UUID.randomUUID();
+                ksefNumber = "1234563218-20261029-" + id.toString().replace("-", "").substring(0, 12).toUpperCase() + "-AB";
+                seedAcceptedWithoutWrite("SAP_RAP");
+                var changes = new LinkedHashMap<String, Object>();
+                changes.put("modifiedAt", Instant.now().minusSeconds(2000 - i));
+                if (i < 51) { changes.put("confirmedXmlSha256", "f".repeat(64)); poison.add(id); }
+                UUID current = id;
+                worker.tx(() -> db.run(com.sap.cds.ql.Update.entity(KsefSubmissionWorker.OPERATIONS)
+                        .byId(current.toString()).data(changes)));
+            }
+            assertEquals(0, accepted.sweep(), "first 50 invalid records cannot be enqueued");
+            assertEquals(1, accepted.sweep(), "the valid record beyond the first batch is reached");
+            assertEquals("PENDING", write().orElseThrow().get("state"));
+        } finally {
+            // Usuwamy tylko własne syntetyczne operacje z testowej H2, aby nie zatruwać innych testów.
+            worker.tx(() -> db.run(com.sap.cds.ql.Delete.from(KsefSubmissionWorker.OPERATIONS)
+                    .where(o -> o.get("ID").in(poison.stream().map(UUID::toString).toList()))));
+        }
+    }
+
     @Test void enqueueFailureKeepsAcceptanceAndUpoAndSweeperRepairsLater() {
         prepare("SAP_RAP");
         doThrow(new IllegalStateException("db connection reset")).when(writeback).enqueue(id);
