@@ -37,6 +37,7 @@ class KsefSubmissionWorkerTest {
     @MockitoBean KsefAuthentication authentication;
     @MockitoBean KsefOnlineSession session;
     @MockitoBean KsefDocumentStore documents;
+    @MockitoBean KsefFa3Documents fa3;
     private UUID id;
     private UUID snapshotId;
     private byte[] xml;

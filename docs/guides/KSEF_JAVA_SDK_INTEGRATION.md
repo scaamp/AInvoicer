@@ -2,7 +2,7 @@
 title: "KSeF Java SDK — integracja z CAP"
 date: 2026-10-29
 type: guide
-status: w-trakcie
+status: aktywny
 tags: [ainvoicer, ksef, cap-java, java, sdk]
 ---
 
@@ -43,6 +43,8 @@ i ustawia tag dla mechanizmu wersjonowania Gradle MF.
 | `KsefOnlineSession` | SDK: FA(3), szyfrowanie, open/send/status/close/UPO, odczytowa rekoncyliacja po hashu |
 | `KsefFailure` | Bezpieczny kod i klasyfikacja: niejednoznaczny efekt, retryable odczyt, Retry-After; bez cause/body SDK |
 | `KsefSubmissionWorker` | Atomowe enqueue, persistent outbox, claim, checkpointy, historia, potwierdzenie ACCEPTED, UPO |
+| `KsefFa3Documents` | Generator B + XSD i ponowna kontrola 12 oryginalnych dużych limitów maxOccurs; walidacja przed enqueue i HTTP |
+| `KsefInvoicePreparation` | Zaufany producent: snapshot SAP + PartyData → dokładne bajty B → snapshot CAP → zlecenie/outbox |
 | `KsefDocumentStore` | Kontrakt magazynu dokładnych bajtów XML/UPO |
 | `LocalTestDocumentStore` | Jawny lokalny katalog eksperymentu, nazwy SHA-256, atomowy zapis i kontrola integralności; odmowa na CF |
 
@@ -123,6 +125,32 @@ Domyślny profil development nadal używa H2 in-memory.
 API Java enqueue jest wewnętrzne, przeznaczone dla zaufanego producenta po walidacji
 FA(3). Generator Agenta B pozostaje właścicielem mapowania i XSD. Nie dodano
 publicznego endpointu auth/send ani automatycznego SAP writeback. H01 WRITE pozostaje OFF.
+
+## Integracja Agenta B
+
+Commit B `7075c01` włączono przez cherry-pick jako `657c285`; kod, testy i zasoby
+`ksef/fa3` pozostawiono bez zmian. `KsefInvoicePreparation.enqueue(operationId, sap,
+partyData)` łączy mapper/generator B z snapshotem i outboxem. Wywołujący pobiera
+autoryzowaną migawkę przez istniejący Remote Adapter przed transakcją, a następnie
+w ChangeSet wywołuje producenta. Ten kod nie pobiera SAP ani nie wykonuje KSeF HTTP.
+
+`PartyData` wymaga rzeczywistych adresów i świadomych flag JST/GV. Mapper nie zastępuje
+daty dostawy przez PostingDate. Błędy NIP/sum i brak danych zatrzymują przygotowanie.
+NIP-y istniejącego seeda H01 mają błędne sumy kontrolne według walidatora B; nie
+zmieniano ich ani nie zgadywano danych stron w tej sesji.
+
+Walidator B kompiluje schemat po rozluźnieniu 12 dużych maxOccurs w pamięci
+(obejście JDK/Xerces). Granica wysyłki `KsefFa3Documents` przywraca wszystkie te
+oryginalne limity strumieniowym licznikiem elementów na rodzica, bez zmiany plików B.
+Test porównuje kontrolę każdego limitu z oryginalnym zasobem XSD. Dokument B został
+też niezależnie zwalidowany pełnym, nierozluźnionym XSD w lxml. Worker po odczycie
+z magazynu ponownie waliduje te same bajty przed HTTP.
+
+Test A+B: prawdziwy generator/XSD, CAP/H2, snapshot i worker, mock transportu;
+bajty z generatora, storage i argument send są identyczne. Odrębny test HTTP SDK
+potwierdza AES/SHA-256 i odtworzenie dokładnych bajtów po odszyfrowaniu.
+LIVE faktura powstała wcześniej z oficjalnego fixture. Nie wysyłano drugiej faktury
+z generatora B; jego przyjęcie LIVE pozostaje niepotwierdzone.
 
 ## Dowody
 

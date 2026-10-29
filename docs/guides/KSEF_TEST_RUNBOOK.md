@@ -2,7 +2,7 @@
 title: "KSeF TEST — odtworzenie auth i wysyłki CAP"
 date: 2026-10-29
 type: guide
-status: w-trakcie
+status: aktywny
 tags: [ainvoicer, ksef, cap-java, test, runbook]
 ---
 

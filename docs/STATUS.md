@@ -31,8 +31,10 @@ auth token/XAdES, sesje FA(3), worker/outbox, checkpointy i rekoncyliacja.
 **LIVE auth TEST PASS:** challenge, XAdES, biznesowe 200, redeem, autoryzowany READ
 i refresh. **LIVE E2E PASS** na oficjalnym syntetycznym fixture: jedna faktura
 `1234563218-20261029-7DC8A1C00000-CD`, COMPLETED, UPO 5528 bajtów i RESUME po restarcie.
-Pełny clean verify początkowo **106/106 PASS** H2/mock; końcowy build w toku.
-Integracja commitu Agenta B oczekuje; bez LIVE H01 READ/WRITE w tym teście. [Dowody](journal/2026-10-29-agent-a-ksef-sdk.md),
+Pełny clean verify A+B **141/141 PASS**, 0 błędów (18:03 Europe/Warsaw), H2/mock.
+Commit B `7075c01` zintegrowano jako `657c285`; producent łączy generator/snapshot/outbox,
+a granica wysyłki przywraca 12 oryginalnych dużych limitów XSD. Bez LIVE H01
+READ/WRITE i bez drugiej wysyłki z B. [Dowody](journal/2026-10-29-agent-a-ksef-sdk.md),
 [runbook](guides/KSEF_TEST_RUNBOOK.md).
 
 SAPUI5 → OData V4 → CAP Java + Spring Boot → Java SDK KSeF w jednej JVM. SAP przez Remote OData/Destination jest źródłem danych finansowych; CAP przechowuje proces KSeF. H2 lokalnie, SAP HANA Cloud i SAP BTP Cloud Foundry docelowo. Szczegóły: [ADR-0001](decisions/ADR-0001-cap-java-ksef-architecture.md).
@@ -71,15 +73,17 @@ SAPUI5 → OData V4 → CAP Java + Spring Boot → Java SDK KSeF w jednej JVM. S
 - **CAP na Cloud Foundry + bound Destination Service — NOT TESTED.** Lokalna env Destination nie stanowi dowodu dla Destination Service na CF.
 - **CAP → RAP action — IMPLEMENTED, transport OFF / LIVE WRITE NOT TESTED.** Write Adapter i worker CAP-04C wywołują wyłącznie `ApplyKsefResult`. Standardowy PATCH nie jest używany. Rzeczywisty HTTP WRITE pozostaje w CAP-04D.
 - **KSeF Java SDK i E2E KSeF w CAP — LIVE TEST PASS na `feature/ksef-auth` (2026-10-29).** SDK 3.0.29, auth/JWT/refresh, jedna syntetyczna faktura z oficjalnego fixture, numer i UPO. Źródło SAP zastąpiono lokalną syntetyczną migawką; nie potwierdza pełnego H01 → KSeF ani generatora B.
-- **FA(3) XML — IMPLEMENTED + TESTED lokalnie (Agent B):** generator, walidacja XSD/domenowa i kontrakt snapshotu; zakres: VAT, PLN, 23/8/5%. Walidator nie egzekwuje górnych `maxOccurs ≥ 1000` (ograniczenie Xerces JDK, opisane w przewodniku). Przyjęcie przez KSeF niezweryfikowane.
+- **FA(3) XML — IMPLEMENTED + TESTED lokalnie (A+B):** generator, walidacja XSD/domenowa, snapshot/outbox; VAT, PLN, 23/8/5%. Walidator B rozluźnia duże maxOccurs, ale bramka wysyłki A przywraca wszystkie 12 oryginalnych limitów. Niezależna walidacja pełnym XSD/lxml PASS. Przyjęcie XML z generatora B przez KSeF niezweryfikowane.
 - Model CAP zaimportowano z rzeczywistego EDMX H01 2026-10-28 z oryginalnym namespace i ochroną `internal-user`. Regresja CAP LIVE READ po imporcie PASS.
 - **DCL / EML — raport historyczny 2026-10-26:** 6 DCL aktywnych, `ZCL_AINV_RAP_COMP_TEST` 4/4 ABAP Unit PASS, ATC trzech nowych DCL: 0 ustaleń. Tego historycznego zestawu nie powtarzano. Nowsze testy autoryzacji zapisu opisuje CAP-04B; jego źródła są wyeksportowane w `525e48d`. Root DCL `where TRUE` nadal nie zapewnia izolacji odczytu.
 - CAP-04B wdrożył global + instance authorization i prechecks zapisu; testy EML odmów PASS z kontrolowaną polityką. Nowe prawo `Z_AINV_KSF` bez nadania; dotychczasowi konsumenci zapisujący potrzebują 01/02/06 i zakresu, akcja wyłącznie 16. DCL root `where TRUE` nie zapewnia izolacji odczytu per NIP; nie zmieniano go.
 - Pełne dwa równoległe zapisy akcji, persisted no-op/ETag oraz uprawnienia rzeczywistego communication user pozostają niezweryfikowane. Nie wykonano HTTP WRITE; te testy wymagają osobnego zlecenia CAP-04D.
-- SDK i producent ACCEPTED działają na `feature/ksef-auth`; integracja generatora B oraz pełnego źródła SAP nadal oczekuje. Publiczne CREATE wymusza NEW. Domyślna H2 jest in-memory; E2E używa odrębnej plikowej H2. Przed CF wymagany zarządzany storage i trwała baza. Kontrolowane retry/reconciliation są API Java, bez publicznego endpointu. HANA i wiele instancji CF pozostają niezweryfikowane.
+- SDK, producent ACCEPTED i generator B są zintegrowane na `feature/ksef-auth`; pełne źródło LIVE SAP nadal oczekuje. Publiczne CREATE wymusza NEW. Domyślna H2 jest in-memory; E2E używa odrębnej plikowej H2. Przed CF wymagany zarządzany storage i trwała baza. Kontrolowane retry/reconciliation są API Java, bez publicznego endpointu. HANA i wiele instancji CF pozostają niezweryfikowane.
 - Historyczne błędy URL, IAS redirect, `@requires`, OData `in`, profilu YAML, `ACM_UNEXPECTED_VALUE` i MCP `Unsupported Media Type` pozostają w dziennikach jako wcześniejsze problemy; nowsze wyniki rozwiązują je tylko w opisanym zakresie.
 
 ## Blockers
+
+- Pełny LIVE H01 → generator B → KSeF: NIP-y seeda mają błędne sumy kontrolne, RAP nie dostarcza pełnego PartyData (adresy/JST/GV), a w procesie tej sesji brak Destination. Własny E2E CAP/SDK ma LIVE PASS na oficjalnym fixture. Nie zmieniano danych H01 ani nie wysyłano drugiej faktury.
 
 - Przed uruchomieniem zapisu komunikacyjnego: jawny zakres NIP/CompanyCode, nadanie ACTVT16 przez właściwy communication scenario/arrangement i realne testy principalem. Użytkownik zdecydował o pozostawieniu prawa bez nadania w CAP-04B. Bez niego standardowy zapis i akcja są odmawiane. Izolacja odczytu DCL pozostaje osobnym zagadnieniem.
 
@@ -89,7 +93,7 @@ SAPUI5 → OData V4 → CAP Java + Spring Boot → Java SDK KSeF w jednej JVM. S
 ## Next Steps
 
 1. CAP-04D po osobnej zgodzie: ograniczone nadanie, HTTP WRITE na uzgodnionych danych, commit/ETag/no-op, autoryzacja rzeczywistym principalem i pełne dwa równoległe wywołania akcji.
-2. Po odrębnym zleceniu rozwijać producenta potwierdzonych wyników przez SDK; bez utożsamiania gotowego workera SAP z gotową wysyłką KSeF.
+2. Uzgodnić poprawne syntetyczne NIP-y i źródło PartyData, wykonać READ H01 oraz lokalne przygotowanie przez zintegrowany generator B. Następny LIVE send to osobny eksperyment; istniejący numer/UPO zachować.
 3. Przed wdrożeniem: trwała baza, obsługa operacyjna retry/konfliktów/Retry-After i testy HANA/CF. Domyślna baza development jest in-memory.
 4. Decyzje po hardeningu: wariant polityki odczytu DCL, nadanie principalowi zapisu (NIP/CompanyCode), chroniony interfejs `resume`, `total etag` w BDEF. Osobne zaległości: izolacja odczytu DCL, sekwencyjny rerun seeda i kompleksowa ścieżka wiązania operacji z fakturą w CAP. CAP-04C sprawdza zgodność istniejącego powiązania przy enqueue.
 
@@ -127,4 +131,4 @@ Dla narzędzi agentowych: w następnej sesji Claude Code uruchomić `/reload-ski
 
 ## Last Updated
 
-2026-10-29 (Europe/Warsaw): Agent A na `feature/ksef-auth` potwierdził LIVE auth i jedną syntetyczną wysyłkę KSeF TEST z numerem/UPO przez CAP. Zintegrowano commit B `7075c01` (generator, XSD, testy i dokumentacja), trwa połączenie z producentem zleceń. Pełny H01 → KSeF nadal oczekuje. H01 WRITE i deployment pozostały poza zakresem. Historyczne wyniki hardeningu zachowano powyżej.
+2026-10-29 (Europe/Warsaw): A+B na `feature/ksef-auth`, 141/141 PASS; LIVE auth i jedna syntetyczna wysyłka TEST z numerem/UPO przez CAP, generator B połączony ze snapshotem/outboxem i niezależnie zwalidowany. Pełny H01 → KSeF nadal oczekuje z powodu danych NIP/PartyData. H01 WRITE i deployment poza zakresem. Historyczne wyniki zachowano powyżej.

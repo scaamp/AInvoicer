@@ -30,6 +30,7 @@ class KsefSubmissionRecoveryTest {
     static class Offline {
         @Bean @Primary KsefAuthentication offlineAuthentication() { return mock(KsefAuthentication.class); }
         @Bean @Primary KsefOnlineSession offlineOnlineSession() { return mock(KsefOnlineSession.class); }
+        @Bean @Primary KsefFa3Documents offlineFa3Documents() { return mock(KsefFa3Documents.class); }
     }
 
     @Test void persistedInFlightSendAfterRestartBecomesReconciliationWithoutResending() throws Exception {

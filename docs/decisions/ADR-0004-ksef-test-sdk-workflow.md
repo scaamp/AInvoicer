@@ -54,6 +54,15 @@ persistencji sekretów i automatycznego duplikowania faktur. H2/single tenant te
 lokalną niezawodność; HANA, wiele instancji CF i zarządzany storage pozostają poza
 potwierdzonym zakresem. Nie uruchamiamy automatycznie writeback do SAP.
 
+## Uzupełnienie — integracja B
+
+Commit `7075c01` włączono jako `657c285`, bez zmian kodu/zasobów B. Producent
+`KsefInvoicePreparation` łączy SAP snapshot i PartyData z generatorem oraz outboxem.
+`KsefFa3Documents` przywraca strumieniowo 12 dużych maxOccurs rozluźnionych przez
+walidator B z powodu ograniczeń DFA JDK. Nie traktujemy samej rozluźnionej walidacji
+za pełną kontrolę liczności. Testy sprawdzają wszystkie limity wobec oryginalnego
+XSD; wygenerowany XML potwierdzono również pełnym XSD/lxml bez zmian limitów.
+
 Źródła: [SDK MF](https://github.com/CIRFMF/ksef-client-java/tree/v3.0.29),
 [auth MF](https://github.com/CIRFMF/ksef-api/blob/main/uwierzytelnianie.md),
 [CAP Event Queues](https://cap.cloud.sap/docs/java/event-queues).

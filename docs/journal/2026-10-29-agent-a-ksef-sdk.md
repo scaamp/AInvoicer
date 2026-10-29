@@ -2,7 +2,7 @@
 title: "Agent A — oficjalny SDK KSeF w CAP Java"
 date: 2026-10-29
 type: journal
-status: w-trakcie
+status: zakonczony
 tags: [ainvoicer, cap-java, ksef, sdk, auth, outbox]
 ---
 
@@ -162,3 +162,42 @@ oficjalnego fixture w osobnym katalogu tylko walidacyjnym PASS (bez wysyłki).
 W trakcie końcowych sprawdzeń pojawił się commit B
 `7075c0117ec828f92724b7eb087bafa8d4c584b9`. Integracja jest kontynuowana poniżej;
 nie będzie drugiej wysyłki, bo limit jednej nowej faktury został wykorzystany.
+
+## A5 — zintegrowany generator i finalna regresja
+
+- Commit B `7075c0117ec828f92724b7eb087bafa8d4c584b9` przejrzano i cherry-pickowano
+  jako `657c285`. Konflikt wyłącznie `docs/STATUS.md`: zachowano niezależne wyniki A i B.
+  `git diff 7075c01 --` dla źródeł, testów i zasobów `ksef/fa3` jest pusty.
+- `KsefInvoicePreparation` łączy mapper B i PartyData, generator, snapshot CAP i outbox.
+  `KsefFa3Documents` waliduje dokładne bajty przed enqueue i po odczycie z magazynu.
+- Audyt potwierdził rozluźnienie 12 maxOccurs przez walidator B. Bez zmian plików B
+  dodano strumieniowe przywrócenie oryginalnych limitów na granicy wysyłki. Test
+  sprawdza każde z 12 ograniczeń względem oryginalnego zasobu XSD.
+- Zintegrowane wybrane testy: **48/48 PASS**, 33.312 s, 18:01:03. Test producenta
+  obejmuje realny generator/XSD, snapshot, CAP/H2 i worker oraz mock SDK; zapisane
+  bajty są identyczne z argumentem send i potwierdzonym hashem.
+- Niezależny eksport lokalny przez `javac/java` (helper poza Git) i walidacja lxml
+  pełnym XSD: **PASS**, wygenerowano 1742 bajty, SHA-256
+  `8e78c138a85763f2de7876ba25c6402830c865ba40370752839dcfe8669e09c5`.
+  Zintegrowana bramka zwalidowała również dokładny fixture wcześniej wysłany LIVE.
+- **Finalny `mvn clean verify -Dcds.cds.skipVersionCheck=true`: 141/141 PASS,
+  0 failures, 0 errors, BUILD SUCCESS, 48.005 s, 18:03:24 Europe/Warsaw.** LIVE
+  wykluczone; wcześniejsze 107 testów A i bazy + 30 B + 4 integracyjne.
+
+## Stan końcowy i kontynuacja
+
+A1–A5 zaimplementowane i przetestowane lokalnie. A6 LIVE na oficjalnym fixture
+PASS (auth/JWT/refresh, jedna nowa faktura, numer, close/UPO, RESUME). Nie wykonano
+drugiej wysyłki z generatora B. Nie ma dowodu pełnego H01 → generator B → TEST.
+Blokery źródła: błędne sumy kontrolne NIP seeda H01 i brak pełnego PartyData w RAP;
+bezpieczne credentiale Destination do READ nie były dostępne w procesie tej sesji.
+Nie wykonywano H01 WRITE, zmian uprawnień ani deployu. Storage CF/HANA nadal wymaga
+osobnego wdrożenia; lokalny katalog TEST nie jest jego substytutem.
+
+Commity: `74d33a7` (A SDK/workflow/LIVE dowody), `657c285` (B cherry-pick z
+`7075c01`); następny commit zapisuje połączenie producenta i końcową dokumentację.
+Publikacja wyłącznie `feature/ksef-auth`, bez merge do `java-cap-ksef`/`main`.
+
+Najmniejszy kolejny krok: uzgodnić poprawne syntetyczne dane NIP i źródło PartyData,
+wykonać autoryzowany READ H01 i lokalne przygotowanie B bez wysyłki; nowy LIVE send
+wymaga nowego uzgodnionego eksperymentu, zachowując obecną operację i UPO.

@@ -74,7 +74,7 @@ ABAP Environment utrzymuje w tym scenariuszu symulacyjne dane faktur, a CAP ma b
 | `abap/` | CAP-04B wyeksportowano z H01 w `525e48d`: akcja `ApplyKsefResult`, readonly pól, autoryzacja, testy/prototypy i metadata. Bez HTTP WRITE i bez nadania prawa. Root DCL `where TRUE` nie zapewnia izolacji odczytu. Pominięto zastane zmiany spoza zakresu. |
 | `sapui5/ainvoicer/` | Istniejący frontend SAPUI5 |
 | `node/`, `python/` | Istniejące funkcje AI |
-| `cap-java/` | CAP Java + Spring Boot; READ H01 LIVE PASS, writeback lokalnie przetestowany i domyślnie OFF. Agent A na `feature/ksef-auth`: SDK MF, LIVE auth i jedna syntetyczna faktura TEST z numerem/UPO; źródło fixture, integracja generatora B oczekuje. |
+| `cap-java/` | CAP Java + Spring Boot; READ H01 LIVE PASS, writeback lokalnie przetestowany i domyślnie OFF. `feature/ksef-auth`: SDK MF, LIVE auth i jedna syntetyczna faktura TEST z numerem/UPO; generator B zintegrowany lokalnie, 141 testów PASS. Pełny H01 → KSeF nadal oczekuje. |
 | `docs/` | Wspólna baza wiedzy dla ludzi i agentów |
 
 ## Zasady dokumentowania

@@ -50,13 +50,14 @@ public class KsefSubmissionWorker implements EventHandler {
     private final KsefAuthentication authentication;
     private final KsefOnlineSession session;
     private final KsefDocumentStore documents;
+    private final KsefFa3Documents fa3;
     private final Clock clock;
     private final boolean enabled;
     private final String configuredNip;
 
     public KsefSubmissionWorker(PersistenceService db, CdsRuntime runtime,
             @Qualifier("KsefSubmissionOutbox") OutboxService outbox, KsefAuthentication authentication,
-            KsefOnlineSession session, KsefDocumentStore documents, Clock clock,
+            KsefOnlineSession session, KsefDocumentStore documents, KsefFa3Documents fa3, Clock clock,
             @Value("${ainv.ksef.enabled:false}") boolean enabled,
             @Value("${ainv.ksef.nip:}") String configuredNip) {
         this.db = db;
@@ -65,6 +66,7 @@ public class KsefSubmissionWorker implements EventHandler {
         this.authentication = authentication;
         this.session = session;
         this.documents = documents;
+        this.fa3 = fa3;
         this.clock = clock;
         this.enabled = enabled;
         this.configuredNip = configuredNip;
@@ -77,6 +79,7 @@ public class KsefSubmissionWorker implements EventHandler {
      */
     public UUID enqueue(UUID operationId, UUID snapshotId, byte[] xml) {
         requireEnabled();
+        fa3.verify(xml);
         var operation = db.run(Select.from(OPERATIONS).byId(operationId.toString()).lock()).single();
         var snapshot = db.run(Select.from(SNAPSHOTS).byId(snapshotId.toString())).single();
         String hash = KsefInvoiceSnapshotRegistry.sha256Hex(xml);
@@ -162,6 +165,7 @@ public class KsefSubmissionWorker implements EventHandler {
             if (!row.get("xmlSha256").equals(KsefInvoiceSnapshotRegistry.sha256Hex(xml))) {
                 throw KsefFailure.invalid("KSEF_XML_HASH_MISMATCH");
             }
+            fa3.verify(xml);
             if ("PREPARED".equals(stage)) { save(claim, "AUTHENTICATING", Map.of()); }
             var tokens = authentication.authenticate((String) row.get("taxpayerNip"));
             if ("PREPARED".equals(stage)) {
