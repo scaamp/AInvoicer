@@ -10,7 +10,7 @@ tags: [ainvoicer, abap, rap, authorization, dcl, communication-user, integrity]
 
 [Project Home](../README.md) · [STATUS](../STATUS.md) · [Dziennik CAP-04 Hardening](../journal/2026-10-29-cap-04-hardening.md) · [ADR-0002](../decisions/ADR-0002-sap-ksef-result-write-contract.md) · [ADR-0003](../decisions/ADR-0003-cap-sap-result-writeback.md)
 
-Ten dokument jest **propozycją i instrukcją dla właściciela SAP**. Nic w nim nie zostało wykonane w H01: w sesji hardening MCP ABAP FS nie nawiązał połączenia (`ECONNREFUSED`), więc stan IAM, scenariusza komunikacyjnego i DCL jest **NOT VERIFIED**.
+Ten dokument jest **propozycją i instrukcją dla właściciela SAP**. Nie wykonano opisanych nadań ani zmian DCL. Historyczna sesja hardening miała `ECONNREFUSED`. W kontynuacji Fix 2 MCP odczytał część metadanych i aktywne CDS/BDEF, ale automatyczna kontrola uprawnień zablokowała include, DCL i runtime OData; IAM, scenariusz/arrangement i efektywne prawa principala nadal **NOT VERIFIED**. Aktualna procedura CAP-04D jest w sekcji 5.
 
 ## 1. Minimalna konfiguracja principala komunikacyjnego do zapisu (ACTVT 16)
 
@@ -76,3 +76,67 @@ Jeżeli któregoś z negatywnych testów nie da się wykonać, wynik pozostaje `
 **Plan integracji z KSeF SDK (nie wykonany):** generator FA(3) zwraca bajty → `register(...)` w tej samej transakcji, co zapis zadania wysyłki → wysyłka dokładnie tych bajtów → przy statusie końcowym zapis `confirmedXmlSha256` z odpowiedzi KSeF → `enqueue`. Format skrótu w odpowiedzi KSeF (Base64 vs hex) trzeba zweryfikować w SDK/OpenAPI i znormalizować przed porównaniem — **NOT VERIFIED**.
 
 **Unikalność numeru KSeF.** Prosty UNIQUE na `KsefNumber` w całej aplikacji byłby błędny: ten sam numer legalnie występuje jako dokument sprzedawcy (OUTBOUND) i nabywcy (INBOUND), także w jednym CAP/SAP przy rozliczeniach wewnątrzgrupowych; numery korekt są odrębne, ale odwołują się do pierwotnego; różne systemy SAP mogą odwoływać się do tego samego numeru. Wdrożono jedynie unikalność `(environment, ksefNumber)` w `SapResultWrites`, bo ta tabela dotyczy wyłącznie zapisu wyniku w fakturze sprzedażowej SAP — numer KSeF może trafić do jednej takiej faktury na środowisko. Dla INBOUND i korekt unikalność należy zaprojektować osobno (np. `(environment, taxpayerNip, ksefNumber, sapSystem)`).
+
+## 5. CAP-04D — gotowość po Fix 2
+
+**IMPLEMENTED / NOT LIVE TESTED.** Wszystkie poniższe polecenia LIVE są planem po osobnej zgodzie, nie historią wykonania. Domyślne `enabled=false` oraz wykluczenie tagów `live-sap,live-sap-write` pozostają. KSeF nie jest wywoływany. Test LIVE sprawdza bezpośrednio CAP RemoteService → RAP Action, nie dowodzi istnienia producenta potwierdzonych ACCEPTED ani pełnego E2E KSeF.
+
+### Odmowa CRUD
+
+`SapCrudDenialAssertions` wymaga rzeczywistego `ODataResponseException` z HTTP403 i strukturalnego `ODataServiceErrorException` z oczekiwanym kodem SAP. CAP 5.2 opakowuje zdalne błędy jako lokalny 500 (`50012005`); helper sprawdza cause oraz strukturalne args, nie tekst. Brak odpowiedzi HTTP, 400/404/500, 2xx i obcy kod (np. CSRF) kończą się FAIL. Kod nie jest zgadywany: właściciel ustala go z autoryzacyjnej odmowy rzeczywistego RAP, podaje przez `AINV_H01_LIVE_WRITE_CRUD_DENIAL_CODE`. Brak kodu blokuje próbę UPDATE jeszcze przed wywołaniem.
+
+Test weryfikuje UUID i numer faktury odczytanej z tej samej usługi, wykonuje UPDATE tego samego `SellerName`, a w `finally` robi niezależny GET i porównuje cały odczytany nagłówek wraz z wersją. Nawet udany UPDATE bez zmiany wartości musi dać FAIL. DELETE nie jest używany.
+
+### Timeouty i lease
+
+CAP 5.2.0 → `RemoteServiceHttpClientProvider` → `HttpClientAccessor` → Apache HttpClient **4.x** (SDK 5.33.0), mimo obecności obu wersji transportu w zależnościach. Potwierdzono sygnaturami i bytecode lokalnych JAR-ów. Domyślne timeouty SDK wynosiły po 120 s (connect, socket, pool), a lease też 120 s. Nowa fabryka zachowuje konfigurację SDK/destination i dla `AINV_H01` nakłada:
+
+| Ustawienie CAP | Wartość | Znaczenie |
+| --- | --- | --- |
+| `ainv.sap-write.http.connect-timeout` | PT5S | nawiązanie połączenia |
+| `ainv.sap-write.http.pool-timeout` | PT5S | oczekiwanie na połączenie z puli |
+| `ainv.sap-write.http.read-timeout` | PT20S | bezczynność socketu/odczytu, także socket config |
+| automatyczne retry I/O Apache | wyłączone | retry biznesowe pozostaje w outbox |
+| `ainv.sap-write.lease` | PT2M | ważność przejęcia |
+| `ainv.sap-write.renew-interval` | PT20S | odnowienie podczas całego `adapter.apply` |
+
+Nominalne HEAD CSRF + POST mieszczą się z marginesem w lease, ale suma timeoutów **nie stanowi twardego limitu całej operacji**. DNS, uzyskanie destination/auth, przekierowania i strumień danych mogą trwać dłużej. SDK pobiera CSRF przez HEAD przed żądaniem modyfikującym; inspekcja `ODataRequestGeneric` nie wykazała ogólnej pętli retry biznesowego. Przy nieudanym pobraniu CSRF SDK może jeszcze wykonać właściwe żądanie. Testy lokalne potwierdzają jedną próbę PATCH po zerwaniu połączenia i jedną próbę POST po read timeout. To nie jest dowód konfiguracji BTP Destination Service w H01/CF — brak dostępnej `AINV_H01` w środowisku sesji.
+
+Odnowienie przez scheduler JDK jest krótką transakcją CAP, bez blokady na czas HTTP. Zachowuje tenant workera, sprawdza stan, token i nadal ważny lease. Claim i resume porównują również wcześniej odczytane `leaseUntil`. `renew-interval` musi być dodatni i nie większy niż 1/3 lease; błędna konfiguracja blokuje startup.
+
+Nie gwarantujemy exactly-once HTTP: awaria DB, długi stop JVM albo utrata sieci mogą uniemożliwić odnowienie. Po wygaśnięciu lease można ponowić tylko ten sam WriteRequestId/payload; idempotencja SAP i token finalizacji są ostatnią ochroną. Późna odpowiedź starego workera nie nadpisuje nowszego wyniku. HANA, CF i wiele tenantów pozostają nieprzetestowane LIVE.
+
+Nowa kolumna `revision` wymaga migracji istniejącej trwałej bazy przed użyciem kodu (backfill 0, NOT NULL, BIGINT). Świeże testowe H2 tworzy ją z CDS. Nie wykonano migracji użytkowej H2/HANA ani automatycznego kasowania bazy.
+
+### READ i WRITE — rekomendacja do decyzji właściciela
+
+Rekomendowane osobne konta: READ z ACTVT03 i jawną listą NIP/spółek; WRITE wyłącznie ACTVT16 i jednym uzgodnionym zakresem, bez 01/02/06. READ także nie potrzebuje CRUD. Nie aktywować DCL03, dopóki READ i użytkownicy UI5/Fiori nie mają właściwych nadań. Wdrożenie: nadać prawa → sprawdzić dotychczasowy CAP-03 i UI5 → zmienić DCL w osobnym zleceniu → powtórzyć pozytywne/negatywne odczyty, klucz i expand → potwierdzić brak regresji. Plan cofnięcia DCL uzgodnić przed aktywacją.
+
+**Aktualny kod ma jeden RemoteService `AinvoicerH01` i jedną destination `AINV_H01` dla obu adapterów.** Samo utworzenie drugiego konta nie rozdzieli tras. Docelowy podział wymaga osobnej konfiguracji dwóch RemoteServices/destinations i kwalifikatorów oraz objęcia destination WRITE właściwą fabryką timeoutów. Nie wykonano tego bez decyzji. Do czasu rozdzielenia nie zastępować po cichu credentiali działającego procesu CAP-03; dedykowany proces testu CAP-04D może dostać własną env `AINV_H01` tylko na czas jawnie zatwierdzonej próby. Po przyszłym DCL03 GET testu trzeba skierować na READ albo świadomie przyznać WRITE również 03 w tym samym zakresie.
+
+Właściciel dostarcza: zatwierdzenie wariantu polityki, system/klienta, tożsamości kont i sposób auth, nazwy i stan scenariusza/arrangement, zakresy NIP/spółek, listę konsumentów UI5/Fiori i ich ról, rzeczywisty kod odmowy autoryzacyjnej RAP oraz konkretne UUID/numer faktury testowej. Poświadczenia wyłącznie przez zarządzane destination/sekrety.
+
+### Kolejność pierwszego LIVE WRITE — po osobnym zleceniu
+
+1. Odblokować autoryzowany odczyt include/DCL/runtime przez MCP lub ADT. Porównać active/inactive implementacji akcji, potwierdzić aktywację `Z_AINV_KSF`, DCL root/dzieci i arrangement. Dodać i uruchomić [test CBA poza zakresem](../patches/cap-04-cba-scope-test.md) z rollback; nie aktywować cudzych zmian. Bez tych wyników CAP-04D pozostaje BLOCKED.
+2. Właściciel nadaje testowemu principalowi 16 dla jednego NIP/spółki, potwierdza brak CRUD i dostarcza env/BTP Destination `AINV_H01` wskazującą zweryfikowaną usługę. Odrębnie sprawdzić READ dotychczasowym kontem: `mvn -pl srv verify -Dcds.cds.skipVersionCheck=true -Dainv.excludedGroups=live-sap-write -Dtest=SapInvoiceRemoteAdapterLiveTest` z `AINV_H01_LIVE=true` i destination READ. Oczekiwanie: 1 PASS, 4/9/6; SKIP nie jest PASS. Następnie uruchamiać WRITE w osobnym procesie z właściwym kontem.
+3. Wskazać dedykowaną dziewiczą syntetyczną fakturę OUTBOUND i jawnie zaakceptować jej UUID/numer, NIP/spółkę oraz zakres testów. Nie używać istniejącej faktury biznesowej. Dodatkowe STALE/RACE wymagają własnych UUID i zgód; pierwszy test nie musi ich uruchamiać.
+4. Ustawić poniższe flagi w procesie testowym (placeholdery zastępuje właściciel). Najpierw uruchomić tylko negatywny UPDATE. Kod odmowy ma pochodzić ze sprawdzonej autoryzacji RAP, nie z błędu CSRF:
+
+```powershell
+$env:AINV_H01_LIVE_WRITE = 'true'
+$env:AINV_H01_LIVE_WRITE_INVOICE_UUID = '<UUID>'
+$env:AINV_H01_LIVE_WRITE_INVOICE_NUMBER = '<numer faktury>'
+$env:AINV_H01_LIVE_WRITE_CONSENT = 'APPLY_KSEF_RESULT:<UUID>'
+$env:AINV_H01_LIVE_WRITE_CRUD_DENIAL = 'true'
+$env:AINV_H01_LIVE_WRITE_CRUD_DENIAL_CODE = '<zweryfikowany kod autoryzacji SAP>'
+mvn -pl srv verify '-Dcds.cds.skipVersionCheck=true' '-Dainv.excludedGroups=live-sap' '-Dtest=SapKsefResultWriteLiveWriteTest#liveActionOnlyPrincipalCannotUseStandardCrud'
+```
+
+5. Dopiero po PASS odmowy, niezależnego GET i potwierdzeniu nadal dziewiczej faktury uruchomić pozytywny test tej konkretnej faktury:
+
+```powershell
+mvn -pl srv verify '-Dcds.cds.skipVersionCheck=true' '-Dainv.excludedGroups=live-sap' '-Dtest=SapKsefResultWriteLiveWriteTest#livePersistedResultEtagIdempotencyConflictsAndRace'
+```
+
+Oczekiwanie: APPLIED, niezależny GET czterech pól, ALREADY_APPLIED dla identycznego ponowienia i nowego request ID z tym samym wynikiem, ETag bez zmiany dla no-op, jawne konflikty bez nadpisania. Ten konkretny test nie wykonuje jeszcze rzeczywistego wyścigu; służy do niego osobna metoda RACE. Po utracie odpowiedzi **nie uruchamiać ponownie testu z nowym request ID/numerem**: zachować referencję i zrobić GET/rekoncyliację. Po zakończeniu usunąć flagi LIVE z procesu i wyłączyć transport w uruchamianej aplikacji; zapisać oczyszczone wyniki. Zmiany pozostają w syntetycznej fakturze — brak automatycznego rollback HTTP.

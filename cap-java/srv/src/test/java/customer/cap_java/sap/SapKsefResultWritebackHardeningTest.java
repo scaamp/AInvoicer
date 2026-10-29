@@ -51,6 +51,7 @@ import customer.cap_java.sap.WritebackFixtures.MutableClock;
         properties = { "cds.outbox.services.SapResultOutbox.startCollector=false",
                 "cds.outbox.persistent.scheduler.allTenantsTask.enabled=false",
                 "ainv.sap-write.max-attempts=3",
+                "ainv.sap-write.renew-interval=PT0.05S",
                 "spring.datasource.url=jdbc:h2:mem:writeback-hardening;DB_CLOSE_DELAY=-1" })
 @ActiveProfiles("test")
 class SapKsefResultWritebackHardeningTest {
@@ -326,6 +327,116 @@ class SapKsefResultWritebackHardeningTest {
         assertTrue(status.resumable());
         recovery.resume(id, "LOST_MESSAGE");
         assertFalse(recovery.status(id).orphaned());
+    }
+
+    @Test void concurrentResumeOfOrphanedPendingHasExactlyOneWinner() throws Exception {
+        clock.advance(Duration.ofMinutes(11));
+        var payload = writeback.command(row());
+        int messagesBefore = outboxCount();
+        var bothRead = new java.util.concurrent.CyclicBarrier(2);
+        // Prawdziwe H2/CAP; zatrzymujemy obu operatorów po odczycie TEJ SAMEJ rewizji.
+        PersistenceService observedDb = mock(PersistenceService.class, invocation -> {
+            Object result;
+            try { result = invocation.getMethod().invoke(db, invocation.getRawArguments()); }
+            catch (java.lang.reflect.InvocationTargetException failure) { throw failure.getCause(); }
+            if (invocation.getArguments().length > 0
+                    && invocation.getArgument(0) instanceof com.sap.cds.ql.cqn.CqnSelect) {
+                bothRead.await(10, TimeUnit.SECONDS);
+            }
+            return result;
+        });
+        var controlledRecovery = new SapKsefResultWriteRecovery(observedDb, writeback, clock, Duration.ofMinutes(10));
+        var start = new java.util.concurrent.CyclicBarrier(2);
+        try (var pool = Executors.newFixedThreadPool(2)) {
+            java.util.concurrent.Callable<String> resume = () -> {
+                start.await(10, TimeUnit.SECONDS);
+                try { controlledRecovery.resume(id, "LOST_MESSAGE"); return "SUCCESS"; }
+                catch (IllegalStateException conflict) { return conflict.getMessage(); }
+            };
+            var first = pool.submit(resume);
+            var second = pool.submit(resume);
+            var results = List.of(first.get(20, TimeUnit.SECONDS), second.get(20, TimeUnit.SECONDS));
+            assertEquals(1, results.stream().filter("SUCCESS"::equals).count(), results.toString());
+            assertEquals(1, results.stream().filter("RESUME_CONFLICT"::equals).count(), results.toString());
+        }
+        assertEquals(messagesBefore + 1, outboxCount());
+        assertEquals(1, history().stream().filter("RESUMED:LOST_MESSAGE"::equals).count());
+        assertEquals(payload, writeback.command(row()));
+        assertEquals(1L, ((Number) row().get("revision")).longValue());
+        when(adapter.apply(payload)).thenReturn(applied(Outcome.APPLIED));
+        process();
+        assertEquals("SUCCEEDED", row().get("state"));
+        verify(adapter, times(1)).apply(payload);
+    }
+
+    @Test void expiredProcessingCanBeResumedButActiveClaimCannot() {
+        when(adapter.apply(any())).thenThrow(new AssertionError("PROCESS_CRASH"));
+        assertThrows(AssertionError.class, this::processWithoutCompletionCheck);
+        assertEquals("RESUME_NOT_ALLOWED", assertThrows(IllegalStateException.class,
+                () -> recovery.resume(id, "OPERATOR")).getMessage());
+        var payload = writeback.command(row());
+        clock.advance(Duration.ofMinutes(3));
+        recovery.resume(id, "PROCESS_RESTARTED");
+        assertEquals("PENDING", row().get("state"));
+        assertEquals(payload, writeback.command(row()));
+        assertNull(row().get("claimToken"));
+    }
+
+    @Test void failedOutboxPublicationRollsBackResumeRevisionAndHistory() {
+        clock.advance(Duration.ofMinutes(11));
+        var before = new java.util.LinkedHashMap<>(row());
+        int messagesBefore = outboxCount();
+        var failingWriteback = mock(SapKsefResultWriteback.class,
+                org.mockito.AdditionalAnswers.delegatesTo(writeback));
+        doThrow(new IllegalStateException("OUTBOX_FAILED")).when(failingWriteback).publish(id);
+        var failingRecovery = new SapKsefResultWriteRecovery(db, failingWriteback, clock, Duration.ofMinutes(10));
+        assertEquals("OUTBOX_FAILED", assertThrows(IllegalStateException.class,
+                () -> failingRecovery.resume(id, "OPERATOR")).getMessage());
+        assertEquals(before, row());
+        assertEquals(messagesBefore, outboxCount());
+        assertTrue(history().stream().noneMatch(h -> h.startsWith("RESUMED:")));
+    }
+
+    @Test void renewalKeepsDelayedCallExclusiveAndExpiredOwnerCannotRenew() throws Exception {
+        var inHttp = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        when(adapter.apply(any())).thenAnswer(call -> {
+            inHttp.countDown();
+            assertTrue(release.await(10, TimeUnit.SECONDS));
+            return applied(Outcome.APPLIED);
+        });
+        try (var pool = Executors.newSingleThreadExecutor()) {
+            var worker = pool.submit(this::process);
+            assertTrue(inHttp.await(10, TimeUnit.SECONDS));
+            UUID token = UUID.fromString((String) row().get("claimToken"));
+            clock.advance(Duration.ofSeconds(90));
+            Instant expectedLease = clock.instant().plus(Duration.ofMinutes(2));
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (!expectedLease.equals(row().get("leaseUntil")) && System.nanoTime() < deadline) {
+                Thread.sleep(10);
+            }
+            assertEquals(expectedLease, row().get("leaseUntil"), "Scheduler musi odnowić lease podczas HTTP");
+            clock.advance(Duration.ofSeconds(40)); // Pierwotny lease minął, odnowiony nadal trwa.
+            assertThrows(WriteFailure.class, this::processWithoutCompletionCheck);
+            assertThrows(IllegalStateException.class, () -> recovery.resume(id, "OPERATOR"));
+            assertFalse(writeback.renewLease(id, UUID.randomUUID()));
+            release.countDown();
+            worker.get(10, TimeUnit.SECONDS);
+            assertFalse(writeback.renewLease(id, token));
+        } finally { release.countDown(); }
+        verify(adapter, times(1)).apply(any());
+    }
+
+    @Test void timeoutCanBeRecoveredWithUnchangedRequestAndPayload() {
+        var payload = writeback.command(row());
+        when(adapter.apply(any())).thenThrow(new WriteFailure("SAP_HTTP_500", true));
+        assertThrows(WriteFailure.class, this::processWithoutCompletionCheck);
+        assertEquals("PENDING", row().get("state"));
+        assertNull(row().get("claimToken"));
+        doReturn(applied(Outcome.ALREADY_APPLIED)).when(adapter).apply(payload);
+        process();
+        assertEquals("SUCCEEDED", row().get("state"));
+        verify(adapter, times(2)).apply(payload);
     }
 
     // ---- P2: integralność dokumentu i unikalność numeru KSeF ------------------------------------

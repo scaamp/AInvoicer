@@ -43,6 +43,13 @@ ainv:
     # Czas ważności przejęcia polecenia. Po restarcie lub zawieszeniu workera polecenie jest odzyskiwane
     # dopiero po tym terminie; ponowne wywołanie SAP jest bezpieczne dzięki stałemu WriteRequestId.
     lease: PT2M
+    # Socket timeout nie ogranicza DNS, auth, CSRF i całego strumienia odpowiedzi.
+    # Odnowienie ważnego claimu obejmuje całe adapter.apply, bez trzymania transakcji podczas HTTP.
+    renew-interval: PT20S
+    http:
+      connect-timeout: PT5S
+      read-timeout: PT20S
+      pool-timeout: PT5S
     # Liczba prób HTTP przed RETRY_EXHAUSTED (licznik zerowany kontrolowanym wznowieniem).
     max-attempts: 5
     # Po tym czasie PENDING bez postępu jest zgłaszany jako osierocony.

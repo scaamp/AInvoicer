@@ -116,12 +116,16 @@ public class SapKsefResultWriteRecovery {
             change.put("leaseUntil", null);
             change.put("retryNotBefore", null);
             change.put("stateChangedAt", now);
-            // CAS na stanie i liczniku prób: równoległy worker lub drugi operator nie zostaną nadpisani.
+            long revision = ((Number) row.get("revision")).longValue();
+            change.put("revision", Math.incrementExact(revision));
+            // Rewizja zmienia się także dla PENDING -> PENDING, niezależnie od precyzji zegara DB.
             int attempts = status.attempts();
             String state = status.state();
             long updated = db.run(Update.entity(SapKsefResultWriteback.WRITES).data(change).where(w ->
                     w.get("ID").eq(writeId.toString()).and(w.get("state").eq(state))
-                            .and(w.get("attempts").eq(attempts)))).rowCount();
+                            .and(w.get("attempts").eq(attempts)).and(w.get("revision").eq(revision))
+                            .and(row.get("leaseUntil") == null ? w.get("leaseUntil").isNull()
+                                    : w.get("leaseUntil").eq(row.get("leaseUntil"))))).rowCount();
             if (updated != 1) {
                 throw new IllegalStateException("RESUME_CONFLICT");
             }
@@ -147,7 +151,9 @@ public class SapKsefResultWriteRecovery {
                 || (SapKsefResultWriteback.RECONCILIATION_REQUIRED.equals(state)
                         && kind == FailureKind.SAP_AVAILABILITY)
                 || orphaned;
-        boolean resumable = allowedState && (retryNotBefore == null || !retryNotBefore.isAfter(now));
+        boolean resumable = allowedState && kind != FailureKind.BUSINESS_CONFLICT
+                && kind != FailureKind.INVALID_RESPONSE
+                && (retryNotBefore == null || !retryNotBefore.isAfter(now));
         return new WriteStatus(UUID.fromString((String) row.get("ID")),
                 UUID.fromString((String) row.get("invoiceUUID")), state, outcome, kind,
                 (Integer) row.get("attempts"), (Instant) row.get("lastAttemptAt"), retryNotBefore, leaseUntil,

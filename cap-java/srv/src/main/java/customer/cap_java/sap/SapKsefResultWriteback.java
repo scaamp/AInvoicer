@@ -7,6 +7,11 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+import jakarta.annotation.PreDestroy;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -58,12 +63,16 @@ public class SapKsefResultWriteback implements EventHandler {
     private final Clock clock;
     private final Duration lease;
     private final int maxAttempts;
+    private final Duration renewInterval;
+    private final ScheduledExecutorService renewals = Executors.newScheduledThreadPool(2,
+            Thread.ofPlatform().daemon(true).name("sap-lease-", 0).factory());
 
     public SapKsefResultWriteback(PersistenceService db,
             @Qualifier("SapResultOutbox") OutboxService outbox,
             CdsRuntime runtime, SapKsefResultWriteAdapter adapter, Clock clock,
             @Value("${ainv.sap-write.lease:PT2M}") Duration lease,
-            @Value("${ainv.sap-write.max-attempts:5}") int maxAttempts) {
+            @Value("${ainv.sap-write.max-attempts:5}") int maxAttempts,
+            @Value("${ainv.sap-write.renew-interval:PT20S}") Duration renewInterval) {
         this.db = db;
         this.outbox = outbox;
         this.runtime = runtime;
@@ -71,6 +80,10 @@ public class SapKsefResultWriteback implements EventHandler {
         this.clock = clock;
         this.lease = lease;
         this.maxAttempts = maxAttempts;
+        if (renewInterval.toMillis() <= 0 || renewInterval.multipliedBy(3).compareTo(lease) > 0) {
+            throw new IllegalArgumentException("SAP_LEASE_RENEW_INTERVAL_INVALID");
+        }
+        this.renewInterval = renewInterval;
     }
 
     /** W H2/single tenant CAP 5.2 wymaga bodźca collectora po cichym restarcie.
@@ -208,6 +221,20 @@ public class SapKsefResultWriteback implements EventHandler {
         }
         WriteResult result = null;
         WriteFailure failure = null;
+        String tenant = RequestContext.getCurrent(runtime).getUserInfo().getTenant();
+        var renewal = renewals.scheduleAtFixedRate(() -> {
+            try {
+                // Scheduler nie dziedziczy ThreadLocal CAP; odtwarzamy tenant właściciela polecenia.
+                runtime.requestContext().systemUser(tenant).run((RequestContext ctx) -> {
+                    renewLease(claim.command().requestId(), claim.token());
+                });
+            }
+            catch (RuntimeException unavailable) {
+                // Brak DB nie przedłuża lease; po utracie własności chroni token i idempotencja SAP.
+                // Bez treści wyjątku (może zawierać konfigurację połączenia).
+                org.slf4j.LoggerFactory.getLogger(getClass()).warn("SAP_LEASE_RENEW_FAILED");
+            }
+        }, renewInterval.toMillis(), renewInterval.toMillis(), TimeUnit.MILLISECONDS);
         try {
             result = adapter.apply(claim.command());
         } catch (WriteFailure known) {
@@ -215,6 +242,8 @@ public class SapKsefResultWriteback implements EventHandler {
         } catch (RuntimeException unexpected) {
             // Nie zostawiamy przejęcia do wygaśnięcia dzierżawy; w logach i bazie tylko bezpieczny kod.
             failure = new WriteFailure("WRITE_UNEXPECTED_ERROR", true);
+        } finally {
+            renewal.cancel(false);
         }
         final WriteResult finalResult = result;
         final WriteFailure finalFailure = failure;
@@ -225,6 +254,19 @@ public class SapKsefResultWriteback implements EventHandler {
         }
         context.setCompleted();
     }
+
+    /** Odnawia wyłącznie nadal ważny claim. CAS claim/resume porównuje leaseUntil, więc nie pomija odnowienia. */
+    boolean renewLease(UUID id, UUID token) {
+        return inNewTransaction(() -> {
+            Instant now = clock.instant();
+            return db.run(Update.entity(WRITES).data("leaseUntil", now.plus(lease))
+                    .where(w -> w.get("ID").eq(id.toString()).and(w.get("state").eq(PROCESSING))
+                            .and(w.get("claimToken").eq(token.toString()))
+                            .and(w.get("leaseUntil").gt(now)))).rowCount() == 1;
+        });
+    }
+
+    @PreDestroy void stopLeaseRenewals() { renewals.shutdownNow(); }
 
     /** Faza A: warunkowy UPDATE jest atomowym przejęciem; przegrany wyścig nie zmienia wiersza. */
     private Claim claim(UUID id) {
@@ -246,9 +288,11 @@ public class SapKsefResultWriteback implements EventHandler {
         }
         int attempts = (Integer) row.get("attempts");
         int cycle = (Integer) row.get("cycleAttempts");
+        long revision = ((Number) row.get("revision")).longValue();
         UUID token = UUID.randomUUID();
         Map<String, Object> change = new LinkedHashMap<>();
         change.put("state", PROCESSING);
+        change.put("revision", Math.incrementExact(revision));
         change.put("claimToken", token.toString());
         change.put("leaseUntil", now.plus(lease));
         change.put("attempts", attempts + 1);
@@ -256,7 +300,10 @@ public class SapKsefResultWriteback implements EventHandler {
         change.put("lastAttemptAt", now);
         change.put("stateChangedAt", now);
         long updated = db.run(Update.entity(WRITES).data(change).where(w -> w.get("ID").eq(id.toString())
-                .and(w.get("state").eq(state)).and(w.get("attempts").eq(attempts)))).rowCount();
+                .and(w.get("state").eq(state)).and(w.get("attempts").eq(attempts))
+                .and(w.get("revision").eq(revision))
+                .and(row.get("leaseUntil") == null ? w.get("leaseUntil").isNull()
+                        : w.get("leaseUntil").eq(row.get("leaseUntil"))))).rowCount();
         if (updated != 1) {
             return new Claim(ClaimKind.HELD, null, null, 0, 0);
         }

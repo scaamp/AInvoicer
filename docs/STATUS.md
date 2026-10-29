@@ -18,13 +18,17 @@ Phase 3 — SAP Remote Integration: **CAP-04B opublikowany i CAP-04C zaimplement
 
 CAP → SAP H01 READ ma **LIVE PASS**, ponownie potwierdzony 2026-10-28 po imporcie EDMX: lokalny CAP, Destination przez env `destinations`, 4/9/6 i zgodne UUID. CAP na Cloud Foundry z Destination Service pozostaje nieprzetestowany. Nie testowano dwóch równoległych zapisów akcji SAP, commit/ETag ani praw użytkownika komunikacyjnego do zapisu. CAP-04D wymaga osobnej zgody.
 
-**CAP-04 Hardening (2026-10-29), bez commit:** worker bez blokady rekordu podczas HTTP (claim z dzierżawą → HTTP → finalizacja), stan `RETRY_EXHAUSTED`, wewnętrzne API wznowienia z Retry-After, niezmienna migawka dokumentu z SHA-256 XML i unikalnością numeru KSeF per środowisko. Pełny build **71/71 PASS** (H2/mock). **Nie dowiedziono** LIVE: commit/ETag, równoległość i prawa principala w SAP; test LIVE WRITE przygotowany, wyłączony, nie uruchomiony. MCP ABAP FS był niedostępny — stan H01, IAM i DCL **NOT VERIFIED**; DCL `where TRUE` bez zmian, polityka odczytu czeka na decyzję ([przewodnik](guides/SAP_WRITE_ACCESS_AND_READ_POLICY.md)). Baza wyjściowa miała 1 padający test (wyścig w teście), naprawiony.
+**CAP-04 Hardening (2026-10-29), commit `dfd1ecb`:** claim/finalize bez blokady podczas HTTP, `RETRY_EXHAUSTED`, kontrolowane resume, migawka SHA-256. Historyczny build **71/71 PASS** (H2/mock). Pierwsza sesja miała `ECONNREFUSED`; informacje o stanie SAP były wtedy NOT VERIFIED. Poprawiono historyczne „bez commit” po sprawdzeniu zawartości i metadanych `dfd1ecb`; nie weryfikowano remote.
+
+**CAP-04 Hardening Fix 2 (kontynuacja 2026-10-29):** rewizja CAS dla resume/claim, precyzyjny test odmowy CRUD (zdalny HTTP403 + uzgodniony kod SAP), timeouty klienta Cloud SDK i odnawianie lease podczas HTTP. Szczegółowe wyniki i ograniczenia w [kontynuacji dziennika](journal/2026-10-29-cap-04-hardening.md#kontynuacja--hardening-fix-2-i-cap-04d-readiness). Transport WRITE nadal OFF; CAP-04D **IMPLEMENTED / NOT LIVE TESTED**. MCP częściowo działa: sześć CDS i root BDEF active zgodne z Git; dostęp do include/DCL/runtime odrzucony przez automatyczną kontrolę uprawnień. IAM, aktywacja uprawnienia, CBA poza zakresem i runtime WRITE **NOT VERIFIED**. CAP-03 LIVE READ w tej sesji **NOT TESTED** (brak env Destination); lokalna regresja READ objęta buildem. [Procedura CAP-04D](guides/SAP_WRITE_ACCESS_AND_READ_POLICY.md#5-cap-04d--gotowość-po-fix-2).
 
 ## Architecture
 
 SAPUI5 → OData V4 → CAP Java + Spring Boot → Java SDK KSeF w jednej JVM. SAP przez Remote OData/Destination jest źródłem danych finansowych; CAP przechowuje proces KSeF. H2 lokalnie, SAP HANA Cloud i SAP BTP Cloud Foundry docelowo. Szczegóły: [ADR-0001](decisions/ADR-0001-cap-java-ksef-architecture.md).
 
 ## Completed
+
+- 2026-10-29: **Hardening Fix 2 — FIXED + TESTED lokalnie:** pełny `mvn clean verify -Dcds.cds.skipVersionCheck=true`: **82 PASS, 0 FAIL, 0 errors**, BUILD SUCCESS (46,603 s). W tym 20 hardening, 15 HTTP adapter/CRUD i 2 konfiguracji HTTP; reszta obejmuje wcześniejsze READ, claim/finalize, snapshot/hash i restart/outbox. Live tagi domyślnie wykluczone. READ LIVE w tej sesji NOT TESTED; szkic testu SAP CBA NOT VERIFIED. Istniejąca trwała baza potrzebuje migracji kolumny `revision` przed użyciem nowego kodu.
 
 - 2026-10-29: **CAP-04 Hardening** — zob. akapit w Current Phase i [dziennik](journal/2026-10-29-cap-04-hardening.md). Zmiana kontraktu wewnętrznego: `enqueue(operationId)` wymaga migawki dokumentu.
 
@@ -83,6 +87,7 @@ Dla narzędzi agentowych: w następnej sesji Claude Code uruchomić `/reload-ski
 
 | Sprawdzenie | Ostatni dowód / ograniczenie |
 | --- | --- |
+| CAP-04 Fix 2 | 2026-10-29: 82/82 PASS H2/mock, pełny clean verify. Równoległe resume: jeden sukces, RESUME_CONFLICT, jedna publikacja i historia, payload bez zmian; rollback publikacji, scheduled lease renewal i rzeczywisty HTTP read timeout PASS. HTTP WRITE/KSeF nie wykonywano. H01: CDS/BDEF częściowo porównane; include/DCL/runtime/IAM/CBA NOT VERIFIED. |
 | CAP-04C | 2026-10-28: pełny `mvn clean verify -Dcds.cds.skipVersionCheck=true` 46/46 PASS, dodatkowy test ochrony modelu w przebiegu 2/2 PASS oraz LIVE READ 1/1 PASS. Lokalny HTTP, H2/outbox, rollback, równoległe enqueue i restart z mockiem SAP. HTTP WRITE OFF; [granice dowodu](journal/2026-10-28-cap-04c-sap-result-writeback.md). |
 | CAP-04B SAP contract | 2026-10-28: aktywacja/syntax PASS, ATC `ABAP_CLOUD_DEVELOPMENT_DEFAULT` 10 obiektów finalnie 0 ustaleń, EML 18/18, prototyp 7/7, rzeczywisty EDMX HTTP200. Polityka testowa, rollback; root enqueue między sesjami PASS. Bez HTTP WRITE/commit, persisted no-op/ETag i pełnego testu równoległych zapisów. Prawo bez nadania; [szczegóły](journal/2026-10-28-cap-04b-rap-write-contract.md). |
 | CAP → SAP H01 READ | LIVE PASS według dziennika 2026-10-27: `SapInvoiceRemoteAdapterLiveTest`, lokalny CAP process + env `destinations`, Basic Auth; 1/1, 0 failures/errors, 4/9/6 i UUID zgodne. Nie powtarzano w audycie. Cloud Foundry + bound Destination Service: NOT TESTED. |

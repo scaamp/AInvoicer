@@ -160,12 +160,18 @@ public class SapKsefResultWriteLiveWriteTest {
     void liveActionOnlyPrincipalCannotUseStandardCrud() {
         UUID invoice = consentedInvoice();
         var header = header(invoice);
+        assertEquals(System.getenv("AINV_H01_LIVE_WRITE_INVOICE_NUMBER"), header.get("InvoiceNumber"));
         // Idempotentna treść (to samo SellerName); poprawny wynik to odmowa. Zapis udany = błąd uprawnień SAP.
         var update = com.sap.cds.ql.Update.entity(SapInvoiceRemoteAdapter.HEADERS)
                 .data("SellerName", header.get("SellerName")).byId(invoice.toString());
-        assertThrows(RuntimeException.class, () -> runtime.requestContext().systemUser().run(
-                (RequestContext ctx) -> remote.run(update)),
-                "Zwykły UPDATE principala tylko z ACTVT 16 musi zostać odmówiony");
+        String code = System.getenv("AINV_H01_LIVE_WRITE_CRUD_DENIAL_CODE");
+        try {
+            SapCrudDenialAssertions.assertAuthorizationDenied(() -> runtime.requestContext().systemUser().run(
+                    (RequestContext ctx) -> remote.run(update)), code);
+        } finally {
+            // Nowy GET przez RemoteService także po błędnym/zaakceptowanym UPDATE.
+            assertEquals(header, header(invoice), "Odmowa CRUD nie może zmienić faktury ani jej wersji");
+        }
     }
 
     // ---- bramki bezpieczeństwa ----------------------------------------------------------------------

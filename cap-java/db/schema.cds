@@ -80,6 +80,8 @@ entity SapResultWrites : managed {
       // Tekst ISO zachowuje 100 ns bez zależności od precyzji kolumny timestamp w DB.
       expectedVersion        : String(40) not null;
       state                  : String(32) not null default 'PENDING';
+      // Monotoniczna rewizja przejęcia/wznowienia; chroni także przejście PENDING -> PENDING.
+      revision               : Integer64 not null default 0;
       // Ostatni bezpieczny kod wyniku lub błędu (Outcome albo SAP_HTTP_503 itp.).
       outcome                : String(40);
       sapRecordedAt          : Timestamp;
