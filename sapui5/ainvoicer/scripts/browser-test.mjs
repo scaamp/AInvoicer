@@ -35,6 +35,14 @@ if (!browserPath) {
     process.exit(2);
 }
 
+try {
+    await fetch(url, { method: "HEAD", signal: AbortSignal.timeout(5000) });
+} catch (e) {
+    console.error(`ENVIRONMENT: UI5 server not reachable at ${url}\n`
+        + "Start it first in a separate terminal: npm run serve-mock");
+    process.exit(2);
+}
+
 const port = 9300 + Math.floor(Math.random() * 500);
 const profileDir = mkdtempSync(join(tmpdir(), "ainvoicer-cdp-"));
 const browser = spawn(browserPath, [
