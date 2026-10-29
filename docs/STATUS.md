@@ -24,6 +24,15 @@ CAP → SAP H01 READ ma **LIVE PASS**, ponownie potwierdzony 2026-10-28 po impor
 
 ## Architecture
 
+**2026-10-29, Agent A (`feature/ksef-auth`):** oficjalny SDK MF 3.0.29 w CAP,
+auth token/XAdES, sesje FA(3), worker/outbox, checkpointy i rekoncyliacja.
+**LIVE auth TEST PASS:** challenge, XAdES, biznesowe 200, redeem, autoryzowany READ
+i refresh. **LIVE E2E PASS** na oficjalnym syntetycznym fixture: jedna faktura
+`1234563218-20261029-7DC8A1C00000-CD`, COMPLETED, UPO 5528 bajtów i RESUME po restarcie.
+Pełny clean verify początkowo **106/106 PASS** H2/mock; końcowy build w toku.
+Integracja commitu Agenta B oczekuje; bez LIVE H01 READ/WRITE w tym teście. [Dowody](journal/2026-10-29-agent-a-ksef-sdk.md),
+[runbook](guides/KSEF_TEST_RUNBOOK.md).
+
 SAPUI5 → OData V4 → CAP Java + Spring Boot → Java SDK KSeF w jednej JVM. SAP przez Remote OData/Destination jest źródłem danych finansowych; CAP przechowuje proces KSeF. H2 lokalnie, SAP HANA Cloud i SAP BTP Cloud Foundry docelowo. Szczegóły: [ADR-0001](decisions/ADR-0001-cap-java-ksef-architecture.md).
 
 ## Completed
@@ -59,12 +68,12 @@ SAPUI5 → OData V4 → CAP Java + Spring Boot → Java SDK KSeF w jednej JVM. S
 - **SAP H01 runtime OData V4 — LIVE PASS w udokumentowanym zakresie:** aktywny/publikowany binding, `$metadata` HTTP 200 i autoryzowany `$expand` 4/9/6 przez MCP OAuth. To nie jest test izolacji DCL ani CAP.
 - **CAP na Cloud Foundry + bound Destination Service — NOT TESTED.** Lokalna env Destination nie stanowi dowodu dla Destination Service na CF.
 - **CAP → RAP action — IMPLEMENTED, transport OFF / LIVE WRITE NOT TESTED.** Write Adapter i worker CAP-04C wywołują wyłącznie `ApplyKsefResult`. Standardowy PATCH nie jest używany. Rzeczywisty HTTP WRITE pozostaje w CAP-04D.
-- **KSeF Java SDK i E2E KSeF w CAP — NOT IMPLEMENTED.** Weryfikacja źródeł/POM nie wykazała zależności ani adaptera SDK; istniejący eksperyment z osobnej gałęzi nie zalicza integracji CAP.
+- **KSeF Java SDK i E2E KSeF w CAP — LIVE TEST PASS na `feature/ksef-auth` (2026-10-29).** SDK 3.0.29, auth/JWT/refresh, jedna syntetyczna faktura z oficjalnego fixture, numer i UPO. Źródło SAP zastąpiono lokalną syntetyczną migawką; nie potwierdza pełnego H01 → KSeF ani generatora B.
 - Model CAP zaimportowano z rzeczywistego EDMX H01 2026-10-28 z oryginalnym namespace i ochroną `internal-user`. Regresja CAP LIVE READ po imporcie PASS.
 - **DCL / EML — raport historyczny 2026-10-26:** 6 DCL aktywnych, `ZCL_AINV_RAP_COMP_TEST` 4/4 ABAP Unit PASS, ATC trzech nowych DCL: 0 ustaleń. Tego historycznego zestawu nie powtarzano. Nowsze testy autoryzacji zapisu opisuje CAP-04B; jego źródła są wyeksportowane w `525e48d`. Root DCL `where TRUE` nadal nie zapewnia izolacji odczytu.
 - CAP-04B wdrożył global + instance authorization i prechecks zapisu; testy EML odmów PASS z kontrolowaną polityką. Nowe prawo `Z_AINV_KSF` bez nadania; dotychczasowi konsumenci zapisujący potrzebują 01/02/06 i zakresu, akcja wyłącznie 16. DCL root `where TRUE` nie zapewnia izolacji odczytu per NIP; nie zmieniano go.
 - Pełne dwa równoległe zapisy akcji, persisted no-op/ETag oraz uprawnienia rzeczywistego communication user pozostają niezweryfikowane. Nie wykonano HTTP WRITE; te testy wymagają osobnego zlecenia CAP-04D.
-- Brak SDK/producenta potwierdzonych ACCEPTED; publiczne CREATE nadal wymusza NEW. Domyślna H2 jest in-memory; trwałość wymaga profilu plikowego do testów lub docelowej bazy. 429/Retry-After, konflikty i wyczerpane retry wymagają obsługi operacyjnej; nie dodano publicznego retry. Testy nie potwierdzają HANA, twardej awarii podczas HTTP ani wielu instancji CF.
+- SDK i producent ACCEPTED działają na `feature/ksef-auth`; integracja generatora B oraz pełnego źródła SAP nadal oczekuje. Publiczne CREATE wymusza NEW. Domyślna H2 jest in-memory; E2E używa odrębnej plikowej H2. Przed CF wymagany zarządzany storage i trwała baza. Kontrolowane retry/reconciliation są API Java, bez publicznego endpointu. HANA i wiele instancji CF pozostają niezweryfikowane.
 - Historyczne błędy URL, IAS redirect, `@requires`, OData `in`, profilu YAML, `ACM_UNEXPECTED_VALUE` i MCP `Unsupported Media Type` pozostają w dziennikach jako wcześniejsze problemy; nowsze wyniki rozwiązują je tylko w opisanym zakresie.
 
 ## Blockers
@@ -110,8 +119,8 @@ Dla narzędzi agentowych: w następnej sesji Claude Code uruchomić `/reload-ski
 | `mvn spring-boot:run` | Nie uruchomiono: `-pl srv` nie spełnia reactor convergence, a `-pl srv -am` blokuje sandbox `spawn EPERM` w CDS. Zamiast tego uruchomiono spakowany executable JAR. |
 | Konsola H2 w przeglądarce | 2026-10-24: `/h2-console/` HTTP 200; H2 Test Connection dla `jdbc:h2:mem:capjava;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE` zwrócił `Test successful`; OData odczyt encji HTTP 200. Zapytanie SQL z GUI nie wykonano. |
 | Własne OData / CDS CRUD | PASS lokalnie 2026-10-24: `mvn clean verify '-Dcds.cds.skipVersionCheck=true'`; OData V4 przez profile mock test, Spring Security i H2. Obejście pomija tylko kontrolę wersji CDS; nie potwierdza naprawy `spawn EPERM`. |
-| KSeF TEST / UPO przez CAP | NOT TESTED w CAP; wcześniejszy eksperyment na osobnej gałęzi nie potwierdza E2E CAP. |
+| KSeF TEST / UPO przez CAP | LIVE PASS 2026-10-29, Agent A: auth/XAdES/redeem/refresh, jedna syntetyczna faktura `1234563218-20261029-7DC8A1C00000-CD`, numer/hash, close, UPO 5528 bajtów i RESUME po restarcie. Oficjalny fixture + lokalna migawka, bez H01 i generatora B. |
 
 ## Last Updated
 
-2026-10-29 (Europe/Warsaw): CAP-04 Hardening zaimplementowany lokalnie (niezacommitowany); wyniki rozdzielone na H2/mock i LIVE NOT RUN. Poprzednio 2026-10-28 (Europe/Warsaw): po zgodzie użytkownika opublikowano CAP-04B i wdrożono CAP-04C. Wyniki lokalne i LIVE READ rozdzielono w dzienniku/ADR-0003. Bez HTTP WRITE, nadania praw SAP, wywołań KSeF, zmian UI5/Node/Python i deployu. CAP-04D nie rozpoczęto.
+2026-10-29 (Europe/Warsaw): Agent A na `feature/ksef-auth` potwierdził LIVE auth i jedną syntetyczną wysyłkę KSeF TEST z numerem/UPO przez CAP; szczegóły i zakres źródła w dzienniku. Generator B i pełny H01 → KSeF oczekują. H01 WRITE i deployment pozostały poza zakresem. Historyczne wyniki hardeningu zachowano powyżej.

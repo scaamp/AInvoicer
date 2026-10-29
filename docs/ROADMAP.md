@@ -90,11 +90,19 @@ ABAP Environment jest tu źródłem symulacyjnych danych aplikacyjnych; nie zak�
 
 ## Phase 4 — KSeF SDK Integration
 
-- [ ] Wybór i przypięcie wersji oficjalnego SDK MF, audyt zgodności z CAP/Spring Boot; adapter w tej samej JVM.
+**IN PROGRESS — Agent A, `feature/ksef-auth`, 2026-10-29:** SDK 3.0.29,
+auth/sesje, trwały worker/checkpointy i rekoncyliacja; 106 testów lokalnych PASS.
+LIVE auth TEST (XAdES → 200 → redeem → chroniony READ → refresh) PASS.
+**LIVE E2E CAP/SDK PASS** na oficjalnym fixture: jedna faktura
+`1234563218-20261029-7DC8A1C00000-CD`, UPO 5528 bajtów, RESUME po restarcie.
+FA(3) Agenta B oraz źródło LIVE H01 w tym przepływie czekają na integrację.
+[Dziennik](journal/2026-10-29-agent-a-ksef-sdk.md).
+
+- [x] SDK MF 3.0.29 przypięte, zbudowane ze źródeł i użyte w JVM CAP/Boot 4; mock/HTTP i LIVE TEST PASS (Agent A).
 - [ ] TEST: autoryzacja właściwego kontekstu podatnika, bezpieczne przechowywanie credentiali i obsługa JWT po stronie backendu.
 - [ ] Poprawny XML FA(3) według oficjalnego XSD; sesje i kryptografia obsługiwane przez SDK.
 - [ ] Wysyłka przez trwały worker; bez długiego pollingu w transakcji żądania OData.
-- [ ] Status końcowy i numer KSeF, zamknięcie sesji, UPO oraz metadane/ref. do trwałego magazynu dokumentów.
+- [x] TEST lokalnie: status 200/hash/numer, close i UPO; plikowa H2 i jawny lokalny magazyn TEST. Zarządzany storage przed CF pozostaje osobnym zadaniem.
 - [ ] Retry tylko bezpiecznych odczytów i sklasyfikowanych błędów, backoff/jitter, 429/Retry-After oraz rekoncyliacja po utracie odpowiedzi.
 - [ ] Pierwszy vertical slice: jedna syntetyczna faktura SAP Remote OData → CAP → SDK → KSeF TEST → numer KSeF i UPO; wysyłka tylko po jawnej zgodzie.
 

@@ -15,6 +15,20 @@
 
 	<!-- ACTUAL DEPENDENCIES -->
 	<dependencies>
+		<dependency>
+			<groupId>pl.akmf.ksef-sdk</groupId>
+			<artifactId>ksef-client</artifactId>
+			<version>${ksef.sdk.version}</version>
+		</dependency>
+		<!-- SDK używa Jackson 2; Gradle implementation publikuje tę zależność jako runtime. -->
+		<dependency>
+			<groupId>com.fasterxml.jackson.datatype</groupId>
+			<artifactId>jackson-datatype-jsr310</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>jakarta.xml.bind</groupId>
+			<artifactId>jakarta.xml.bind-api</artifactId>
+		</dependency>
 		<!-- CDS SPRING BOOT STARTER -->
 		<dependency>
 			<groupId>com.sap.cds</groupId>

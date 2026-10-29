@@ -64,6 +64,39 @@ entity KsefOperations : cuid, managed {
 
 annotate KsefOperations with @assert.unique.idempotency: [taxpayerNip, idempotencyKey];
 
+// Wewnętrzne zlecenie KSeF TEST. ID = istniejąca operacja; XML/UPO pozostają w magazynie.
+// Znacznik etapu jest commitowany PRZED każdym efektem. Restart w OPENING/SENDING/CLOSING
+// wymaga odczytowej rekoncyliacji; klucze AES i JWT nigdy nie trafiają do persystencji.
+entity KsefSubmissions : managed {
+  key ID             : UUID;
+  snapshotId         : UUID not null;
+  taxpayerNip        : String(10) not null;
+  state              : String(40) not null default 'PREPARED';
+  xmlStorageRef      : String(500) not null;
+  xmlSha256          : String(64) not null;
+  sessionReference   : String(100);
+  invoiceReference   : String(100);
+  ksefNumber         : String(50);
+  upoStorageRef      : String(500);
+  closeAttempted     : Boolean not null default false;
+  closeConfirmed     : Boolean not null default false;
+  claimToken         : UUID;
+  leaseUntil         : Timestamp;
+  readAttempts       : Integer not null default 0;
+  retryNotBefore     : Timestamp;
+  lastCode           : String(100);
+}
+
+// Jedna migawka nie może być wysłana ponownie pod nowym kluczem operacji.
+annotate KsefSubmissions with @assert.unique.snapshot: [snapshotId];
+
+entity KsefSubmissionHistory : cuid {
+  submissionId : UUID not null;
+  occurredAt   : Timestamp not null;
+  state        : String(40) not null;
+  code         : String(100);
+}
+
 // Wyłącznie wewnętrzna persystencja writeback; brak projekcji w publicznym OData.
 // ID = UUID potwierdzonej operacji, zarazem stabilny RAP WriteRequestId.
 // Stany: PENDING (czeka na dostarczenie), PROCESSING (przejęte, trwa HTTP; ważne do leaseUntil),

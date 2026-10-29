@@ -20,6 +20,8 @@ cds:
 cds:
   outbox:
     services:
+      KsefSubmissionOutbox:
+        maxAttempts: 50
       SapResultOutbox:
         # Limit CAP jest celowo wyższy niż ainv.sap-write.max-attempts: budżet prób HTTP liczy
         # i egzekwuje aplikacja (stan RETRY_EXHAUSTED), a CAP-owi zostaje margines na dostarczenia
@@ -37,6 +39,12 @@ cds:
         # `service` - pusty `service` jest ignorowany i CAP dokłada nazwę serwisu CDS do URL.
         service: sap/opu/odata4/sap/zapi_ainv_inv_h_o4/srvd_a2x/sap/zapi_ainv_inv_h_o4/0001
 ainv:
+  ksef:
+    enabled: false
+    nip: ${AINV_KSEF_NIP:}
+    token: ${AINV_KSEF_TOKEN:}
+    test-xades: false
+    local-store: ${AINV_KSEF_LOCAL_STORE:}
   sap-write:
     # Włączenie rzeczywistego HTTP WRITE dopiero w odrębnie zatwierdzonym CAP-04D.
     enabled: false

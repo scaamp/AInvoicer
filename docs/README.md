@@ -12,6 +12,10 @@ AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijan
 
 ## Od czego zacząć
 
+- [Agent A — oficjalny SDK KSeF i auth TEST w CAP](journal/2026-10-29-agent-a-ksef-sdk.md).
+- [Integracja KSeF Java SDK](guides/KSEF_JAVA_SDK_INTEGRATION.md) i [runbook TEST](guides/KSEF_TEST_RUNBOOK.md).
+- [ADR-0004 — SDK MF, checkpointy i rekoncyliacja](decisions/ADR-0004-ksef-test-sdk-workflow.md).
+
 - [STATUS — aktualny stan i najbliższe kroki](STATUS.md).
 - [ROADMAP — plan rozwoju](ROADMAP.md).
 - [Dziennik: CAP-04C — eksport SAP i trwały writeback CAP → SAP](journal/2026-10-28-cap-04c-sap-result-writeback.md).
@@ -68,7 +72,7 @@ ABAP Environment utrzymuje w tym scenariuszu symulacyjne dane faktur, a CAP ma b
 | `abap/` | CAP-04B wyeksportowano z H01 w `525e48d`: akcja `ApplyKsefResult`, readonly pól, autoryzacja, testy/prototypy i metadata. Bez HTTP WRITE i bez nadania prawa. Root DCL `where TRUE` nie zapewnia izolacji odczytu. Pominięto zastane zmiany spoza zakresu. |
 | `sapui5/ainvoicer/` | Istniejący frontend SAPUI5 |
 | `node/`, `python/` | Istniejące funkcje AI |
-| `cap-java/` | CAP Java + Spring Boot; READ H01 LIVE PASS, CAP-04C Write Adapter i persistent outbox zweryfikowane lokalnie. Transport WRITE domyślnie OFF, KSeF SDK niezaimplementowany. |
+| `cap-java/` | CAP Java + Spring Boot; READ H01 LIVE PASS, writeback lokalnie przetestowany i domyślnie OFF. Agent A na `feature/ksef-auth`: SDK MF, LIVE auth i jedna syntetyczna faktura TEST z numerem/UPO; źródło fixture, integracja generatora B oczekuje. |
 | `docs/` | Wspólna baza wiedzy dla ludzi i agentów |
 
 ## Zasady dokumentowania
