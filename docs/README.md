@@ -12,6 +12,9 @@ AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijan
 
 ## Od czego zacząć
 
+- [ABAP-05 + CAP-05.1 + UI5-05 — ponowiona regresja i inspekcja aktywnego H01](journal/2026-10-29-abap-05-real-rap-ui.md).
+- [RAP UI LIVE — binding ADT, IAM, routing i macierz READ](guides/RAP_UI_LIVE_CONNECTION.md).
+
 - [CAP-05 — audyt implementacji Claude Code, poprawki i macierz akceptacji](audits/2026-10-29-cap-05-implementation-review.md).
 - [Dziennik CAP-05](journal/2026-10-29-cap-05-integration-review.md) · [ADR-0005](decisions/ADR-0005-rap-business-status-cap-integration-status.md) · [RAP UI: patch i blokery ADT/IAM](patches/cap05-rap-ui/README.md).
 - [Agent A — oficjalny SDK KSeF i auth TEST w CAP](journal/2026-10-29-agent-a-ksef-sdk.md).

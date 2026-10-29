@@ -48,7 +48,8 @@ ainv:
     # Jawna polityka requestSend (ADR-0005): nowa próba wyłącznie po potwierdzonym, zamkniętym
     # odrzuceniu przez KSeF, nigdy po RECONCILIATION_REQUIRED ani możliwym duplikacie (440).
     send:
-      retry-after-rejection: true
+      retry-after-rejection: false
+      # Łącznie z pierwszą próbą; zakres 1..10, błędna wartość blokuje start aplikacji.
       max-attempts: 3
     # Dane FA(3) spoza RAP (adresy, JST/GV) per NIP; puste = requestSend zwraca KSEF_PARTY_DATA_MISSING.
     # Przykład: party-data.sellers."1234563218": { country-code: PL, line1: "ul. Testowa 1", line2: "00-001 Warszawa" }

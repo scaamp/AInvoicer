@@ -114,12 +114,17 @@ HTTP 202 nie oznacza przyjęcia faktury. Eksperyment na `feature/ksef-java-e2e-r
 
 ## Phase 5 — SAPUI5 + CAP
 
+- [x] **CAP-05.1:** retry REJECTED domyślnie OFF, walidacja max-attempts 1..10; Maven clean verify **178/178 PASS** H2/mock. [Dziennik ABAP-05](journal/2026-10-29-abap-05-real-rap-ui.md).
+- [x] **ABAP-05 inspekcja LIVE:** zastane aktywne trzy CDS `ZC_AINV_INV_*_UI`, trzy DCL i SRVD; ATC 7/7 bez ustaleń. Nie utworzono/aktywowano obiektów SAP; nie oznacza zaliczenia IAM runtime.
+- [x] **UI5-05 lokalnie:** fail closed dla wadliwej/niepełnej historii CAP, szablon osobnego routingu RAP; build i build szablonu PASS, QUnit **59/59**, OPA **13/13**. Domyślny mock zachowany.
+- [ ] **ABAP-05 LIVE UI BLOCKED:** review aliasów SRVD Items/References, binding V4 UI w ADT (obecnie 404), publikacja, ograniczone IAM dwóch business userów, macierz READ i uruchomienie UI5 na rzeczywistym URI. [Instrukcja](guides/RAP_UI_LIVE_CONNECTION.md). Nie tworzyć drugiego zestawu historycznych patchy ZC_AINV_UI_*.
+
 - [x] CAP-05: A+B i UI5 C na `feature/cap-05-integration`; CAP clean verify **173/173 PASS** H2/mock; UI5 build/QUnit/OPA PASS. [Audyt](audits/2026-10-29-cap-05-implementation-review.md).
 - [x] `requestSend(invoiceUUID)` — własny odczyt RAP, NIP/CompanyCode, TEST, FA(3)/snapshot, atomowa rezerwacja DB i persistent outbox. Konkurencja dwóch użytkowników, rollback, nieznane stany i controlled retry potwierdzone lokalnie.
 - [x] ACCEPTED → SAP writeback po commit + sweeper; brak utraty przyjęcia/UPO przy błędzie enqueue/SAP; tylko SAP_RAP. VERSION_CONFLICT blokuje retry SEND, bez obejścia CAS; diagnostyka read-only.
 - [x] Istniejący frontend: named RAP V4 model, ograniczona strona, server paging/filter/sort RAP, CAP stan integracji dla UUID strony i akcje; priorytet numeru RAP. Brak CAP proxy listy.
 - [x] Regresja mock: AI Assistant, Scanner, Voice controls i Legacy FI; QUnit i OPA. Nie oznacza LIVE AI/STT ani CAP→SAPUI5 na BTP.
-- [ ] **BLOCKED:** oddzielna usługa RAP UI, DCL ACTVT03/NIP/CompanyCode, IAM i testy faktycznymi business userami; przygotowane [źródła i czynności ADT](patches/cap05-rap-ui/README.md), bez aktywacji.
+- [ ] **BLOCKED runtime:** CDS/DCL/SRVD UI są już aktywne w H01 i przeszły ATC; binding V4 UI i IAM/testy faktycznymi business userami nadal wymagają [ADT i administratora](patches/cap05-rap-ui/README.md). Stan aktywny był zastany, bez aktywacji w tym sprincie.
 - [ ] Approuter i IAS/XSUAA: zgodne trusted claims NIP/CompanyCode w RAP/CAP; trasa `/rap-ui/` do zweryfikowanego bindingu. Domyślny UI pozostaje mock do przejścia bramki.
 - [ ] Autoryzowane publiczne pobranie XML/UPO; obecnie worker przechowuje UPO i publikuje upoAvailable, przyciski nadal wyłączone.
 - [ ] Globalne filtrowanie po statusie CAP (obecnie jawnie bieżąca strona); HANA/multi-instance i migracja historycznej bazy z uzupełnieniem zaufanego CompanyCode.
