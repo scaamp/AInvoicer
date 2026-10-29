@@ -20,6 +20,8 @@ AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijan
 - [ROADMAP — plan rozwoju](ROADMAP.md).
 - [Dziennik: CAP-04C — eksport SAP i trwały writeback CAP → SAP](journal/2026-10-28-cap-04c-sap-result-writeback.md).
 - [ADR-0003 — persistent outbox, niezmienny payload i rozstrzygnięcia zapisu](decisions/ADR-0003-cap-sap-result-writeback.md) (aktualizacja hardening 2026-10-29).
+- [Dziennik: Agent B — komponent FA(3): generator, XSD, snapshot](journal/2026-10-29-agent-b-fa3.md).
+- [Przewodnik: generowanie i walidacja XML FA(3)](guides/FA3_XML_GENERATION.md).
 - [Dziennik: CAP-04 Hardening — claim/finalize, recovery, integralność](journal/2026-10-29-cap-04-hardening.md).
 - [Kontynuacja: Hardening Fix 2 i CAP-04D readiness — CAS resume, odmowa CRUD, timeout/lease](journal/2026-10-29-cap-04-hardening.md#kontynuacja--hardening-fix-2-i-cap-04d-readiness).
 - [Szkic testu SAP CBA poza zakresem — BLOCKED / NOT VERIFIED](patches/cap-04-cba-scope-test.md).

@@ -100,7 +100,9 @@ FA(3) Agenta B oraz źródło LIVE H01 w tym przepływie czekają na integrację
 
 - [x] SDK MF 3.0.29 przypięte, zbudowane ze źródeł i użyte w JVM CAP/Boot 4; mock/HTTP i LIVE TEST PASS (Agent A).
 - [ ] TEST: autoryzacja właściwego kontekstu podatnika, bezpieczne przechowywanie credentiali i obsługa JWT po stronie backendu.
-- [ ] Poprawny XML FA(3) według oficjalnego XSD; sesje i kryptografia obsługiwane przez SDK.
+- [x] **Poprawny XML FA(3) według oficjalnego XSD (Agent B, 2026-10-29, `feature/ksef-fa3`):** generator podstawowej faktury VAT, walidacja XSD 1-0E offline + domenowa, bajty i SHA-256 dla migawki CAP, adapter SAP. Lokalnie 112/112 PASS; przyjęcie przez KSeF niezweryfikowane. [Przewodnik](guides/FA3_XML_GENERATION.md).
+- [ ] Sesje i kryptografia obsługiwane przez SDK (Agent A); wysyłka dokładnie bajtów `Fa3Document.xml()`.
+- [ ] Źródło danych spoza RAP dla FA(3): adres sprzedawcy/nabywcy, JST/GV; poprawne NIP-y w seedzie H01.
 - [ ] Wysyłka przez trwały worker; bez długiego pollingu w transakcji żądania OData.
 - [x] TEST lokalnie: status 200/hash/numer, close i UPO; plikowa H2 i jawny lokalny magazyn TEST. Zarządzany storage przed CF pozostaje osobnym zadaniem.
 - [ ] Retry tylko bezpiecznych odczytów i sklasyfikowanych błędów, backoff/jitter, 429/Retry-After oraz rekoncyliacja po utracie odpowiedzi.

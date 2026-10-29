@@ -20,6 +20,8 @@ CAP → SAP H01 READ ma **LIVE PASS**, ponownie potwierdzony 2026-10-28 po impor
 
 **CAP-04 Hardening (2026-10-29), commit `dfd1ecb`:** claim/finalize bez blokady podczas HTTP, `RETRY_EXHAUSTED`, kontrolowane resume, migawka SHA-256. Historyczny build **71/71 PASS** (H2/mock). Pierwsza sesja miała `ECONNREFUSED`; informacje o stanie SAP były wtedy NOT VERIFIED. Poprawiono historyczne „bez commit” po sprawdzeniu zawartości i metadanych `dfd1ecb`; nie weryfikowano remote.
 
+**FA(3) — Agent B (2026-10-29, `feature/ksef-fa3`):** komponent `customer.cap_java.ksef.fa3` generuje deterministyczny XML podstawowej faktury VAT, waliduje go oficjalnym XSD FA(3) 1-0E (offline) i regułami domenowymi (sumy, NIP) oraz zwraca bajty + SHA-256 dla `KsefInvoiceSnapshotRegistry`. Testy FA(3) 30/30, pełny clean verify **112/112 PASS** (H2/mock). KSeF TEST NOT CALLED. NIP-y seeda H01 mają błędną sumę kontrolną — do FA(3) użyto osobnego fixture. [Przewodnik](guides/FA3_XML_GENERATION.md), [dziennik](journal/2026-10-29-agent-b-fa3.md).
+
 **CAP-04 Hardening Fix 2 (kontynuacja 2026-10-29):** rewizja CAS dla resume/claim, precyzyjny test odmowy CRUD (zdalny HTTP403 + uzgodniony kod SAP), timeouty klienta Cloud SDK i odnawianie lease podczas HTTP. Szczegółowe wyniki i ograniczenia w [kontynuacji dziennika](journal/2026-10-29-cap-04-hardening.md#kontynuacja--hardening-fix-2-i-cap-04d-readiness). Transport WRITE nadal OFF; CAP-04D **IMPLEMENTED / NOT LIVE TESTED**. MCP częściowo działa: sześć CDS i root BDEF active zgodne z Git; dostęp do include/DCL/runtime odrzucony przez automatyczną kontrolę uprawnień. IAM, aktywacja uprawnienia, CBA poza zakresem i runtime WRITE **NOT VERIFIED**. CAP-03 LIVE READ w tej sesji **NOT TESTED** (brak env Destination); lokalna regresja READ objęta buildem. [Procedura CAP-04D](guides/SAP_WRITE_ACCESS_AND_READ_POLICY.md#5-cap-04d--gotowość-po-fix-2).
 
 ## Architecture
@@ -69,6 +71,7 @@ SAPUI5 → OData V4 → CAP Java + Spring Boot → Java SDK KSeF w jednej JVM. S
 - **CAP na Cloud Foundry + bound Destination Service — NOT TESTED.** Lokalna env Destination nie stanowi dowodu dla Destination Service na CF.
 - **CAP → RAP action — IMPLEMENTED, transport OFF / LIVE WRITE NOT TESTED.** Write Adapter i worker CAP-04C wywołują wyłącznie `ApplyKsefResult`. Standardowy PATCH nie jest używany. Rzeczywisty HTTP WRITE pozostaje w CAP-04D.
 - **KSeF Java SDK i E2E KSeF w CAP — LIVE TEST PASS na `feature/ksef-auth` (2026-10-29).** SDK 3.0.29, auth/JWT/refresh, jedna syntetyczna faktura z oficjalnego fixture, numer i UPO. Źródło SAP zastąpiono lokalną syntetyczną migawką; nie potwierdza pełnego H01 → KSeF ani generatora B.
+- **FA(3) XML — IMPLEMENTED + TESTED lokalnie (Agent B):** generator, walidacja XSD/domenowa i kontrakt snapshotu; zakres: VAT, PLN, 23/8/5%. Walidator nie egzekwuje górnych `maxOccurs ≥ 1000` (ograniczenie Xerces JDK, opisane w przewodniku). Przyjęcie przez KSeF niezweryfikowane.
 - Model CAP zaimportowano z rzeczywistego EDMX H01 2026-10-28 z oryginalnym namespace i ochroną `internal-user`. Regresja CAP LIVE READ po imporcie PASS.
 - **DCL / EML — raport historyczny 2026-10-26:** 6 DCL aktywnych, `ZCL_AINV_RAP_COMP_TEST` 4/4 ABAP Unit PASS, ATC trzech nowych DCL: 0 ustaleń. Tego historycznego zestawu nie powtarzano. Nowsze testy autoryzacji zapisu opisuje CAP-04B; jego źródła są wyeksportowane w `525e48d`. Root DCL `where TRUE` nadal nie zapewnia izolacji odczytu.
 - CAP-04B wdrożył global + instance authorization i prechecks zapisu; testy EML odmów PASS z kontrolowaną polityką. Nowe prawo `Z_AINV_KSF` bez nadania; dotychczasowi konsumenci zapisujący potrzebują 01/02/06 i zakresu, akcja wyłącznie 16. DCL root `where TRUE` nie zapewnia izolacji odczytu per NIP; nie zmieniano go.
@@ -96,6 +99,7 @@ Dla narzędzi agentowych: w następnej sesji Claude Code uruchomić `/reload-ski
 
 | Sprawdzenie | Ostatni dowód / ograniczenie |
 | --- | --- |
+| FA(3) generator/XSD | 2026-10-29: `Fa3*Test` + `SapInvoiceFa3MapperTest` 30/30, pełny clean verify 112/112 PASS. Ręcznie: przykład FA(3) z SDK MF przechodzi walidator, FA(2) odrzucony. Golden SHA-256 próbki `24fc8a1e…339afd` (2463 B). KSeF TEST: NOT CALLED. |
 | CAP-04 Fix 2 | 2026-10-29: 82/82 PASS H2/mock, pełny clean verify. Równoległe resume: jeden sukces, RESUME_CONFLICT, jedna publikacja i historia, payload bez zmian; rollback publikacji, scheduled lease renewal i rzeczywisty HTTP read timeout PASS. HTTP WRITE/KSeF nie wykonywano. H01: CDS/BDEF częściowo porównane; include/DCL/runtime/IAM/CBA NOT VERIFIED. |
 | CAP-04C | 2026-10-28: pełny `mvn clean verify -Dcds.cds.skipVersionCheck=true` 46/46 PASS, dodatkowy test ochrony modelu w przebiegu 2/2 PASS oraz LIVE READ 1/1 PASS. Lokalny HTTP, H2/outbox, rollback, równoległe enqueue i restart z mockiem SAP. HTTP WRITE OFF; [granice dowodu](journal/2026-10-28-cap-04c-sap-result-writeback.md). |
 | CAP-04B SAP contract | 2026-10-28: aktywacja/syntax PASS, ATC `ABAP_CLOUD_DEVELOPMENT_DEFAULT` 10 obiektów finalnie 0 ustaleń, EML 18/18, prototyp 7/7, rzeczywisty EDMX HTTP200. Polityka testowa, rollback; root enqueue między sesjami PASS. Bez HTTP WRITE/commit, persisted no-op/ETag i pełnego testu równoległych zapisów. Prawo bez nadania; [szczegóły](journal/2026-10-28-cap-04b-rap-write-contract.md). |
@@ -123,4 +127,4 @@ Dla narzędzi agentowych: w następnej sesji Claude Code uruchomić `/reload-ski
 
 ## Last Updated
 
-2026-10-29 (Europe/Warsaw): Agent A na `feature/ksef-auth` potwierdził LIVE auth i jedną syntetyczną wysyłkę KSeF TEST z numerem/UPO przez CAP; szczegóły i zakres źródła w dzienniku. Generator B i pełny H01 → KSeF oczekują. H01 WRITE i deployment pozostały poza zakresem. Historyczne wyniki hardeningu zachowano powyżej.
+2026-10-29 (Europe/Warsaw): Agent A na `feature/ksef-auth` potwierdził LIVE auth i jedną syntetyczną wysyłkę KSeF TEST z numerem/UPO przez CAP. Zintegrowano commit B `7075c01` (generator, XSD, testy i dokumentacja), trwa połączenie z producentem zleceń. Pełny H01 → KSeF nadal oczekuje. H01 WRITE i deployment pozostały poza zakresem. Historyczne wyniki hardeningu zachowano powyżej.
