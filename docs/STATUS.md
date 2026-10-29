@@ -22,6 +22,8 @@ CAP → SAP H01 READ ma **LIVE PASS**, ponownie potwierdzony 2026-10-28 po impor
 
 **CAP-04 Hardening Fix 2 (kontynuacja 2026-10-29):** rewizja CAS dla resume/claim, precyzyjny test odmowy CRUD (zdalny HTTP403 + uzgodniony kod SAP), timeouty klienta Cloud SDK i odnawianie lease podczas HTTP. Szczegółowe wyniki i ograniczenia w [kontynuacji dziennika](journal/2026-10-29-cap-04-hardening.md#kontynuacja--hardening-fix-2-i-cap-04d-readiness). Transport WRITE nadal OFF; CAP-04D **IMPLEMENTED / NOT LIVE TESTED**. MCP częściowo działa: sześć CDS i root BDEF active zgodne z Git; dostęp do include/DCL/runtime odrzucony przez automatyczną kontrolę uprawnień. IAM, aktywacja uprawnienia, CBA poza zakresem i runtime WRITE **NOT VERIFIED**. CAP-03 LIVE READ w tej sesji **NOT TESTED** (brak env Destination); lokalna regresja READ objęta buildem. [Procedura CAP-04D](guides/SAP_WRITE_ACCESS_AND_READ_POLICY.md#5-cap-04d--gotowość-po-fix-2).
 
+**SAPUI5 KSeF Cockpit — Agent C (2026-10-29, branch `feature/ainvoicer-ui5-ksef`):** kokpit faktur w istniejącej aplikacji UI5 (All/Purchase/Sales/Legacy, akcje z regułami dostępności, szczegóły, adapter AI) w trybie **demo/mock**; build PASS, QUnit 44/44, OPA 13/13. Integracja z CAP NIE TESTOWANA — wymaga luk G-01/G-02. [Przewodnik](guides/SAPUI5_KSEF_COCKPIT.md), [dziennik](journal/2026-10-29-agent-c-ui5.md).
+
 ## Architecture
 
 SAPUI5 → OData V4 → CAP Java + Spring Boot → Java SDK KSeF w jednej JVM. SAP przez Remote OData/Destination jest źródłem danych finansowych; CAP przechowuje proces KSeF. H2 lokalnie, SAP HANA Cloud i SAP BTP Cloud Foundry docelowo. Szczegóły: [ADR-0001](decisions/ADR-0001-cap-java-ksef-architecture.md).
