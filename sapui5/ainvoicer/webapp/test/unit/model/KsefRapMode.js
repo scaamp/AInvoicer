@@ -45,11 +45,11 @@ sap.ui.define([
         return fnFetch;
     }
 
-    function rapAdapter(fnFetch) {
+    function rapAdapter(fnFetch, mCapConfig) {
         var oModel = new ODataModel({ serviceUrl: RAP_URL, operationMode: "Server", autoExpandSelect: true });
         var oAdapter = new KsefDataAdapter({
             dataMode: "rap", rap: { entitySet: "Invoices", pageSize: 3 },
-            capabilities: { sendInvoice: true }, cap: { actions: { send: "requestSend" } }
+            capabilities: { sendInvoice: true }, cap: Object.assign({ actions: { send: "requestSend" } }, mCapConfig)
         }, fnFetch, oModel);
         oAdapter.model = oModel;
         return oAdapter;
@@ -214,6 +214,107 @@ sap.ui.define([
                 assert.ok(aRows.every(function (r) { return r.IntegrationAvailable === false; }));
             }
         });
+    });
+
+    [401, 403].forEach(function (iStatus) {
+        QUnit.test("CAP HTTP " + iStatus + " preserves RAP rows and blocks Send", function (assert) {
+            var oAdapter = rapAdapter(fakeCap(function () {
+                return { status: iStatus, body: { error: { message: "Access denied" } } };
+            }));
+            return oAdapter.loadInvoices({ top: 3 }).then(function (aRows) {
+                assert.strictEqual(aRows.length, 3);
+                aRows.forEach(function (oRow) {
+                    assert.strictEqual(oRow.IntegrationAvailable, false);
+                    assert.strictEqual(KsefActionRules.evaluateSend(oRow, ALL_CAPS, "TEST").enabled, false);
+                    assert.strictEqual(oRow.OperationCount, 0, "no CAP operations exposed");
+                });
+            }).finally(function () { oAdapter.model.destroy(); });
+        });
+    });
+
+    QUnit.test("CAP timeout aborts READ, preserves RAP list and details, and never retries", function (assert) {
+        var aCalls = [];
+        var oAdapter = rapAdapter(function (sUrl, oOptions) {
+            aCalls.push(oOptions);
+            return new Promise(function () {});
+        }, { readTimeoutMs: 20 });
+        return oAdapter.loadInvoices({ top: 3 }).then(function (aRows) {
+            assert.strictEqual(aRows.length, 3);
+            assert.strictEqual(oAdapter.getLastPage().integrationError, "CAP_READ_TIMEOUT");
+            aRows.forEach(function (oRow) {
+                assert.strictEqual(oRow.IntegrationAvailable, false);
+                assert.strictEqual(KsefActionRules.evaluateSend(oRow, ALL_CAPS, "TEST").enabled, false);
+            });
+            return oAdapter.loadInvoiceDetails(aRows[0].InvoiceUUID);
+        }).then(function (oRow) {
+            assert.ok(oRow.InvoiceNumber, "RAP details remain available");
+            assert.strictEqual(oRow.IntegrationAvailable, false);
+            assert.strictEqual(aCalls.length, 2, "one READ per list/details; no retry or mutation");
+            assert.ok(aCalls.every(function (oCall) { return oCall.method === "GET" && oCall.signal.aborted; }));
+        }).finally(function () { oAdapter.model.destroy(); });
+    });
+
+    QUnit.test("empty RAP collection has count zero and does not request CAP", function (assert) {
+        var fnFetch = fakeCap(function () { return { status: 200, body: { value: [], "@odata.count": 0 } }; });
+        var oAdapter = rapAdapter(fnFetch);
+        return oAdapter.loadInvoices({ filters: [new Filter("CompanyCode", FilterOperator.EQ, "9999")], top: 3 })
+            .then(function (aRows) {
+                assert.deepEqual(aRows, []);
+                assert.strictEqual(oAdapter.getLastPage().count, 0);
+                assert.strictEqual(oAdapter.getLastPage().hasMore, false);
+                assert.strictEqual(fnFetch.calls.length, 0);
+            }).finally(function () { oAdapter.model.destroy(); });
+    });
+
+    QUnit.test("CAP body timeout also releases RAP rows after HTTP headers arrived", function (assert) {
+        var oSignal;
+        var oAdapter = rapAdapter(function (sUrl, oOptions) {
+            oSignal = oOptions.signal;
+            return Promise.resolve({ ok: true, status: 200, json: function () { return new Promise(function () {}); } });
+        }, { readTimeoutMs: 20 });
+        return oAdapter.loadInvoices({ top: 1 }).then(function (aRows) {
+            assert.strictEqual(aRows.length, 1);
+            assert.strictEqual(oAdapter.getLastPage().integrationError, "CAP_READ_TIMEOUT");
+            assert.ok(oSignal.aborted, "response body is aborted as well");
+            assert.strictEqual(aRows[0].IntegrationAvailable, false);
+        }).finally(function () { oAdapter.model.destroy(); });
+    });
+
+    [401, 403].forEach(function (iStatus) {
+        QUnit.test("RAP HTTP " + iStatus + " propagates without reading CAP or falling back to demo data", function (assert) {
+            var iDestroyed = 0;
+            var fnFetch = fakeCap(function () { return null; });
+            var oDenied = Object.assign(new Error("RAP access denied"), { status: iStatus });
+            var oModel = { bindList: function () {
+                return { requestContexts: function () { return Promise.reject(oDenied); },
+                    destroy: function () { iDestroyed++; } };
+            } };
+            var oAdapter = new KsefDataAdapter({ dataMode: "rap" }, fnFetch, oModel);
+            return oAdapter.loadInvoices({ top: 3 }).then(function () {
+                assert.ok(false, "must reject");
+            }, function (oError) {
+                assert.strictEqual(oError, oDenied);
+                assert.strictEqual(fnFetch.calls.length, 0);
+                assert.strictEqual(iDestroyed, 1, "binding released after denial");
+            });
+        });
+    });
+
+    QUnit.test("stable pages contain distinct UUIDs and the final partial page ends paging", function (assert) {
+        var oAdapter = rapAdapter(fakeCap(function () { return { status: 200, body: { value: [], "@odata.count": 0 } }; }));
+        var aIds = [];
+        return [0, 3, 6].reduce(function (oPrevious, iSkip) {
+            return oPrevious.then(function () {
+                return oAdapter.loadInvoices({ skip: iSkip, top: 3, sorters: [new Sorter("InvoiceUUID")] });
+            }).then(function (aRows) {
+                aIds = aIds.concat(aRows.map(function (oRow) { return oRow.InvoiceUUID; }));
+                assert.strictEqual(oAdapter.getLastPage().count, 8);
+                assert.strictEqual(oAdapter.getLastPage().hasMore, iSkip < 6);
+            });
+        }, Promise.resolve()).then(function () {
+            assert.strictEqual(aIds.length, 8);
+            assert.strictEqual(new Set(aIds).size, 8, "no duplicates across pages");
+        }).finally(function () { oAdapter.model.destroy(); });
     });
 
     QUnit.test("truncated CAP history never enables Send even when the returned page contains no SEND", function (assert) {

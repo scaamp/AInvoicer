@@ -16,6 +16,8 @@ Przygotowaliśmy w H01 obiekty techniczne i konfigurację developerską, dzięki
 
 ## Co rzeczywiście potwierdzono w H01
 
+**Ponowna inspekcja ABAP-07 (2026-10-30):** odczytano App, katalog, RT, RF, assignment, SUSO, trzy CDS/DCL i SRVD/SRVB. App/katalog/RT nadal opublikowane; SUSO zawiera już referencję ZAINV_RT_READ. UI metadata200, trzy kolekcje200/0 w developer OAuth; ATC7/7 bez ustaleń. Rola biznesowa, aktywacja roli, zakres Read/Write, inne role, przypisanie business usera i odświeżenie jego sesji: **BLOCKED / niezweryfikowane**. Samo RT/SIA7 ani roleID w XML katalogu nie są dowodem istnienia Business Role. [Wyniki i ograniczenia narzędzi](../journal/2026-10-30-abap-07-ui5-07.md).
+
 | Obiekt / typ | Potwierdzony stan |
 | --- | --- |
 | ZAINV_D_NIP / DOMA | active, CHAR10, długość wyjściowa10; bez stałych wartości |
@@ -32,6 +34,8 @@ Przygotowaliśmy w H01 obiekty techniczne i konfigurację developerską, dzięki
 | ZUI_AINV_INV_H_O4 / SRVB | V4, wersja0001, published=true; URL z bindingu, bez zgadywania |
 
 W XML instancji IAM App pole ZAINV_BUK ma wartość1000 i dodatkowy pusty wpis fieldValue. Nie traktujemy pustego wpisu jako wildcard ani dowodu rozszerzenia uprawnień. Przy finalnym przeglądzie w ADT sprawdzić listę wartości i usunąć pusty wiersz, jeśli rzeczywiście występuje w edytorze. Ostateczne zakresy i tak trzeba potwierdzić na roli i użytkowniku.
+
+ABAP-07 potwierdził ten sam pusty wpis. XML oznacza pustą dolną i górną granicę, nie znak `*`; sam odczyt nie rozstrzyga, czy generator pomija ten wiersz, czy nadaje literalną wartość początkową. Nie jest to dowód wildcard ani przyczyny pustej kolekcji. Bezpieczna korekta **przez upoważnionego właściciela w ADT**: otworzyć istniejącą App → Authorizations → instancja0001 Z_AINV_KSF → wartości ZAINV_BUK; porównać zapis z edytorem, zachować1000 i usunąć wyłącznie potwierdzony pusty wiersz. Sprawdzić diff (bez nowej instancji/ACTVT16), zapisać/opublikować w zleconym zakresie, ponownie odczytać XML i wykonać macierz business usera. Agent nie zmieniał App ani uprawnień.
 
 Metadane katalogu nie zawierają całej listy aplikacji w tym samym dokumencie. Dlatego przypisanie potwierdzono oddzielnym odczytem **SIA7**. Pusty wynik narzędzia Object Relations dla katalogu nie oznaczał braku przypisania — odczyt SIA7 potwierdził oba końce relacji.
 

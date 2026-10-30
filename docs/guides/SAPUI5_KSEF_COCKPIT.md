@@ -8,6 +8,10 @@ tags: [ainvoicer, sapui5, ksef, cap-java, frontend]
 
 # SAPUI5 — kokpit faktur KSeF
 
+**ABAP-07/UI5-07 (2026-10-30):** rzeczywista lista H01 w UI pozostaje **BLOCKED na business-user IAM/routing**. Binding V4 UI i metadata ponownie200, UI kolekcje200/0 developer OAuth, Web API4/9/6. CAP LIVE user/Destination niezweryfikowane. Domyślny mock i wszystkie mutujące capabilities OFF. Dodano timeout odczytu CAP: domyślnie15 s, obejmuje połączenie i JSON; po terminie READ zostaje przerwany, dane RAP pozostają, integracja jest nieznana, Send zablokowany. Regresja: Maven178/178, QUnit69/69 (408), OPA13/13 (80), oba buildy PASS. To lokalny mock/HTTP, bez LIVE SAPUI5, AI/OCR/STT/Legacy. [Dziennik](../journal/2026-10-30-abap-07-ui5-07.md).
+
+Poniższe aktualizacje ABAP-06/05 zachowują historię; wiążący bieżący stan jest powyżej.
+
 **Kontynuacja 2026-10-30:** użytkownik utworzył/opublikował UI binding; MCP potwierdził active/V4/published=true/0001 i metadata HTTP200. Ścieżka UI jest już znana; Invoices/InvoiceItems/InvoiceReferences zwracają HTTP200/0 w sesji deweloperskiej. Bieżąca bramka to IAM i odczyt business userem. Poniższy wynik 404 opisuje wcześniejszą część sprintu. [Aktualny stan i instrukcja IAM](RAP_UI_LIVE_CONNECTION.md).
 
 **Aktualizacja ABAP-06/UI5-06 (2026-10-30):** ponownie potwierdzone active CDS/DCL/SRVD i ATC 7/7 bez ustaleń. UI binding nadal HTTP404; bramka business user READ/IAM pozostaje BLOCKED. Domyślnie **dataMode=mock, capabilities.sendInvoice=false**; zmiana samego trybu na rap nie udostępni Send. Aliasów SRVD nie migrujemy: Invoices, InvoiceItems, InvoiceReferences; aplikacja używa _Items/_References. Build aplikacji i szablonu PASS, **QUnit 61/61 (354 asercje), OPA 13/13 (80)**; CAP **178/178 PASS** H2/mock. Nowe testy: blokada Send w rzeczywistej konfiguracji manifestu i filtry AI dat/kwot wykonywane przez mock OData V4. LIVE UI5/RAP, AI/OCR/STT/Legacy NOT TESTED. [Dziennik](../journal/2026-10-30-abap-06-ui5-06.md) · [ADT/IAM i routing](RAP_UI_LIVE_CONNECTION.md) · [E2E-01](E2E_01_SAP_TO_KSEF_TEST.md).
@@ -87,6 +91,7 @@ Domyślny widok to `All Invoices` (`sap.ui5/config/ksefCockpit/defaultView`). Wi
 
 - **mock** (domyślny): lokalne JSON nagłówków i operacji. Flagi nie włączają mutacji w mock; Send jest zawsze wyłączony. Dane demo nie są dowodem działania H01/KSeF.
 - **rap**: `getModel("rap")`, lista `/Invoices`, szczegóły z `_Items,_References`. Filtry i sortowanie RAP wykonuje serwer; stabilny porządek kończy się InvoiceUUID. Pamięć UI zawiera jedną stronę (domyślnie 50, maksymalnie 200). Stan CAP jest pobierany wyłącznie dla UUID tej strony, z limitem 200 i kontrolą `$count`/nextLink. Ucięta lub niedostępna historia blokuje Send, zachowując dane SAP. CAP nie jest proxy listy.
+- Odczyty `fetch` adaptera mają limit15 s; opcjonalne `cap.readTimeoutMs` przyjmuje dodatnią liczbę całkowitą i ma limit60 s. Timeout obejmuje treść odpowiedzi i zwraca `TIMEOUT/CAP_READ_TIMEOUT`; nie ponawia odczytu ani akcji. Nie zmienia timeoutów named modelu RAP ani transportu mutacji. Szczegóły RAP również pozostają dostępne przy timeout CAP.
 - **cap**: historyczny wariant nie obsługuje już listy/szczegółów; zwraca BACKEND_MISSING także po podaniu starego invoiceListUrl. Nie konfigurować `KsefCockpitService`.
 - `/rap-ui/` to trasa aplikacji i lokalnego mockservera; runtime H01 musi pochodzić z faktycznego bindingu. W `ui5-local.yaml` dodano proxy CAP do localhost:8080; trasa RAP UI wymaga skonfigurowania po aktywacji. Docelowy approuter zapewnia tożsamość business usera dla RAP i CAP. Przeglądarka nie dostaje credentiali communication usera.
 - **Ograniczenie jawne w UI:** filtr statusu KSeF działa na bieżącej stronie, podobnie sortowanie pól CAP (`OperationReference`, `LastUpdate`). Globalny filtr CAP → UUID → RAP pozostaje rozszerzeniem. Pola CAP nie trafiają do nieobsługiwanego `$filter/$orderby` RAP.
@@ -150,10 +155,10 @@ Akcje zmieniające stan po udostępnieniu kontraktu: potwierdzenie (`MessageBox.
 
 - Kontrolki, kontekst, historia, voice input, TTS i link *View filters* bez zmian. Endpoint Python `/filter` i jego kontrakt (`{queryText}` → `{description, filters[], sortBy, limit}`) bez zmian.
 - **SAP FI (Legacy):** dotychczasowy mechanizm (bindowanie `/ZC_FI_ACDOCA`, filtry, sort, limit, domyślna waluta PLN).
-- **Widoki KSeF:** ta sama odpowiedź przechodzi przez `KsefAiFilterAdapter` i trafia wyłącznie do filtrów klienckich JSON tabeli KSeF:
+- **Widoki KSeF:** ta sama odpowiedź przechodzi przez `KsefAiFilterAdapter`: w mock filtruje JSON, w rap dopuszczone pola RAP trafiają jako typowane `sap.ui.model.Filter` do serwera; pola wyliczane/CAP pozostają filtrem bieżącej strony:
   - lista biała pól (`KsefContract.FilterableFields`) i operatorów (`EQ NE GT GE LT LE BT Contains StartsWith EndsWith`);
   - walidacja typów: liczba przez `Number()`, więc `"1; DROP…"` jest odrzucane; data musi mieć format `YYYY-MM-DD`; string do 100 znaków; enumy pisane wielkimi literami; `hasOwnProperty` chroni przed `__proto__`;
-  - pole `sql` i nieznane pola są ignorowane; nic nie trafia do bazy ani backendu.
+  - pole `sql`, dowolne fragmenty OData i nieznane pola nie są wykonywane; na serwer RAP trafiają wyłącznie filtry z białej listy, serializowane przez OData V4 model.
   - mapowanie ścieżek Legacy → KSeF: `CompanyCode`, `CurrencyCode`, `PostingDate` → dokładne; `DocumentDate`→`IssueDate`, `AmountDocument`→`GrossAmount`, `Reference`→`InvoiceNumber`, `FiscalYear EQ rrrr`→`IssueDate BT rrrr-01-01..rrrr-12-31` → **przybliżone** (oznaczone w odpowiedzi); `DocumentNo`, `Vendor`, `Customer`, `Account` i pozostałe → ignorowane z informacją.
   - Asystent odpowiada: opis usługi + „Applied to the KSeF table: …” + „Not supported in the KSeF view and ignored: …”. **Obecna usługa nie rozumie pól KSeF (NIP, kierunek, status KSeF)** — adapter jest gotowy na natywne nazwy, gdy usługa zacznie je zwracać (G-09).
   - Filtry AI usuwa przycisk *Clear* na pasku filtrów KSeF.
@@ -169,7 +174,7 @@ Akcje zmieniające stan po udostępnieniu kontraktu: potwierdzenie (`MessageBox.
 
 | ID | Stan CAP-05 |
 | --- | --- |
-| G-01 / G-10 | Named RAP model i adapter paging/details gotowe lokalnie; binding V4 UI, DCL/IAM i trasa business usera BLOCKED. Źródła w docs/patches/cap05-rap-ui, bez aktywacji. |
+| G-01 / G-10 | Named RAP model i paging/details gotowe lokalnie; aktywny binding V4 UI i CDS/DCL potwierdzone w H01. Efektywne IAM i trasa business usera BLOCKED; patche nie są snapshotem SAP. |
 | G-02 | CAP action `POST /odata/v4/KsefService/requestSend`, payload wyłącznie `{ "invoiceUUID": "..." }`, wynik `{operationId,status:"QUEUED",attempt}`. Dane z RAP, NIP/CompanyCode, atomowa rezerwacja DB, FA(3)/snapshot/outbox. Ponowienie w toku/przyjęte/nieznane → 409. |
 | G-03 / G-07 | `InvoiceIntegrationStatus?$filter=invoiceUUID eq '...'` z limitem, autoryzacją i stanem writeback/UPO. UI odświeża odczyt; brak publicznego triggera pollingu. |
 | G-04 / G-08 | Odbiór zakupów i duplicate matching poza obecnym vertical slice; akcje wyłączone. |
