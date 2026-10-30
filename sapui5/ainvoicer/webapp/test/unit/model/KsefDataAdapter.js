@@ -85,6 +85,23 @@ sap.ui.define([
 
     QUnit.module("KsefDataAdapter — cap mode");
 
+    QUnit.test("repository READ configuration cannot send after switching to RAP", function (assert) {
+        return fetch(sap.ui.require.toUrl("ainvoicer/manifest.json")).then(function (oResponse) {
+            return oResponse.json();
+        }).then(function (oManifest) {
+            var oConfig = Object.assign({}, oManifest["sap.ui5"].config.ksefCockpit, { dataMode: "rap" });
+            var fnFetch = fakeFetch(function () { return null; });
+            var oAdapter = new KsefDataAdapter(oConfig, fnFetch);
+            assert.strictEqual(oAdapter.getCapabilities().sendInvoice, false, "READ configuration keeps Send disabled");
+            return oAdapter.requestSend(UUID).then(function () {
+                assert.ok(false, "READ must refuse Send");
+            }, function (oError) {
+                assert.strictEqual(oError.code, "BACKEND_MISSING");
+                assert.strictEqual(fnFetch.calls.length, 0, "no CSRF or POST request");
+            });
+        });
+    });
+
     QUnit.test("invoice list is BACKEND_MISSING (G-01) until CAP exposes it", function (assert) {
         return new KsefDataAdapter({ dataMode: "cap" }, fakeFetch(function () { return null; })).loadInvoices().then(function () {
             assert.ok(false);

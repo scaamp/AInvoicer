@@ -1,12 +1,18 @@
 ---
 title: "SAPUI5 — kokpit faktur KSeF"
-date: 2026-10-29
+date: 2026-10-30
 type: guide
 status: aktywny
 tags: [ainvoicer, sapui5, ksef, cap-java, frontend]
 ---
 
 # SAPUI5 — kokpit faktur KSeF
+
+**Kontynuacja 2026-10-30:** użytkownik utworzył/opublikował UI binding; MCP potwierdził active/V4/published=true/0001 i metadata HTTP200. Ścieżka UI jest już znana; Invoices/InvoiceItems/InvoiceReferences zwracają HTTP200/0 w sesji deweloperskiej. Bieżąca bramka to IAM i odczyt business userem. Poniższy wynik 404 opisuje wcześniejszą część sprintu. [Aktualny stan i instrukcja IAM](RAP_UI_LIVE_CONNECTION.md).
+
+**Aktualizacja ABAP-06/UI5-06 (2026-10-30):** ponownie potwierdzone active CDS/DCL/SRVD i ATC 7/7 bez ustaleń. UI binding nadal HTTP404; bramka business user READ/IAM pozostaje BLOCKED. Domyślnie **dataMode=mock, capabilities.sendInvoice=false**; zmiana samego trybu na rap nie udostępni Send. Aliasów SRVD nie migrujemy: Invoices, InvoiceItems, InvoiceReferences; aplikacja używa _Items/_References. Build aplikacji i szablonu PASS, **QUnit 61/61 (354 asercje), OPA 13/13 (80)**; CAP **178/178 PASS** H2/mock. Nowe testy: blokada Send w rzeczywistej konfiguracji manifestu i filtry AI dat/kwot wykonywane przez mock OData V4. LIVE UI5/RAP, AI/OCR/STT/Legacy NOT TESTED. [Dziennik](../journal/2026-10-30-abap-06-ui5-06.md) · [ADT/IAM i routing](RAP_UI_LIVE_CONNECTION.md) · [E2E-01](E2E_01_SAP_TO_KSEF_TEST.md).
+
+Poniższa aktualizacja ABAP-05 opisuje wcześniejszy przebieg; nie jest nowym wynikiem LIVE.
 
 **Aktualizacja ABAP-05/UI5-05:** H01 ma już aktywne CDS/DCL `ZC_AINV_INV_*_UI` i SRVD (ATC 7 obiektów bez ustaleń), ale binding V4 UI zwraca 404, a IAM dwóch business userów nie przetestowano. Nie zmieniono domyślnego `mock`. Osobna konfiguracja: [ui5-rap.yaml.example](../../sapui5/ainvoicer/ui5-rap.yaml.example); [kroki połączenia LIVE](RAP_UI_LIVE_CONNECTION.md). UI blokuje Send także przy HTTP200 z wadliwą kolekcją CAP, brakującym/niespójnym count, brakującym stanem lub obcymi UUID. Aktualna regresja: **QUnit 59/59, 346 asercji; OPA 13/13, 80; oba buildy PASS**. Wyniki dotyczą mock RAP/fake CAP i atrap AI/OCR/Legacy, nie LIVE. CAP retry po REJECTED jest domyślnie OFF; ponowienie w UI nadal podlega autorytatywnej polityce serwera (możliwe 409).
 
@@ -75,7 +81,7 @@ Domyślny widok to `All Invoices` (`sap.ui5/config/ksefCockpit/defaultView`). Wi
     "integrationStatus": "InvoiceIntegrationStatus",
     "actions": { "send": "requestSend", "sync": null, "xml": null, "upo": null, "duplicate": null }
   },
-  "capabilities": { "sendInvoice": true, "syncInbound": false, "viewXml": false, "downloadUpo": false, "checkDuplicate": false }
+  "capabilities": { "sendInvoice": false, "syncInbound": false, "viewXml": false, "downloadUpo": false, "checkDuplicate": false }
 }
 ```
 

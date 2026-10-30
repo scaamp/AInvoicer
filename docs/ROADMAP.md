@@ -1,6 +1,6 @@
 ---
 title: "AInvoicer — plan rozwoju"
-date: 2026-10-29
+date: 2026-10-30
 type: roadmap
 status: aktywny
 tags: [ainvoicer, roadmap, cap-java, ksef]
@@ -116,10 +116,18 @@ HTTP 202 nie oznacza przyjęcia faktury. Eksperyment na `feature/ksef-java-e2e-r
 
 ## Phase 5 — SAPUI5 + CAP
 
+- [x] **ABAP-06 kontynuacja — UI binding opublikowany przez użytkownika:** własny MCP READ potwierdza active/V4/published=true/0001 oraz metadata HTTP200; rzeczywisty URI zapisany. UI kolekcje HTTP200/0 w developer OAuth; nie jest to PASS dostępu do danych business usera.
+- [ ] **Następna bramka IAM:** IAM App dla ZUI_AINV_INV_H_O4, ACTVT03, restriction fields NIP/spółka i wspólny restriction type, katalog/rola i konkretne zakresy A/B. Nie zmieniono nadań; pełna macierz READ i UI5 LIVE pozostają do wykonania.
+
+- [x] **ABAP-06 inspekcja (2026-10-30):** H01 connected, aktywne 3 CDS/3 DCL/SRVD i brak wersji inactive; nowe ATC 7/7 bez ustaleń. abapGit nadal java-cap-ksef. Web API READ developer OAuth HTTP200, 4/9/6. [Dziennik](journal/2026-10-30-abap-06-ui5-06.md).
+- [x] **UI5-06 lokalnie:** Send domyślnie OFF również po przełączeniu do rap, zachowane aliasy InvoiceItems/InvoiceReferences, poprawiony szablon i runbook. Maven 178/178, QUnit 61/61, OPA 13/13, oba buildy PASS. [E2E-01 przygotowany, nie wykonany](guides/E2E_01_SAP_TO_KSEF_TEST.md).
+- [ ] **ABAP-06 LIVE BLOCKED na IAM:** binding V4 UI już active/published (kontynuacja użytkownika), metadata HTTP200. Potwierdzić ograniczone IAM A/B i wykonać READ/UI5 LIVE. Zachować istniejące aliasy; bez migracji SRVD.
+- [ ] **Eksport UI SAP → Git:** 17 plików w zakresie; MCP diff zwraca pustą treść 6 plików DCL. Wymagany pełny eksport ADT/abapGit po testach lub naprawa serializacji MCP; brak eksportu do abap/src i brak pushu.
+
 - [x] **CAP-05.1:** retry REJECTED domyślnie OFF, walidacja max-attempts 1..10; Maven clean verify **178/178 PASS** H2/mock. [Dziennik ABAP-05](journal/2026-10-29-abap-05-real-rap-ui.md).
 - [x] **ABAP-05 inspekcja LIVE:** zastane aktywne trzy CDS `ZC_AINV_INV_*_UI`, trzy DCL i SRVD; ATC 7/7 bez ustaleń. Nie utworzono/aktywowano obiektów SAP; nie oznacza zaliczenia IAM runtime.
 - [x] **UI5-05 lokalnie:** fail closed dla wadliwej/niepełnej historii CAP, szablon osobnego routingu RAP; build i build szablonu PASS, QUnit **59/59**, OPA **13/13**. Domyślny mock zachowany.
-- [ ] **ABAP-05 LIVE UI BLOCKED:** review aliasów SRVD Items/References, binding V4 UI w ADT (obecnie 404), publikacja, ograniczone IAM dwóch business userów, macierz READ i uruchomienie UI5 na rzeczywistym URI. [Instrukcja](guides/RAP_UI_LIVE_CONNECTION.md). Nie tworzyć drugiego zestawu historycznych patchy ZC_AINV_UI_*.
+- [ ] **ABAP-05 LIVE UI — kontynuacja ABAP-06:** binding V4 UI w ADT, publikacja, ograniczone IAM dwóch business userów, macierz READ i UI5 na rzeczywistym URI. Zachować InvoiceItems/InvoiceReferences. [Instrukcja](guides/RAP_UI_LIVE_CONNECTION.md). Nie tworzyć drugiego zestawu historycznych patchy ZC_AINV_UI_*.
 
 - [x] CAP-05: A+B i UI5 C na `feature/cap-05-integration`; CAP clean verify **173/173 PASS** H2/mock; UI5 build/QUnit/OPA PASS. [Audyt](audits/2026-10-29-cap-05-implementation-review.md).
 - [x] `requestSend(invoiceUUID)` — własny odczyt RAP, NIP/CompanyCode, TEST, FA(3)/snapshot, atomowa rezerwacja DB i persistent outbox. Konkurencja dwóch użytkowników, rollback, nieznane stany i controlled retry potwierdzone lokalnie.

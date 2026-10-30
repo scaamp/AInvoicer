@@ -98,7 +98,7 @@
           }
         },
         "capabilities": {
-          "sendInvoice": true,
+          "sendInvoice": false,
           "syncInbound": false,
           "viewXml": false,
           "downloadUpo": false,

@@ -1,6 +1,8 @@
-# ABAP-05: szablon po przejściu bramki LIVE; nie jest konfiguracją aktywnego endpointu.
+# ABAP-06: szablon READ po przejściu bramki LIVE; endpoint H01 wymaga weryfikacji.
 # Skopiuj do ignorowanego ui5-rap.local.yaml. Uzupełnij origin i pathPrefix z bindingu V4 UI.
 # Destination `abap` musi zachowywać business usera; bez wspólnego communication usera.
+# SRVD: Invoices, InvoiceItems, InvoiceReferences; szczegóły przez _Items/_References.
+# manifest: dataMode=rap dopiero po READ/IAM PASS; capabilities.sendInvoice=false.
 specVersion: "3.1"
 metadata:
   name: ainvoicer
@@ -23,5 +25,5 @@ server:
             url: http://localhost:8080
           # Dotychczasowa niezależna trasa SAP FI Legacy.
           - path: /sap
-            url: https://11b69711-9bcb-491b-b504-a9ba7e4b7e97.abap.us10.hana.ondemand.com
-            destination: abap-cloud-abap-1ebf3ff5trial-dev
+            url: https://replace-with-verified-legacy-origin.invalid
+            destination: REPLACE_WITH_VERIFIED_LEGACY_DESTINATION

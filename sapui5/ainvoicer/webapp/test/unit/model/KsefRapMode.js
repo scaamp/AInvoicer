@@ -7,8 +7,9 @@ sap.ui.define([
     "ainvoicer/model/ksef/KsefDataAdapter",
     "ainvoicer/model/ksef/KsefInvoiceMapper",
     "ainvoicer/model/ksef/KsefActionRules",
-    "ainvoicer/model/ksef/KsefFilterBuilder"
-], function (ODataModel, Filter, FilterOperator, Sorter, KsefDataAdapter, KsefInvoiceMapper, KsefActionRules, KsefFilterBuilder) {
+    "ainvoicer/model/ksef/KsefFilterBuilder",
+    "ainvoicer/model/ksef/KsefAiFilterAdapter"
+], function (ODataModel, Filter, FilterOperator, Sorter, KsefDataAdapter, KsefInvoiceMapper, KsefActionRules, KsefFilterBuilder, KsefAiFilterAdapter) {
     "use strict";
 
     // CAP-05 / ADR-0005: status biznesowy z RAP, stan integracji z CAP, lista z named modelu V4 "rap".
@@ -183,6 +184,22 @@ sap.ui.define([
                 assert.strictEqual(r.IntegrationAvailable, true);
             });
         });
+    });
+
+    QUnit.test("AI date and amount filters run on RAP with Edm.Date and Decimal types", function (assert) {
+        var oAdapter = rapAdapter(fakeCap(function () { return { status: 200, body: { value: [], "@odata.count": 0 } }; }));
+        var oAi = KsefAiFilterAdapter.translate({ filters: [
+            { path: "Direction", operator: "EQ", value1: "OUTBOUND" },
+            { path: "DocumentDate", operator: "BT", value1: "2026-10-01", value2: "2026-10-05" },
+            { path: "AmountDocument", operator: "GT", value1: "2000,00" }
+        ], sql: "ignored" });
+        return oAdapter.loadInvoices({ filters: KsefFilterBuilder.serverFilters(oAi.filters), top: 50 }).then(function (aRows) {
+            assert.strictEqual(oAdapter.getLastPage().count, 1, "RAP server counts the filtered result");
+            assert.strictEqual(aRows.length, 1);
+            assert.strictEqual(aRows[0].InvoiceNumber, "AINV-TEST-SEED-2026-FI-AR");
+            assert.strictEqual(aRows[0].GrossAmount, 2706);
+            assert.strictEqual(aRows[0].IssueDate, "2026-10-03");
+        }).finally(function () { oAdapter.model.destroy(); });
     });
 
     QUnit.test("CAP unavailable: SAP rows still shown, integration unknown, Send disabled", function (assert) {

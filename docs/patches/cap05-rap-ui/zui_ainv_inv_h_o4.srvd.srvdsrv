@@ -2,6 +2,6 @@
 @ObjectModel.leadingEntity.name: 'ZC_AINV_INV_H_UI'
 define service ZUI_AINV_INV_H_O4 provider contracts odata_v4_ui {
   expose ZC_AINV_INV_H_UI as Invoices;
-  expose ZC_AINV_INV_I_UI as Items;
-  expose ZC_AINV_INV_REF_UI as References;
+  expose ZC_AINV_INV_I_UI as InvoiceItems;
+  expose ZC_AINV_INV_REF_UI as InvoiceReferences;
 }

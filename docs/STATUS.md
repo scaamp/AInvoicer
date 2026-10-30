@@ -1,6 +1,6 @@
 ---
 title: "AInvoicer — aktualny stan"
-date: 2026-10-29
+date: 2026-10-30
 type: status
 status: w-trakcie
 tags: [ainvoicer, cap-java, status]
@@ -13,6 +13,22 @@ tags: [ainvoicer, cap-java, status]
 [Project Home](README.md) · [Roadmapa](ROADMAP.md) · [Workflow abapGit](guides/ABAPGIT_WORKFLOW.md) · [Model RAP faktur](guides/ABAP_RAP_INVOICE_MODEL.md) · [Dziennik próby tworzenia ABAP FS](journal/2026-10-25-abapfs-create-probe.md) · [Dziennik kompozycji RAP](journal/2026-10-24-abap-rap-composition.md) · [Dziennik pierwszego eksportu](journal/2026-10-24-abapgit-rap-initial-export.md) · [Dziennik bootstrapu](journal/2026-10-23-cap-java-bootstrap.md) · [Weryfikacja Phase 1](journal/2026-10-24-cap-java-bootstrap-verification.md) · [Model KsefOperations](journal/2026-10-24-ksef-operations-model.md) · [Usługa i CRUD OData](journal/2026-10-24-ksef-service-definition.md) · [Walidacja i autoryzacja KsefOperations](journal/2026-10-24-ksef-operations-validation-authorization.md)
 
 ## Current Phase
+
+**IAM — postęp po naprawie pól przez użytkownika:** użytkownik zgłosił działanie NIP, następnie wykonanie BUK. Własny ponowny READ H01 potwierdza zapisane **ZAINV_RF_NIP → ZAINV_NIP** oraz **ZAINV_RF_BUK → ZAINV_BUK**, supportsRanges=false w obu. Wcześniejsze „Missing metadata…” opisano w [diagnozie DDIC](guides/RAP_UI_LIVE_CONNECTION.md#iam--zadania-administratora); poprzedni brak zapisanego powiązania już nie występuje. Następny krok: **Restriction Type ZAINV_RT_READ**, którego jeszcze nie odnaleziono, z oboma RF i Z_AINV_KSF; następnie katalog/rola i business-user READ. Agent nadal nie wykonał zmian DDIC/IAM ani nadań. UI binding pozostaje opublikowany.
+
+**Kontynuacja po publikacji przez użytkownika (2026-10-30): binding UI odblokowany.** Własny odczyt MCP potwierdził SRVB ZUI_AINV_INV_H_O4 **active, V4, published=true, wersja 0001**. Rzeczywista ścieżka: `/sap/opu/odata4/sap/zui_ainv_inv_h_o4/srvd/sap/zui_ainv_inv_h_o4/0001/`. UI metadata HTTP200, hash fecf05295ba1105454fae8db18b1b0d3fd133625760a0f19492420debf196345, encje Invoices/InvoiceItems/InvoiceReferences, nawigacje _Items/_References. UI READ przez developer OAuth: **HTTP200, 0 rekordów** w każdej encji; Web API nadal HTTP200, 4 nagłówki (zakres syntetyczny NIP5260002008/spółka1000). Wynik UI jest zgodny z brakiem pasującego uprawnienia DCL, ale bez analizy efektywnych nadań nie dowodzi wyłącznej przyczyny. **Teraz blokuje IAM i test business usera**, nie publikacja. Nie zmieniano uprawnień. [Dokładne kroki IAM](guides/RAP_UI_LIVE_CONNECTION.md#iam--zadania-administratora) · [Dopisek do dziennika](journal/2026-10-30-abap-06-ui5-06.md#kontynuacja--binding-opublikowany-przez-użytkownika).
+
+Poniższy opis początkowego przebiegu sprintu zachowuje historyczny wynik 404; zastępuje go powyższa weryfikacja publikacji.
+
+**ABAP-06 + UI5-06 (2026-10-30), feature/abap-06-live-ui, HEAD 832c682:** nowy branch z aktualnego origin/main, początkowo czyste drzewo. H01 po starcie instancji i ponownym logowaniu działa (początkowe 503/401 rozwiązane). MCP **2.13.3**, ZAINVOICER recordChanges=false. Ponownie potwierdzono active trzech CDS ZC_AINV_INV_*_UI, trzech DCL i SRVD ZUI_AINV_INV_H_O4, brak nieaktywnych UI; **nowe ATC 7/7, zero ustaleń**. DCL: ACTVT03, tuple NIP/CompanyCode, OUTBOUND SellerNip / INBOUND BuyerNip, dzieci przez _Parent. **UI binding nadal 404; MCP create nadal tylko V2. IAM i UI READ business userów BLOCKED.** Web API READ przez developer OAuth ponownie HTTP200, 4/9/6; nie zalicza UI LIVE.
+
+**Gotowość lokalna UI5-06:** zachowano aliasy Invoices/InvoiceItems/InvoiceReferences i nawigacje _Items/_References. Send w manifeście domyślnie **OFF**, także po zmianie trybu na rap; dataMode pozostaje mock. Zaktualizowano szablon routingu bez lokalnych hostów H01/Legacy. Maven clean verify **178/178 PASS** H2/mock, UI5 build i build szablonu PASS, **QUnit 61/61 (354 asercje), OPA 13/13 (80)**. Testy LIVE tagami wykluczone; AI/OCR/STT/Legacy zewnętrzne NOT TESTED. Nie zmieniono CAP, SDK ani flag transportów w repo. npm ci zgłosiło 82 podatności zastanych zależności; nie wykonywano automatycznych aktualizacji.
+
+**SAP/Git:** linked branch abapGit nadal java-cap-ksef (a6150d7); main i feature bazują na 832c682. W SAP 17 brakujących plików UI oraz 3 zmiany spoza zakresu. MCP diff w mniejszych partiach zwraca pustą treść sześciu plików DCL mimo poprawnego odczytu ADT — nie dodano niekompletnego eksportu do abap/src. Commit/push/merge, SAP aktywacja/publikacja, IAM, SEND i HTTP WRITE **NOT EXECUTED**. Następny krok: **ADT binding V4 UI i IAM**, potem pełna macierz READ; dopiero osobno uzgodnione CAP-04D/E2E-01. [Dziennik i macierz](journal/2026-10-30-abap-06-ui5-06.md) · [Kroki ADT/IAM](guides/RAP_UI_LIVE_CONNECTION.md) · [Runbook E2E-01](guides/E2E_01_SAP_TO_KSEF_TEST.md).
+
+### Poprzedni stan — 2026-10-29
+
+Poniższe wyniki opisują poprzednie sesje; bieżące wyniki i decyzja o zachowaniu aliasów znajdują się powyżej.
 
 **Główna gałąź rozwoju: `main` (2026-10-29).** Na zlecenie użytkownika scalono ABAP-05/CAP-05.1/UI5-05 do `java-cap-ksef` (`c21f946`), a tę linię promowano do `main` przez fast-forward, razem z aktualizacją instrukcji. Oryginalny `main` zachowano lokalnie i na origin jako `archive/original-ainvoicer-2026-10-29`, dokładnie `b3e10b0cc4f2f17e0d98e0203303cb941606814c`. Nowe feature zaczynają się z `main`. Nie przełączano gałęzi abapGit w SAP. [Historia operacji i weryfikacja](journal/2026-10-29-main-promotion.md).
 
