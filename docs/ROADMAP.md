@@ -117,7 +117,8 @@ HTTP 202 nie oznacza przyjęcia faktury. Eksperyment na `feature/ksef-java-e2e-r
 ## Phase 5 — SAPUI5 + CAP
 
 - [x] **ABAP-06 kontynuacja — UI binding opublikowany przez użytkownika:** własny MCP READ potwierdza active/V4/published=true/0001 oraz metadata HTTP200; rzeczywisty URI zapisany. UI kolekcje HTTP200/0 w developer OAuth; nie jest to PASS dostępu do danych business usera.
-- [ ] **Następna bramka IAM:** IAM App dla ZUI_AINV_INV_H_O4, ACTVT03, restriction fields NIP/spółka i wspólny restriction type, katalog/rola i konkretne zakresy A/B. Nie zmieniono nadań; pełna macierz READ i UI5 LIVE pozostają do wykonania.
+- [x] **IAM — obiekty developerskie w H01:** aktywne domeny CHAR10/CHAR4 i DTEL, RF NIP/spółka, wspólny ZAINV_RT_READ, ZAINV_UI_READ_EXT z OData V4/ACTVT03 i wartościami NIP/spółki, opublikowany ZAINV_BC_READ (Read=true/Write=false/F4=false), assignment ZAINV_BC_READ_0001. Zmiany użytkownika w ADT potwierdzone READ MCP. [Model i zależności](guides/RAP_UI_IAM_MODEL.md).
+- [ ] **Następna bramka IAM:** rola biznesowa, efektywne zakresy i przypisanie business usera; pełna macierz READ/izolacji A/B i UI5 LIVE. Najnowszy MCP developer OAuth HTTP200/0 nie zalicza tych testów. Brak nadań przez agenta i brak eksportu snapshotu SAP do Git.
 
 - [x] **ABAP-06 inspekcja (2026-10-30):** H01 connected, aktywne 3 CDS/3 DCL/SRVD i brak wersji inactive; nowe ATC 7/7 bez ustaleń. abapGit nadal java-cap-ksef. Web API READ developer OAuth HTTP200, 4/9/6. [Dziennik](journal/2026-10-30-abap-06-ui5-06.md).
 - [x] **UI5-06 lokalnie:** Send domyślnie OFF również po przełączeniu do rap, zachowane aliasy InvoiceItems/InvoiceReferences, poprawiony szablon i runbook. Maven 178/178, QUnit 61/61, OPA 13/13, oba buildy PASS. [E2E-01 przygotowany, nie wykonany](guides/E2E_01_SAP_TO_KSEF_TEST.md).

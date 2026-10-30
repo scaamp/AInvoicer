@@ -12,6 +12,8 @@ AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijan
 
 ## Od czego zacząć
 
+- [RAP UI IAM — co robią domeny, AUTH, RF/RT, aplikacja, katalog, rola i DCL](guides/RAP_UI_IAM_MODEL.md).
+
 - [ABAP-06 + UI5-06 — audyt H01, regresja READ i blokery ADT/IAM](journal/2026-10-30-abap-06-ui5-06.md).
 - [E2E-01 — runbook jednej syntetycznej faktury SAP → KSeF TEST → writeback → UI5 (nie wykonany)](guides/E2E_01_SAP_TO_KSEF_TEST.md).
 
