@@ -116,6 +116,10 @@ HTTP 202 nie oznacza przyjęcia faktury. Eksperyment na `feature/ksef-java-e2e-r
 
 ## Phase 5 — SAPUI5 + CAP
 
+- [x] **ABAP-07/UI5-07 lokalnie (2026-10-30):** branch z origin/main; bounded READ CAP z abortem, obsługa 401/403/timeout/pustej strony i testy stabilnej paginacji. Maven178/178, QUnit69/69, OPA13/13, oba buildy PASS. ATC7/7 bez ustaleń, UI binding i IAM developerskie ponownie sprawdzone; Web API4/9/6, UI developer OAuth200/0. [Dziennik](journal/2026-10-30-abap-07-ui5-07.md).
+- [ ] **ABAP-07 LIVE BLOCKED:** potwierdzić w Fiori efektywne przypisanie ograniczonej Business Role; potem business-user READ, macierz izolacji i UI5 RAP. Brak narzędzia MCP do Business Roles, przechwytywanie okna niedostępne; nie potwierdzono braku roli. CAP user IAS/XSUAA i Destination nadal niezweryfikowane. [Procedura](guides/RAP_UI_LIVE_CONNECTION.md).
+- [ ] **Eksport ABAP-07:** status33, 30 kandydatów UI/IAM do przeglądu, 3 wpisy poza zakresem; MCP nadal serializuje DCL jako puste. Pełny eksport ADT po review/testach i odrębnym zleceniu publikacji SAP; nie przełączono linked branch. CAP-04D nadal wymaga READ i osobno autoryzowanego WRITE.
+
 - [x] **ABAP-06 kontynuacja — UI binding opublikowany przez użytkownika:** własny MCP READ potwierdza active/V4/published=true/0001 oraz metadata HTTP200; rzeczywisty URI zapisany. UI kolekcje HTTP200/0 w developer OAuth; nie jest to PASS dostępu do danych business usera.
 - [x] **IAM — obiekty developerskie w H01:** aktywne domeny CHAR10/CHAR4 i DTEL, RF NIP/spółka, wspólny ZAINV_RT_READ, ZAINV_UI_READ_EXT z OData V4/ACTVT03 i wartościami NIP/spółki, opublikowany ZAINV_BC_READ (Read=true/Write=false/F4=false), assignment ZAINV_BC_READ_0001. Zmiany użytkownika w ADT potwierdzone READ MCP. [Model i zależności](guides/RAP_UI_IAM_MODEL.md).
 - [ ] **Następna bramka IAM:** rola biznesowa, efektywne zakresy i przypisanie business usera; pełna macierz READ/izolacji A/B i UI5 LIVE. Najnowszy MCP developer OAuth HTTP200/0 nie zalicza tych testów. Brak nadań przez agenta i brak eksportu snapshotu SAP do Git.

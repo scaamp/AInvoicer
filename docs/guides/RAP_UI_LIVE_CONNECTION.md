@@ -8,6 +8,53 @@ tags: [ainvoicer, rap, abap, sapui5, iam, odata, abap-06]
 
 # RAP UI — połączenie LIVE
 
+## ABAP-07/UI5-07 — bieżąca bramka, 2026-10-30
+
+**Binding/IAM developerskie VERIFIED; business-user READ i SAPUI5 LIVE BLOCKED.** Nowy READ MCP potwierdza active/published V4/0001, metadata HTTP200 (hash jak poniżej), App/katalog/RT publishStatus=p, zapisane RF i assignment. DCL nagłówka nadal sprawdza ACTVT03 i parę NIP/spółka, dzieci dziedziczą przez _Parent. ATC7/7 bez ustaleń; brak inactive w sprawdzonym zakresie. UI Invoices + expand, InvoiceItems i InvoiceReferences zwracają HTTP200/0 w developer OAuth. Web API zwraca4/9/6. **Nie ustalono przyczyny pustej listy UI ani istnienia/efektywności Business Role.** [Pełny raport](../journal/2026-10-30-abap-07-ui5-07.md).
+
+**Jedna następna czynność administratora:** w H01 Fiori → **Maintain Business Roles** potwierdzić efektywne przypisanie ograniczonej roli odczytu do uzgodnionego business usera. Wykorzystać istniejącą rolę, jeśli jest; nazwa ZBR_AINV_READ_1000 jest tylko propozycją. Sprawdzić katalog ZAINV_BC_READ, zapisany/aktywny stan roli, Read=Restricted, Write=No Access, ZAINV_RF_NIP=5260002008 i ZAINV_RF_BUK=1000 oraz sumę innych ról użytkownika. Brak roli/przypisania wymaga działania upoważnionego administratora, bez wildcard/ACTVT16/CRUD. Nie tworzono ani nie przypisywano roli przez agenta. Po potwierdzeniu: nowy login business usera i READ poniżej.
+
+MCP nie udostępnia API Business Roles/przypisań ani przełączenia principal na business usera; jego query nie wspiera filter/orderby/skip/count/key. Próba odczytu istniejącego okna SAP przez Computer Use zakończyła się dwukrotnym timeoutem przechwytywania. Nie odczytano roli przez UI. Do dowodu potrzebna jest sesja Fiori/business usera; nowy login developer OAuth nie zastępuje jej.
+
+### Status wymaganych testów
+
+| Przypadek | ABAP-07 — aktualny dowód |
+| --- | --- |
+| UI metadata, aliasy, Edm.Guid/Date/Decimal | LIVE developer OAuth200; typy i nawigacje zgodne |
+| Dozwolony NIP/spółka jako business user | BLOCKED — rola, principal i login niezweryfikowane; liczba widocznych faktur nieznana |
+| Obcy NIP / obca spółka | BLOCKED — brak zatwierdzonej tożsamości i danych innych zakresów;4 znane nagłówki Web API w jednym zakresie |
+| Bez roli; obcy UUID; bezpośrednie obce dzieci; expand | BLOCKED — brak odpowiednich sesji/danych; puste kolekcje developera nie zaliczają izolacji |
+| Filter/orderby/top/skip/count business usera | BLOCKED — ograniczenia MCP; lokalny mock paging/count PASS |
+| UI bez ApplyKsefResult / CRUD | CDS/SRVD READ: brak behavior/akcji; normalizowane metadata MCP nie raportują akcji/capabilities. Surowy EDMX i odmowy runtime business usera NOT VERIFIED; nie wykonywano mutującego HTTP |
+| CAP user / claims / korelacja z RAP | BLOCKED LIVE — IAS/XSUAA, trusted claims i Destination niezweryfikowane; lokalne testy ról/NIP/spółki PASS |
+| 401/403, CAP timeout, puste kolekcje | QUnit69/69 PASS mock/stub, bez dowodu IAM LIVE |
+
+### Faktyczny routing lokalny
+
+Nie uruchomiono wariantu RAP ani nie utworzono lokalnych credentiali. Manifest nadal `dataMode=mock`, wszystkie mutujące capabilities=false. `serve-mock` używa `ui5-mock.yaml`: RAP i Legacy są atrapami. W `ui5-local.yaml` `/sap` wskazuje dotychczasowy Legacy destination `abap-cloud-abap-1ebf3ff5trial-dev` (również mock middleware Legacy), CAP ma trasę localhost8080, **brak /rap-ui proxy LIVE**. Szablon `ui5-rap.yaml.example` przewiduje /rap-ui, CAP i osobne /sap, ale ma placeholdery origin/path/destination. Build szablonu PASS nie sprawdza logowania.
+
+Po bramce IAM skopiować szablon do ignorowanego `ui5-rap.local.yaml`, wstawić `pathPrefix=/sap/opu/odata4/sap/zui_ainv_inv_h_o4/srvd/sap/zui_ainv_inv_h_o4/0001` (zweryfikowany ponownie w ABAP-07), origin z bindingu oraz faktycznie działającą destination business usera. BAS `abap`, auth i propagacja nie zostały sprawdzone; nie mylić ich z nazwą destination Legacy. Zachować TLS i niezależną trasę Legacy. Uruchomić osobny wariant z dataMode=rap dopiero po pozytywnym READ; Send OFF. Lokalny plik proxy jest już ignorowany. CAP CSRF jest pokryty testem HEAD/token + jeden POST do atrapy, bez mutacji LIVE.
+
+Regresja ABAP-07: Maven178/178, QUnit69/69 (408), OPA13/13 (80), oba buildy PASS. Timeout odczytu CAP15 s obejmuje JSON i abortuje READ; po timeout lista/szczegóły RAP pozostają, Send zablokowany. AI/Scanner/Voice/Legacy zachowano w regresji mock; ich backendy LIVE nie były wywoływane.
+
+### Eksport — ponowny odczyt ABAP-07
+
+SAP repoId000000000001 nadal `refs/heads/java-cap-ksef`; lokalny branch jest z origin/main6a4e2a5. Status: **33 unstaged,0 staged**, w tym3 poza zakresem: dwa DELETE ZCL_ABAPFS_GIT_PROBE i ADD ZCS_AINV_H01. Pozostałe30 to kandydaci UI/IAM do świadomego review, nie automatyczna lista do pushu. W origin/main brak eksportu UI i nowych IAM; Z_AINV_KSF już istnieje. Nie przełączono brancha SAP ani niczego nie stage'owano.
+
+Kontrolny diff **zc_ainv_inv_h_ui.dcls.asdcls + .dcls.xml** ponownie ma local="" i remote="", mimo niepustego active źródła ADT. Wcześniejszy ABAP-06 wykazał sześć pustych plików; teraz wystarczyło odtworzyć problem na dwóch. Bezpieczna ścieżka ręczna: H01_EN → abapGit Repositories → ZAINVOICER → Stage and Push, potwierdzić linked branch, STARTING_FOLDER=/abap/src/ i FOLDER_LOGIC=FULL, obejrzeć niepuste źródła/metadane trzech DCLS i cały spójny diff UI/IAM (w tym generowane SUSH/SCO2 i zmieniony SIA3). Wykluczyć3 wpisy spoza zakresu. Jeśli ADT też pokazuje pusty DCL, przerwać eksport. Bez ręcznych sidecarów, bez częściowego eksportu. Publikacja do gałęzi SAP wymaga odrębnego jawnego zlecenia; zgoda na własny feature Git nie oznacza publikacji na java-cap-ksef. Po eksporcie kontrolowana integracja do feature/main po review.
+
+### CAP-04D — checklista przygotowana, NOT READY
+
+Nie wykonano HTTP WRITE ani nie włączono `ainv.sap-write.enabled`. Poniższe punkty są planem przyszłego testu; szczegóły i istniejący harness: [polityka WRITE](SAP_WRITE_ACCESS_AND_READ_POLICY.md#5-cap-04d--gotowość-po-fix-2).
+
+1. Zaliczyć business-user RAP UI READ i izolację oraz sprawdzić Destination **AINV_H01** z rzeczywistym communication userem/scenario/arrangement. Bieżący proces nie ma env destinations/VCAP_SERVICES; kod RemoteService wskazuje poprawny Web API path, co nie potwierdza konfiguracji BTP. Jedna destination jest współdzielona przez READ/WRITE; nie podmieniać credentiali działającego procesu.
+2. Administrator osobno potwierdza **Z_AINV_KSF / ACTVT16** i jeden konkretny NIP/CompanyCode bez CRUD, z odczytem dla niezależnego GET. ACTVT16 istniejące w definicji SUSO nie dowodzi nadania; nie dodawać go do roli UI. Wybrać **oddzielną syntetyczną OUTBOUND bez numeru KSeF**, inną od faktury pierwszego SEND. Zapisać uzgodniony UUID/numer/zakres; nie wybrano ani nie utworzono jej w ABAP-07.
+3. READ przed próbą: cztery pola KSeF, InvoiceStatus i **LocalLastChangedAt**. Payload ma ExpectedLocalLastChangedAt z pełną precyzją100 ns oraz stały **WriteRequestId**; nie odświeżać wersji po konflikcie w celu obejścia CAS. Potwierdzić backendowy CSRF (konfiguracja `csrf.enabled=true`, test lokalny PASS; LIVE principal/token NOT VERIFIED).
+4. Po osobnym zleceniu uruchomić kontrolowany harness CAP-04D wyłącznie dla uzgodnionego UUID: odmowy obcego NIP/spółki i CRUD, **APPLIED**, niezależny GET KsefNumber/KsefEnvironment/KsefRecordedAt/KsefWriteRequestId, niezmieniony InvoiceStatus. Ponowienie identycznego payloadu daje **ALREADY_APPLIED** i nie zmienia ETag; konflikty nie nadpisują wyniku. Te kroki obejmują kilka żądań HTTP w jednym kontrolowanym scenariuszu, nie nowy SEND.
+5. **VERSION_CONFLICT** testować wyłącznie na osobno uzgodnionej dziewiczej fakturze STALE; pełny wyścig wymaga osobnego UUID RACE i zakresu zgody. Nie przedstawiać pominiętych wariantów jako PASS. Po utracie odpowiedzi GET/rekoncyliacja z zachowaniem payloadu/WriteRequestId; bez uruchamiania od nowa testu generującego nowy numer. Po próbie wyłączyć override, zachować dowody poza Git. UPO jest niezależne i ten test nie łączy się z KSeF.
+
+## Historia ABAP-06 i procedury szczegółowe
+
 [STATUS](../STATUS.md) · [ABAP-06/UI5-06](../journal/2026-10-30-abap-06-ui5-06.md) · [ABAP-05: poprzednie wyniki](../journal/2026-10-29-abap-05-real-rap-ui.md) · [Kokpit](SAPUI5_KSEF_COCKPIT.md) · [E2E-01](E2E_01_SAP_TO_KSEF_TEST.md)
 
 **Bieżąca bramka (2026-10-30): BLOCKED na IAM, binding już opublikowany.** Po utworzeniu/publikacji przez użytkownika własny MCP odczyt potwierdza SRVB active/V4/published=true/0001. Metadata HTTP200, hash fecf05295ba1105454fae8db18b1b0d3fd133625760a0f19492420debf196345, prawidłowe encje i nawigacje. HTTP GET każdej kolekcji UI zwrócił 200/0 rekordów w kontekście deweloperskim. To nie jest potwierdzony READ business usera ani test izolacji. Domyślnie dataMode=mock i capabilities.sendInvoice=false. Początkowe 503/401 i brak bindingu 404 są rozwiązane.
