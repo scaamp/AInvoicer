@@ -116,6 +116,8 @@ HTTP 202 nie oznacza przyjęcia faktury. Eksperyment na `feature/ksef-java-e2e-r
 
 ## Phase 5 — SAPUI5 + CAP
 
+- [ ] **ABAP-08/UI5-08 (2026-11-02), IN PROGRESS/BLOCKED:** ABAP-07 zintegrowane na `feature/abap-08-live-integration` (merge `160130c`); Maven 178/178, QUnit 69/69, OPA 13/13, oba buildy PASS (lokalnie/mock). Do zrobienia: Business Role z `ZAINV_BC_READ` (Read=Restricted, Write=No Access, NIP5260002008/BUK1000) i przypisanie business usera, ponowne logowanie MCP, business-user READ i macierz DCL, UI5 w trybie rap (lokalnie, Send OFF), eksport abapGit (puste DCL w diffie MCP), potem osobno CAP-04D (NOT READY). [Dziennik](journal/2026-11-02-abap-08-ui5-08.md).
+
 - [x] **ABAP-07/UI5-07 lokalnie (2026-10-30):** branch z origin/main; bounded READ CAP z abortem, obsługa 401/403/timeout/pustej strony i testy stabilnej paginacji. Maven178/178, QUnit69/69, OPA13/13, oba buildy PASS. ATC7/7 bez ustaleń, UI binding i IAM developerskie ponownie sprawdzone; Web API4/9/6, UI developer OAuth200/0. [Dziennik](journal/2026-10-30-abap-07-ui5-07.md).
 - [ ] **ABAP-07 LIVE BLOCKED:** potwierdzić w Fiori efektywne przypisanie ograniczonej Business Role; potem business-user READ, macierz izolacji i UI5 RAP. Brak narzędzia MCP do Business Roles, przechwytywanie okna niedostępne; nie potwierdzono braku roli. CAP user IAS/XSUAA i Destination nadal niezweryfikowane. [Procedura](guides/RAP_UI_LIVE_CONNECTION.md).
 - [ ] **Eksport ABAP-07:** status33, 30 kandydatów UI/IAM do przeglądu, 3 wpisy poza zakresem; MCP nadal serializuje DCL jako puste. Pełny eksport ADT po review/testach i odrębnym zleceniu publikacji SAP; nie przełączono linked branch. CAP-04D nadal wymaga READ i osobno autoryzowanego WRITE.

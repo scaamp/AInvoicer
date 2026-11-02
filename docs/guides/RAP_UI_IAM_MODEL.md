@@ -16,6 +16,8 @@ Przygotowaliśmy w H01 obiekty techniczne i konfigurację developerską, dzięki
 
 ## Co rzeczywiście potwierdzono w H01
 
+**ABAP-08 (2026-11-02):** App/katalog/RT/RF/assignment nie były ponownie odczytywane (OData/OAuth MCP bez aktywnego logowania; ADT potwierdziło tylko istnienie SRVB). Business Role i przypisanie: **NOT VERIFIED**, MCP nie ma narzędzia do ich odczytu. Instrukcja dla administratora (rola z `ZAINV_BC_READ`, Read=Restricted, Write=No Access, NIP5260002008, BUK1000, przegląd innych ról użytkownika, ponowne logowanie): [dziennik ABAP-08](../journal/2026-11-02-abap-08-ui5-08.md#instrukcja-manualna--jedna-czynność-blokująca-administrator-h01).
+
 **Ponowna inspekcja ABAP-07 (2026-10-30):** odczytano App, katalog, RT, RF, assignment, SUSO, trzy CDS/DCL i SRVD/SRVB. App/katalog/RT nadal opublikowane; SUSO zawiera już referencję ZAINV_RT_READ. UI metadata200, trzy kolekcje200/0 w developer OAuth; ATC7/7 bez ustaleń. Rola biznesowa, aktywacja roli, zakres Read/Write, inne role, przypisanie business usera i odświeżenie jego sesji: **BLOCKED / niezweryfikowane**. Samo RT/SIA7 ani roleID w XML katalogu nie są dowodem istnienia Business Role. [Wyniki i ograniczenia narzędzi](../journal/2026-10-30-abap-07-ui5-07.md).
 
 | Obiekt / typ | Potwierdzony stan |

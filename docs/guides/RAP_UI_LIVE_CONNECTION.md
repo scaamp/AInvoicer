@@ -8,6 +8,10 @@ tags: [ainvoicer, rap, abap, sapui5, iam, odata, abap-06]
 
 # RAP UI — połączenie LIVE
 
+## ABAP-08/UI5-08 — stan 2026-11-02
+
+**Bez zmian: business-user READ i SAPUI5 LIVE BLOCKED.** Regresja lokalna po merge ABAP-07: Maven 178/178, QUnit 69/69, OPA 13/13, buildy PASS. Tej sesji `odata_resolve_service` (UI i Web API) → `ODATA_REQUEST_FAILED` (kanał OData MCP wymaga ponownego logowania), ATC bez odpowiedzi, abapGit diff DCLS nadal pusty; SRVB istnieje. Lokalny, ignorowany `ui5-rap.local.yaml` przygotowany (nieuruchomiony). Lokalny `dataMode=rap` ustawiać wyłącznie w niecommitowanej kopii manifestu po PASS READ; Send OFF. CAP-04D: NOT READY (Destination AINV_H01, ACTVT16, osobny UUID syntetyczny — poniżej, bez zmian). [Dziennik i instrukcja dla administratora](../journal/2026-11-02-abap-08-ui5-08.md).
+
 ## ABAP-07/UI5-07 — bieżąca bramka, 2026-10-30
 
 **Binding/IAM developerskie VERIFIED; business-user READ i SAPUI5 LIVE BLOCKED.** Nowy READ MCP potwierdza active/published V4/0001, metadata HTTP200 (hash jak poniżej), App/katalog/RT publishStatus=p, zapisane RF i assignment. DCL nagłówka nadal sprawdza ACTVT03 i parę NIP/spółka, dzieci dziedziczą przez _Parent. ATC7/7 bez ustaleń; brak inactive w sprawdzonym zakresie. UI Invoices + expand, InvoiceItems i InvoiceReferences zwracają HTTP200/0 w developer OAuth. Web API zwraca4/9/6. **Nie ustalono przyczyny pustej listy UI ani istnienia/efektywności Business Role.** [Pełny raport](../journal/2026-10-30-abap-07-ui5-07.md).
