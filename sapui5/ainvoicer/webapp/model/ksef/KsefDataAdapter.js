@@ -10,6 +10,7 @@ sap.ui.define([
     var ErrorCode = Object.freeze({
         BACKEND_MISSING: "BACKEND_MISSING",
         HTTP: "HTTP",
+        TIMEOUT: "TIMEOUT",
         NETWORK: "NETWORK",
         PARSE: "PARSE"
     });
@@ -375,7 +376,25 @@ sap.ui.define([
     };
 
     KsefDataAdapter.prototype._getJson = function (sUrl) {
-        return this._request(sUrl, { method: "GET" });
+        // Limit obejmuje nagłówki i treść odpowiedzi. Brak CAP nie może bezterminowo blokować strony RAP.
+        // Abort przerywa tylko READ; akcje mutujące nie dostają automatycznego ponowienia.
+        var iConfigured = (this._oConfig.cap || {}).readTimeoutMs;
+        var iTimeout = Number.isSafeInteger(iConfigured) && iConfigured > 0
+            ? Math.min(iConfigured, 60000) : 15000;
+        var oController = new AbortController();
+        var iTimer;
+        var that = this;
+        return Promise.race([
+            Promise.resolve().then(function () {
+                return that._request(sUrl, { method: "GET", signal: oController.signal });
+            }),
+            new Promise(function (resolve, reject) {
+                iTimer = setTimeout(function () {
+                    reject(adapterError(ErrorCode.TIMEOUT, "CAP_READ_TIMEOUT"));
+                    oController.abort();
+                }, iTimeout);
+            })
+        ]).finally(function () { clearTimeout(iTimer); });
     };
 
     KsefDataAdapter.prototype._postJson = function (sUrl, oBody) {

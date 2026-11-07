@@ -12,6 +12,11 @@ AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijan
 
 ## Od czego zacząć
 
+- [ABAP-08 stan końcowy 2026-11-07 — Business Role, READ 4/9/6 i lista SAPUI5 z H01 LIVE VERIFIED](journal/2026-11-02-abap-08-ui5-08.md#kontynuacja-2026-11-07-2--business-role-utworzona-business-user-read-pass-sapui5-live-pass).
+- [ABAP-08 kontynuacja 2026-11-07 — binding LIVE, DCL „bez roli” LIVE, Business Role do utworzenia](journal/2026-11-02-abap-08-ui5-08.md#kontynuacja-2026-11-07--logowanie-mcp-działa-business-role-nie-istnieje).
+- [ABAP-08 + UI5-08 — integracja ABAP-07, regresja 178/69/13, bramka Business Role nadal BLOCKED](journal/2026-11-02-abap-08-ui5-08.md).
+- [ABAP-07 + UI5-07 — IAM/readiness H01, timeout CAP i regresja 178/69/13](journal/2026-10-30-abap-07-ui5-07.md).
+
 - [RAP UI IAM — co robią domeny, AUTH, RF/RT, aplikacja, katalog, rola i DCL](guides/RAP_UI_IAM_MODEL.md).
 
 - [ABAP-06 + UI5-06 — audyt H01, regresja READ i blokery ADT/IAM](journal/2026-10-30-abap-06-ui5-06.md).

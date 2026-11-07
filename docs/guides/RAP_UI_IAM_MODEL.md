@@ -16,6 +16,16 @@ Przygotowaliśmy w H01 obiekty techniczne i konfigurację developerską, dzięki
 
 ## Co rzeczywiście potwierdzono w H01
 
+**ABAP-08 (2026-11-07, stan końcowy):** Business Role **`ZBR_AINV_READ_1000`** istnieje (utworzona przez użytkownika): katalog `ZAINV_BC_READ`, Read = Restricted (`ZAINV_RF_NIP`=5260002008, `ZAINV_RF_BUK`=1000, potwierdzone wizualnie), Write = No Access, przypisana do `CB9980000000`. Business-user READ przez UI binding: **LIVE VERIFIED 4/9/6** (wcześniej 0/0/0).
+
+**Model IAM „migrated” (H01 2608) — ważne przy każdej roli:** katalog `ZAINV_BC_READ` jest po migracji. ADT pokazuje „Restriction Types assigned to migrated catalog will not have any effect”, a IAM App serializuje `RTYPE_MIG_STATUS=3`. Restriction type `ZAINV_RT_READ` (Read) musi więc być przypisany na **IAM App `ZAINV_UI_READ_EXT`** (zakładka *Restriction Types*, potem *Publish Locally*). Bez tego *Maintain Business Roles* oferuje dla Read wyłącznie **Unrestricted**. Do uporządkowania: dodatkowy pusty wiersz wartości BUK w autoryzacjach IAM App. Weryfikacja ról i przypisań bez UI: released CDS `I_IAMBusinessRole` / `I_IAMBusinessUserBusinessRole` (ABAP SQL, read-only).
+
+**ABAP-08 (2026-11-07, przed utworzeniem roli):** Business Role **NOT FOUND**. Released `I_IAMBusinessRole` widziany przez login ADT zawiera tylko `SAP_BR_ADMINISTRATOR` i `SAP_BR_DEVELOPER`, a `I_IAMBusinessUserBusinessRole` po jednym przypisaniu do każdej. Widoki mają `#CHECK`, więc to najmocniejszy możliwy dowód z tej tożsamości, a nie formalny dowód braku filtrowania. Obecne role użytkownika nie dają `Z_AINV_KSF` (UI 0 rekordów przy danych w zakresie), więc po dodaniu nowej roli widoczny zakres pochodzi wyłącznie z niej. Katalog `ZAINV_BC_READ` nie występuje w serializacji abapGit. [Instrukcja utworzenia roli](../journal/2026-11-02-abap-08-ui5-08.md#kontynuacja-2026-11-07--logowanie-mcp-działa-business-role-nie-istnieje).
+
+**ABAP-08 (2026-11-02):** App/katalog/RT/RF/assignment nie były ponownie odczytywane (OData/OAuth MCP bez aktywnego logowania; ADT potwierdziło tylko istnienie SRVB). Business Role i przypisanie: **NOT VERIFIED**, MCP nie ma narzędzia do ich odczytu. Instrukcja dla administratora (rola z `ZAINV_BC_READ`, Read=Restricted, Write=No Access, NIP5260002008, BUK1000, przegląd innych ról użytkownika, ponowne logowanie): [dziennik ABAP-08](../journal/2026-11-02-abap-08-ui5-08.md#instrukcja-manualna--jedna-czynność-blokująca-administrator-h01).
+
+**Ponowna inspekcja ABAP-07 (2026-10-30):** odczytano App, katalog, RT, RF, assignment, SUSO, trzy CDS/DCL i SRVD/SRVB. App/katalog/RT nadal opublikowane; SUSO zawiera już referencję ZAINV_RT_READ. UI metadata200, trzy kolekcje200/0 w developer OAuth; ATC7/7 bez ustaleń. Rola biznesowa, aktywacja roli, zakres Read/Write, inne role, przypisanie business usera i odświeżenie jego sesji: **BLOCKED / niezweryfikowane**. Samo RT/SIA7 ani roleID w XML katalogu nie są dowodem istnienia Business Role. [Wyniki i ograniczenia narzędzi](../journal/2026-10-30-abap-07-ui5-07.md).
+
 | Obiekt / typ | Potwierdzony stan |
 | --- | --- |
 | ZAINV_D_NIP / DOMA | active, CHAR10, długość wyjściowa10; bez stałych wartości |
@@ -32,6 +42,8 @@ Przygotowaliśmy w H01 obiekty techniczne i konfigurację developerską, dzięki
 | ZUI_AINV_INV_H_O4 / SRVB | V4, wersja0001, published=true; URL z bindingu, bez zgadywania |
 
 W XML instancji IAM App pole ZAINV_BUK ma wartość1000 i dodatkowy pusty wpis fieldValue. Nie traktujemy pustego wpisu jako wildcard ani dowodu rozszerzenia uprawnień. Przy finalnym przeglądzie w ADT sprawdzić listę wartości i usunąć pusty wiersz, jeśli rzeczywiście występuje w edytorze. Ostateczne zakresy i tak trzeba potwierdzić na roli i użytkowniku.
+
+ABAP-07 potwierdził ten sam pusty wpis. XML oznacza pustą dolną i górną granicę, nie znak `*`; sam odczyt nie rozstrzyga, czy generator pomija ten wiersz, czy nadaje literalną wartość początkową. Nie jest to dowód wildcard ani przyczyny pustej kolekcji. Bezpieczna korekta **przez upoważnionego właściciela w ADT**: otworzyć istniejącą App → Authorizations → instancja0001 Z_AINV_KSF → wartości ZAINV_BUK; porównać zapis z edytorem, zachować1000 i usunąć wyłącznie potwierdzony pusty wiersz. Sprawdzić diff (bez nowej instancji/ACTVT16), zapisać/opublikować w zleconym zakresie, ponownie odczytać XML i wykonać macierz business usera. Agent nie zmieniał App ani uprawnień.
 
 Metadane katalogu nie zawierają całej listy aplikacji w tym samym dokumencie. Dlatego przypisanie potwierdzono oddzielnym odczytem **SIA7**. Pusty wynik narzędzia Object Relations dla katalogu nie oznaczał braku przypisania — odczyt SIA7 potwierdził oba końce relacji.
 
