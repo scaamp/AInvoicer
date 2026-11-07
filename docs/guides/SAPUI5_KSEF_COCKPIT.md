@@ -8,7 +8,9 @@ tags: [ainvoicer, sapui5, ksef, cap-java, frontend]
 
 # SAPUI5 — kokpit faktur KSeF
 
-**ABAP-08 (2026-11-07):** QUnit 69/69 (408), OPA 13/13 (80), build oraz build `ui5-rap.yaml.example`/`ui5-rap.local.yaml` PASS. Lokalny plik RAP odtworzono (poprzedni nie istniał w checkoucie), ale nie uruchomiono w trybie `rap`, bo bez roli lista H01 byłaby pusta. LIVE: BLOCKED. Manifest `dataMode=mock`, `sendInvoice=false`.
+**ABAP-08 (2026-11-07, stan końcowy): SAPUI5 LIVE VERIFIED (lista).** W trybie `rap` (lokalna, ignorowana konfiguracja) kokpit pokazuje 4 rzeczywiste faktury z H01: All (4), Purchase (2), Sales (2), z kierunkiem, procesem, stronami, NIP i datami. Przy niedostępnym CAP pojawia się ostrzeżenie „CAP integration status is unavailable … SAP data is shown; sending is disabled”, a dane RAP pozostają widoczne. „Send to KSeF” jest wyłączony (`sendInvoice=false`). Zmiana narzędzi: `@sap/ux-ui5-tooling` przypięty do `1.19.6` (reentrance ticket dla BTP ABAP); regresja po zmianie: build PASS, QUnit 69/69 (408), OPA 13/13 (80). Wizualnie niezweryfikowane: szczegóły, sort, filtr, paging. Instrukcja uruchomienia: [RAP_UI_LIVE_CONNECTION.md](RAP_UI_LIVE_CONNECTION.md).
+
+**ABAP-08 (2026-11-07, wcześniej):** QUnit 69/69 (408), OPA 13/13 (80), build oraz build `ui5-rap.yaml.example`/`ui5-rap.local.yaml` PASS. Lokalny plik RAP odtworzono (poprzedni nie istniał w checkoucie), ale nie uruchomiono w trybie `rap`, bo bez roli lista H01 byłaby pusta. LIVE: BLOCKED. Manifest `dataMode=mock`, `sendInvoice=false`.
 
 **ABAP-08/UI5-08 (2026-11-02):** bez zmian kodu UI; po merge ABAP-07 regresja lokalna PASS (QUnit 69/69, OPA 13/13, build i build szablonu RAP; mock RAP + fake CAP). Dodano ignorowany `ui5-rap.local.yaml` (`/rap-ui` → origin H01 z pathPrefix bindingu, `reentranceTicket`, CAP 8080, Legacy `/sap`) — nieuruchomiony. **LIVE lista/szczegóły: BLOCKED** (Business Role niezweryfikowana, logowanie MCP). Manifest `dataMode=mock`, `sendInvoice=false`. [Dziennik](../journal/2026-11-02-abap-08-ui5-08.md).
 

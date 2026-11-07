@@ -8,7 +8,23 @@ tags: [ainvoicer, rap, abap, sapui5, iam, odata, abap-06]
 
 # RAP UI — połączenie LIVE
 
-## ABAP-08 — kontynuacja 2026-11-07
+## ABAP-08 — stan końcowy 2026-11-07: SAPUI5 → RAP LIVE VERIFIED
+
+Lista faktur z H01 widoczna w SAPUI5 przez `/rap-ui` (4 faktury; CAP wyłączony nie ukrywa danych; Send wyłączony). [Dziennik](journal/2026-11-02-abap-08-ui5-08.md#kontynuacja-2026-11-07-2--business-role-utworzona-business-user-read-pass-sapui5-live-pass).
+
+Jak uruchomić lokalnie (wymaga roli `ZBR_AINV_READ_1000` lub równoważnej):
+
+1. Ignorowany `sapui5/ainvoicer/ui5-rap.local.yaml`: trasa `/rap-ui` → `url: https://9197a0a5-b602-4c28-84b4-6b63c6daa54d.abap.eu20.hana.ondemand.com` (host **API** `.abap.`), `pathPrefix` bindingu `ZUI_AINV_INV_H_O4/0001`, `authenticationType: reentranceTicket`; `resources.configuration.paths.webapp: webapp.rap.local` (ignorowana kopia `webapp` z `dataMode=rap`, `sendInvoice=false`).
+2. **Użytkownik sam** uruchamia `npx fiori run --config ui5-rap.local.yaml --port 8086 --open false` w swoim terminalu. Przy starcie proxy otwiera kartę `…abap-web…/sap/bc/sec/reentrance`, a na zalogowanie (IAS, mail i hasło) jest **60 s**. Po timeoucie błąd jest połykany bez logu i proxy przekazuje 401, przez co przeglądarka pokazuje okno Basic Auth, które w BTP ABAP nie działa. Wtedy trzeba zrestartować serwer.
+3. Otworzyć `http://localhost:8086/test/flp.html#app-preview`.
+
+Pułapki potwierdzone 2026-11-07:
+
+- Host `11b69711-….abap.us10…` z `ui5-mock.yaml`/`ui5-local.yaml` to **nie H01**: 503 „System is unknown” (`ICMENOSYSTEMFOUND`). Właściwe hosty zwraca `GET <api>/sap/public/bc/icf/virtualhost` (`API` = `.abap.`, `UI` = `.abap-web.…/ui`).
+- `@sap/ux-ui5-tooling` < 1.19.6 otwiera reentrance na hoście API (reguła `-api` dla S/4HANA Cloud). W repo przypięto **1.19.6**; ≥ 1.20.0 wymaga UI5 CLI v4.
+- Zawieszony stary proces na porcie 8086 (`EADDRINUSE`) powoduje, że przeglądarka trafia na stary serwer ze starą konfiguracją.
+
+## ABAP-08 — kontynuacja 2026-11-07 (przed utworzeniem roli)
 
 Kanał OData MCP znowu działa. `resolve_service` potwierdza `/sap/opu/odata4/sap/zui_ainv_inv_h_o4/srvd/sap/zui_ainv_inv_h_o4/0001/` (V4, published), a hashe metadata UI i Web API są niezmienione. UI: 0 nagłówków / 0 pozycji / 0 referencji (także przy bezpośrednich odczytach dzieci). Web API: 4 nagłówki w zakresie 5260002008/1000. Business Role z `ZAINV_BC_READ` **nie istnieje** (released `I_IAMBusinessRole`), więc business-user READ jest nadal BLOCKED. `ui5-rap.local.yaml` odtworzony i zbudowany, ale nie uruchomiony. Po utworzeniu i przypisaniu roli oczekiwany odczyt UI to 4/9/6 z UUID zgodnymi z Web API. [Instrukcja i wyniki](../journal/2026-11-02-abap-08-ui5-08.md#kontynuacja-2026-11-07--logowanie-mcp-działa-business-role-nie-istnieje).
 
