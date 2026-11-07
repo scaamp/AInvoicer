@@ -4,7 +4,7 @@
 
 AInvoicer combines **SAP ABAP Cloud / RAP**, **SAPUI5**, **CAP Java / Spring Boot**, the **official Polish Ministry of Finance KSeF Java SDK**, and existing **AI services** into one extensible invoice workflow. It is designed to support both **accounts payable (incoming/purchase invoices)** and **accounts receivable (outgoing/sales invoices)**—from document discovery and validation to electronic exchange, reconciliation, and auditability.
 
-> **Project maturity:** active engineering / integration testing. The KSeF TEST authentication and submission flow has been demonstrated using a synthetic SDK fixture; the complete SAPUI5 → SAP RAP → CAP → KSeF → SAP writeback flow has **not yet** been verified live. This is **not a production-ready KSeF connector**. See [current status](docs/STATUS.md) and [roadmap](docs/ROADMAP.md).
+> **Project maturity:** active engineering / integration testing. The KSeF TEST authentication and submission flow has been demonstrated using a synthetic SDK fixture; the SAPUI5 → SAP RAP **read** path (business-user IAM + DCL) was verified live on 2026-11-07; the complete SAPUI5 → SAP RAP → CAP → KSeF → SAP writeback flow has **not yet** been verified live. This is **not a production-ready KSeF connector**. See [current status](docs/STATUS.md) and [roadmap](docs/ROADMAP.md).
 
 **Documentation:** [Project knowledge base](docs/README.md) · [Architecture decision ADR-0005](docs/decisions/ADR-0005-rap-business-status-cap-integration-status.md) · [KSeF SDK integration](docs/guides/KSEF_JAVA_SDK_INTEGRATION.md) · [SAPUI5 cockpit](docs/guides/SAPUI5_KSEF_COCKPIT.md)
 
@@ -140,7 +140,7 @@ The current ABAP Environment uses **custom simulated invoice tables** (`ZAINV_IN
 | API / service | Purpose | State |
 | --- | --- | --- |
 | **RAP Web API:** `ZAPI_AINV_INV_H_O4/0001` | CAP → SAP: read invoices and invoke trusted `ApplyKsefResult` via OData V4 / Destination `AINV_H01` | Read verified in H01; real HTTP write not yet verified |
-| **RAP UI:** `ZUI_AINV_INV_H_O4` | Business-user OData V4 list, details, paging and KSeF business result; read-only exposure | CDS/DCL/service definition active; **OData V4 UI service binding / IAM runtime tests still pending** |
+| **RAP UI:** `ZUI_AINV_INV_H_O4` | Business-user OData V4 list, details, paging and KSeF business result; read-only exposure | Binding published; **business-user READ LIVE VERIFIED** 2026-11-07 (Business Role `ZBR_AINV_READ_1000`, 4 invoices / 9 items / 6 references; 0/0/0 without the role); A/B isolation with out-of-scope data still pending |
 | **CAP:** `/odata/v4/KsefService/` | `requestSend(invoiceUUID)`, `InvoiceIntegrationStatus`, scoped operation reads | Implemented; local HTTP/H2/mock tests passed |
 | **KSeF 2.0 REST API** via [official Java SDK](https://github.com/CIRFMF/ksef-client-java) | Challenge/authentication, token redemption and refresh, encrypted invoice sessions, status, UPO | KSeF TEST flow demonstrated with one synthetic SDK fixture; full SAP-origin E2E pending |
 | **Legacy SAP FI OData V4** | Existing invoice/document view and AI-assisted filtering | Preserved in SAPUI5 |
@@ -152,7 +152,7 @@ The target is to keep KSeF-specific HTTP, crypto and credential handling **insid
 
 Security is part of the solution design, not a UI-only feature:
 
-- **Business-user access:** SAP RAP UI service with IAM business roles and CDS DCL read restrictions by the **NIP + CompanyCode pair** (OUTBOUND seller / INBOUND buyer), including direct item/reference reads. The service must not expose `ApplyKsefResult`. **The actual IAM/binding permissions still require live validation.**
+- **Business-user access:** SAP RAP UI service with IAM business roles and CDS DCL read restrictions by the **NIP + CompanyCode pair** (OUTBOUND seller / INBOUND buyer), including direct item/reference reads. The service must not expose `ApplyKsefResult`. Business-user READ and the no-role deny case were validated live on 2026-11-07; isolation against out-of-scope data (second user or foreign NIP/company code) is still pending.
 - **CAP access:** authenticated users, `KsefOperator` role and trusted `taxpayerNips` / `companyCodes` attributes, enforced on reads and actions. The CAP action accepts **only an InvoiceUUID** and derives NIP, company code, payload, environment and idempotency context on the server.
 - **Trust boundaries:** separate business-user identity for RAP UI, trusted CAP-to-RAP communication via Destination, and KSeF tokens/certificates managed only in the backend. **IAS/XSUAA, approuter identity propagation and managed secret storage are deployment work.** Never embed credentials in UI source, Git or logs.
 - **Duplicate prevention:** database-enforced reservation keyed by `(InvoiceUUID, Environment)`, compare-and-swap for controlled subsequent attempts, plus idempotency keys and immutable snapshots. Active, accepted or uncertain submissions block a new Send. Confirmed rejection permits retry only under an explicit policy; **automatic resend is disabled by default**.
@@ -187,13 +187,13 @@ The following evidence is scoped to the tests described; a successful build does
 | KSeF TEST connectivity | Official Java SDK authenticated and processed **one synthetic fixture**, returning confirmed KSeF number and UPO; **not** a SAP-origin invoice |
 | SAPUI5 cockpit | Existing AI/Scanner/Legacy preserved; RAP/CAP data adapter implemented; **KSeF cockpit still defaults to mock mode** |
 | Latest recorded local regression | **178/178 Maven**, **59/59 QUnit**, **13/13 OPA**, UI5 build PASS (ABAP-05 report, 2026-10-29; not rerun for this README edit) |
-| RAP UI business-user access | UI CDS/DCL/service definition observed active; OData V4 UI binding, IAM/user tests and real UI5-to-H01 routing **not yet verified** |
+| RAP UI business-user access | **LIVE VERIFIED 2026-11-07:** OData V4 UI binding, business-user READ through IAM/DCL and the SAPUI5 cockpit listing real H01 invoices via `/rap-ui` (Send disabled, CAP outage does not hide RAP data). Pending: A/B isolation, UI details/sort/filter checks |
 | SAP result writeback / full E2E | `ApplyKsefResult` logic exists; **HTTP WRITE to H01 and full SAPUI5 → KSeF TEST → RAP cycle not executed** |
 | Cloud deployment | CAP Cloud Foundry + HANA/managed store and end-to-end identity configuration **not production-validated** |
 
 **Next milestones:** publish and authorize the RAP V4 UI binding; connect the cockpit to real H01 invoices; validate controlled SAP HTTP writeback; perform one approved synthetic SAP-origin end-to-end KSeF TEST run; then advance incoming invoices, corrections, durable BTP deployment and multi-tenant operating controls.
 
-For precise blockers, implementation evidence and decisions, read [STATUS](docs/STATUS.md), [ROADMAP](docs/ROADMAP.md), [ABAP-05 report](docs/journal/2026-10-29-abap-05-real-rap-ui.md), [CAP-05 audit](docs/audits/2026-10-29-cap-05-implementation-review.md), [RAP UI live runbook](docs/guides/RAP_UI_LIVE_CONNECTION.md) and [ADR-0005](docs/decisions/ADR-0005-rap-business-status-cap-integration-status.md).
+For precise blockers, implementation evidence and decisions, read [STATUS](docs/STATUS.md), [ROADMAP](docs/ROADMAP.md), [ABAP-08 report](docs/journal/2026-11-02-abap-08-ui5-08.md), [ABAP-05 report](docs/journal/2026-10-29-abap-05-real-rap-ui.md), [CAP-05 audit](docs/audits/2026-10-29-cap-05-implementation-review.md), [RAP UI live runbook](docs/guides/RAP_UI_LIVE_CONNECTION.md) and [ADR-0005](docs/decisions/ADR-0005-rap-business-status-cap-integration-status.md).
 
 ## Run locally (development / demo)
 
@@ -225,7 +225,7 @@ npm run test:unit
 npm run test:opa
 ```
 
-The default cockpit configuration uses `dataMode: "mock"`. For **real RAP reads**, follow the [RAP UI live connection runbook](docs/guides/RAP_UI_LIVE_CONNECTION.md); do not switch to `rap` until a published UI binding, business-user IAM and appropriate routing have been verified.
+The default cockpit configuration uses `dataMode: "mock"`. For **real RAP reads**, follow the [RAP UI live connection runbook](docs/guides/RAP_UI_LIVE_CONNECTION.md); the repository default stays `mock`. The `rap` mode was verified live on 2026-11-07 with a local, git-ignored configuration (`ui5-rap.local.yaml` + `webapp.rap.local`) and a business user holding the read role; the developer must start the server and complete the browser login themselves. Never commit a `rap` manifest or enable `sendInvoice`.
 
 ## Repository map
 

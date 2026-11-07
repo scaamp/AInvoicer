@@ -196,6 +196,8 @@ Dodatkowo odczytać obce dzieci po kluczach z metadata. MCP preview wspiera sele
 
 ## Routing SAPUI5
 
+> **Aktualna procedura (zweryfikowana 2026-11-07):** sekcja „ABAP-08 — stan końcowy” na górze tego dokumentu. Szablon używa teraz `authenticationType: reentranceTicket` i ma uzupełniony `pathPrefix`. Poniższe kroki z ABAP-06/07 pozostają jako kontekst historyczny.
+
 1. Skopiować [szablon](../../sapui5/ainvoicer/ui5-rap.yaml.example) do ignorowanego ui5-rap.local.yaml. Uzupełnić origin i pathPrefix z bindingu (bez końcowego ukośnika); zachować ignoreCertError=false.
 2. Potwierdzić Destination abap i propagację business usera. Poza BAS użyć wspieranego logowania Fiori tools. Osobna trasa /sap Legacy ma własne placeholdery: uzupełnić istniejącym zweryfikowanym origin/Destination Legacy. Nie kierować jej na RAP UI. /odata/v4/KsefService pozostaje trasą do lokalnego CAP 8080. Sekrety i lokalne hosty pozostają w ignorowanym pliku.
 3. Sprawdzić /rap-ui/$metadata i macierz READ w sesji aplikacji. Build szablonu nie testuje proxy, Destination ani logowania.

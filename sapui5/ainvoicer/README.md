@@ -21,6 +21,13 @@
 
 AInvoicer is an SAP Fiori application for intelligent invoice processing powered by OData V4, ABAP RAP, and AI integration.
 
+### Local RAP mode (verified 2026-11-07)
+
+- The `Service URL` above (host `11b69711-…abap.us10…`) is **not** the current H01 system; it returns `503 System is unknown`. The Legacy `/sap` route in `ui5.yaml`/`ui5-local.yaml`/`ui5-mock.yaml` still points there.
+- For real RAP reads copy [`ui5-rap.yaml.example`](ui5-rap.yaml.example) to the git-ignored `ui5-rap.local.yaml` and follow the [RAP UI live connection runbook](../../docs/guides/RAP_UI_LIVE_CONNECTION.md).
+- `@sap/ux-ui5-tooling` is pinned to **1.19.6**: older versions open the reentrance login on the API host (Basic Auth only), and 1.20.0+ requires UI5 CLI v4.
+- Run the server **in your own terminal**. The reentrance login opens once at startup and times out after 60 s.
+
 ### Starting the generated app
 
 -   This app has been generated using the SAP Fiori tools - App Generator, as part of the SAP Fiori tools suite.  In order to launch the generated app, simply run the following from the generated app root folder:

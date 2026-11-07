@@ -1,12 +1,20 @@
-# ABAP-06: szablon READ po przejściu bramki LIVE; endpoint H01 wymaga weryfikacji.
-# Skopiuj do ignorowanego ui5-rap.local.yaml. Uzupełnij origin i pathPrefix z bindingu V4 UI.
-# Destination `abap` musi zachowywać business usera; bez wspólnego communication usera.
+# Szablon READ RAP; konfiguracja zweryfikowana LIVE 2026-11-07 (ABAP-08).
+# Skopiuj do ignorowanego ui5-rap.local.yaml i podaj host API H01 (<id>.abap.<region>, NIE .abap-web.;
+# oba hosty zwraca GET <host>/sap/public/bc/icf/virtualhost).
+# Lokalnie (VS Code): authenticationType reentranceTicket = login business usera w przeglądarce;
+# serwer uruchamia użytkownik sam (karta logowania przy starcie, timeout 60 s). Wymaga @sap/ux-ui5-tooling >= 1.19.6.
+# BAS: zamiast tego destination z propagacją business usera. Nigdy wspólny communication user.
 # SRVD: Invoices, InvoiceItems, InvoiceReferences; szczegóły przez _Items/_References.
 # manifest: dataMode=rap dopiero po READ/IAM PASS; capabilities.sendInvoice=false.
 specVersion: "3.1"
 metadata:
   name: ainvoicer
 type: application
+# Opcjonalnie: ignorowana kopia webapp z dataMode=rap (manifest w Git pozostaje mock).
+# resources:
+#   configuration:
+#     paths:
+#       webapp: webapp.rap.local
 server:
   customMiddleware:
     - name: fiori-tools-proxy
@@ -18,9 +26,9 @@ server:
           url: https://ui5.sap.com
         backend:
           - path: /rap-ui
-            pathPrefix: /REPLACE_WITH_VERIFIED_V4_UI_SERVICE_PATH
-            url: https://replace-with-verified-h01-origin.invalid
-            destination: abap
+            pathPrefix: /sap/opu/odata4/sap/zui_ainv_inv_h_o4/srvd/sap/zui_ainv_inv_h_o4/0001
+            url: https://replace-with-h01-api-host.abap.region.hana.ondemand.com
+            authenticationType: reentranceTicket
           - path: /odata/v4/KsefService
             url: http://localhost:8080
           # Dotychczasowa niezależna trasa SAP FI Legacy.
