@@ -1,0 +1,102 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<abapGit version="v1.0.0" serializer="LCL_OBJECT_SIA6" serializer_version="v1.0.0">
+ <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
+  <asx:values>
+   <SIA6>
+    <MAIN_OBJECT>
+     <NAME>ZAINV_UI_READ_EXT</NAME>
+     <TYPE>SIA6</TYPE>
+     <DESCRIPTION>ZAINV_UI_READ</DESCRIPTION>
+     <RESPONSIBLE>CB9980000000</RESPONSIBLE>
+     <MASTER_LANGUAGE>EN</MASTER_LANGUAGE>
+     <MASTER_SYSTEM>H01</MASTER_SYSTEM>
+     <PACKAGE_REF>
+      <PACKAGE_NAME>ZAINVOICER</PACKAGE_NAME>
+     </PACKAGE_REF>
+     <ABAP_LANGU_VERSION>5</ABAP_LANGU_VERSION>
+    </MAIN_OBJECT>
+    <APP_ID>ZAINV_UI_READ_EXT</APP_ID>
+    <APP_TYPE>EXT</APP_TYPE>
+    <ABAP_LANGUAGE_VERSION>5</ABAP_LANGUAGE_VERSION>
+    <SERVICE>
+     <item>
+      <REL_NAME>ZUI_AINV_INV_H_O4</REL_NAME>
+      <REL_TYPE>G4BA</REL_TYPE>
+      <APP_ID>ZAINV_UI_READ_EXT</APP_ID>
+      <SRVC_NAME>30C5F3946E3866097633FB3D9B499B</SRVC_NAME>
+      <SRVC_TYPE>HT</SRVC_TYPE>
+      <TEXT>AInvoicer invoice UI service</TEXT>
+      <TYPE_TEXT>OData V4</TYPE_TEXT>
+     </item>
+    </SERVICE>
+    <AUTH>
+     <item>
+      <AUTH_OBJECT>Z_AINV_KSF</AUTH_OBJECT>
+      <STATUS>U</STATUS>
+      <TEXT>Apply confirmed KSeF result authorization</TEXT>
+      <AUTH_ITEM>
+       <item>
+        <UUID>whYencYoH9G1h5lcBqCZ9g==</UUID>
+        <AUTH_OBJECT>Z_AINV_KSF</AUTH_OBJECT>
+        <AUTH_OBJECT_INSTANCE>0001</AUTH_OBJECT_INSTANCE>
+        <TEXT>Apply confirmed KSeF result authorization</TEXT>
+        <STATUS>U</STATUS>
+        <VALUES>
+         <item>
+          <FIELD>ACTVT</FIELD>
+          <VALUE>Display</VALUE>
+          <VALUES>
+           <item>
+            <UUID>upq2f6hpH+G21+tyJNptsQ==</UUID>
+            <LOW_VALUE>03</LOW_VALUE>
+           </item>
+          </VALUES>
+          <TEXT>Activity</TEXT>
+          <STATUS>U</STATUS>
+          <IS_ACTVT>X</IS_ACTVT>
+         </item>
+         <item>
+          <FIELD>ZAINV_BUK</FIELD>
+          <VALUE>1000</VALUE>
+          <VALUES>
+           <item>
+            <UUID>upq2f6hpH+G21+tyJNqNsQ==</UUID>
+           </item>
+           <item>
+            <UUID>upq2f6hpH+G21+tyJNqtsQ==</UUID>
+            <LOW_VALUE>1000</LOW_VALUE>
+           </item>
+          </VALUES>
+          <TEXT>AInvoicer company code authorization</TEXT>
+          <STATUS>U</STATUS>
+         </item>
+         <item>
+          <FIELD>ZAINV_NIP</FIELD>
+          <VALUE>5260002008</VALUE>
+          <VALUES>
+           <item>
+            <UUID>upq2f6hpH+G21+tyJNrNsQ==</UUID>
+            <LOW_VALUE>5260002008</LOW_VALUE>
+           </item>
+          </VALUES>
+          <TEXT>AInvoicer taxpayer NIP authorization</TEXT>
+          <STATUS>U</STATUS>
+         </item>
+        </VALUES>
+       </item>
+      </AUTH_ITEM>
+     </item>
+    </AUTH>
+    <RTYPES>
+     <item>
+      <ID>ZAINV_RT_READ</ID>
+      <TEXT>AInvoicer read access by taxpayer and company</TEXT>
+      <READ_ACCESS>X</READ_ACCESS>
+     </item>
+    </RTYPES>
+    <PUBLISH_STATUS>p</PUBLISH_STATUS>
+    <RTYPE_MIG_STATUS>3</RTYPE_MIG_STATUS>
+   </SIA6>
+  </asx:values>
+ </asx:abap>
+</abapGit>
