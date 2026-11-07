@@ -17,7 +17,7 @@ ABAP Environment w tym projekcie zawiera symulacyjny model `ZAINV_INV_H/I/REF`; 
 
 **Kod ABAP rozwijaj przede wszystkim w obiektach SAP H01, nie w lokalnych plikach `abap/src/`.** Po potwierdzeniu funkcji MCP odczytuj, twórz i modyfikuj live obiekty w zleconym zakresie. Punktem odniesienia jest ABAP FS 2.12.4 / ADT creation fix 5; nie przenoś historycznych ograniczeń 2.12.0 na bieżącą instalację. Jeżeli MCP nie wspiera potrzebnej operacji, użyj Eclipse ADT. Szczegóły możliwości i dowodów: [workflow abapGit — v5](../../../docs/guides/ABAPGIT_WORKFLOW.md#abap-fs-v5--tworzenie-i-diagnostyka).
 
-Trzy stany kodu: (1) aktywne/nieaktywne źródło SAP (`H01_EN`, pakiet `ZAINVOICER`); (2) zatwierdzony eksport GitHub (`java-cap-ksef`); (3) lokalny checkout `D:\AInvoicer\abap\src\`. Żaden nie aktualizuje pozostałych automatycznie. `abapGit Pull` pobiera **GitHub**, nie niezacommitowane zmiany plików VS Code.
+Trzy stany kodu: (1) aktywne/nieaktywne źródło SAP (`H01_EN`, pakiet `ZAINVOICER`); (2) zatwierdzony eksport GitHub (`main`; do 2026-11-07 `java-cap-ksef`); (3) lokalny checkout `D:\AInvoicer\abap\src\`. Żaden nie aktualizuje pozostałych automatycznie. `abapGit Pull` pobiera **GitHub**, nie niezacommitowane zmiany plików VS Code.
 
 ### Procedura live w SAP
 
@@ -30,7 +30,7 @@ Trzy stany kodu: (1) aktywne/nieaktywne źródło SAP (`H01_EN`, pakiet `ZAINVOI
 6. **Zweryfikuj składnię i jakość.** Uruchom dostępną diagnostykę dla właściwej wersji źródła i popraw błędy zależności. ATC uruchom z wariantem odpowiednim dla ABAP Cloud, podaj wariant i ustalenia; nie obchodź problemów automatycznymi wyłączeniami. Uruchom właściwe ABAP Unit. Składnia, ATC i testy to odrębne wyniki.
 7. **Aktywuj warunkowo.** Tylko gdy aktywacja jest dostępna przez MCP, mieści się w zleceniu i dotyczy środowiska nieprodukcyjnego, aktywuj wskazane obiekty w kolejności zależności. Nie aktywuj wszystkich nieaktywnych obiektów systemu. Sprawdź odpowiedź, ponowny odczyt active i diagnostykę; zapis pliku nie oznacza aktywacji.
 8. **Sprawdź usługę.** Potwierdź rzeczywisty binding, publikację, URL, `$metadata`, entity sets, klucze i nowe pola. Wykonaj autoryzowany odczyt syntetycznych danych; test akcji zapisującej tylko w zleconym zakresie. Sprawdź walidacje, DCL/behavior authorization i regresję kontraktu UI5/CAP. HTTP 200 dla metadanych nie dowodzi działania danych i autoryzacji.
-9. **Eksportuj zatwierdzony stan.** Po sprawdzeniu aktywacji/testów wykonaj (po zleceniu użytkownika) `Stage and Push` z `H01_EN → abapGit → ZAINVOICER` na `java-cap-ksef`; wcześniej skontroluj kompletny diff, dodania/usunięcia i `.abapgit.xml`. Po eksporcie sprawdź lokalny `git status`; przy czystym drzewie wykonaj `git pull --ff-only origin java-cap-ksef` (lub EGit). Nie używaj reset/force-push, nie nadpisuj pracy lokalnej.
+9. **Eksportuj zatwierdzony stan.** Po sprawdzeniu aktywacji/testów wykonaj (po zleceniu użytkownika) `Stage and Push` z `H01_EN → abapGit → ZAINVOICER` na linked branch (od 2026-11-07 `main`; zawsze odczytaj go przez `abapfs_abapgit_repositories`); wcześniej skontroluj kompletny diff, dodania/usunięcia i `.abapgit.xml`. Po eksporcie sprawdź lokalny `git status`; przy czystym drzewie wykonaj `git pull --ff-only origin main` (lub EGit). Nie używaj reset/force-push, nie nadpisuj pracy lokalnej. UI DCL `ZC_AINV_INV_H/I/REF_UI` serializują się pusto: nie stage'uj ich (źródła w `docs/abap-dcl-reference/`).
 
 ### Tworzenie obiektów: kontrakt i diagnostyka
 
