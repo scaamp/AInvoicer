@@ -1,0 +1,7 @@
+@EndUserText.label: 'UI reference read access inherited from header'
+@MappingRole: true
+define role ZC_AINV_INV_REF_UI {
+  grant select on ZC_AINV_INV_REF_UI
+    where inheriting conditions from entity ZC_AINV_INV_H_UI
+      replacing { root with _Parent };
+}

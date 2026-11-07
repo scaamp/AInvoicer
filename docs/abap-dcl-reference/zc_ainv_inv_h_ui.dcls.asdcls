@@ -1,0 +1,12 @@
+@EndUserText.label: 'UI read access by NIP and company code'
+@MappingRole: true
+// Business-user read access for the SAPUI5 UI service (CAP-05). Same scope rule as the RAP
+// write prechecks: OUTBOUND uses SellerNip, INBOUND uses BuyerNip, plus CompanyCode, ACTVT 03.
+// Deliberately NOT inherited from ZR_AINV_INV_H (root role is "where TRUE").
+define role ZC_AINV_INV_H_UI {
+  grant select on ZC_AINV_INV_H_UI
+    where ( Direction = 'OUTBOUND'
+            and ( SellerNip, CompanyCode ) = aspect pfcg_auth( Z_AINV_KSF, ZAINV_NIP, ZAINV_BUK, ACTVT = '03' ) )
+       or ( Direction = 'INBOUND'
+            and ( BuyerNip, CompanyCode ) = aspect pfcg_auth( Z_AINV_KSF, ZAINV_NIP, ZAINV_BUK, ACTVT = '03' ) );
+}
