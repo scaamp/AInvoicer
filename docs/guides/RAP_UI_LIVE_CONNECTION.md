@@ -8,6 +8,10 @@ tags: [ainvoicer, rap, abap, sapui5, iam, odata, abap-06]
 
 # RAP UI — połączenie LIVE
 
+## ABAP-08 — kontynuacja 2026-11-07
+
+Kanał OData MCP znowu działa. `resolve_service` potwierdza `/sap/opu/odata4/sap/zui_ainv_inv_h_o4/srvd/sap/zui_ainv_inv_h_o4/0001/` (V4, published), a hashe metadata UI i Web API są niezmienione. UI: 0 nagłówków / 0 pozycji / 0 referencji (także przy bezpośrednich odczytach dzieci). Web API: 4 nagłówki w zakresie 5260002008/1000. Business Role z `ZAINV_BC_READ` **nie istnieje** (released `I_IAMBusinessRole`), więc business-user READ jest nadal BLOCKED. `ui5-rap.local.yaml` odtworzony i zbudowany, ale nie uruchomiony. Po utworzeniu i przypisaniu roli oczekiwany odczyt UI to 4/9/6 z UUID zgodnymi z Web API. [Instrukcja i wyniki](../journal/2026-11-02-abap-08-ui5-08.md#kontynuacja-2026-11-07--logowanie-mcp-działa-business-role-nie-istnieje).
+
 ## ABAP-08/UI5-08 — stan 2026-11-02
 
 **Bez zmian: business-user READ i SAPUI5 LIVE BLOCKED.** Regresja lokalna po merge ABAP-07: Maven 178/178, QUnit 69/69, OPA 13/13, buildy PASS. Tej sesji `odata_resolve_service` (UI i Web API) → `ODATA_REQUEST_FAILED` (kanał OData MCP wymaga ponownego logowania), ATC bez odpowiedzi, abapGit diff DCLS nadal pusty; SRVB istnieje. Lokalny, ignorowany `ui5-rap.local.yaml` przygotowany (nieuruchomiony). Lokalny `dataMode=rap` ustawiać wyłącznie w niecommitowanej kopii manifestu po PASS READ; Send OFF. CAP-04D: NOT READY (Destination AINV_H01, ACTVT16, osobny UUID syntetyczny — poniżej, bez zmian). [Dziennik i instrukcja dla administratora](../journal/2026-11-02-abap-08-ui5-08.md).

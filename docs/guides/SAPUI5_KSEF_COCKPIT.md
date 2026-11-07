@@ -8,6 +8,8 @@ tags: [ainvoicer, sapui5, ksef, cap-java, frontend]
 
 # SAPUI5 — kokpit faktur KSeF
 
+**ABAP-08 (2026-11-07):** QUnit 69/69 (408), OPA 13/13 (80), build oraz build `ui5-rap.yaml.example`/`ui5-rap.local.yaml` PASS. Lokalny plik RAP odtworzono (poprzedni nie istniał w checkoucie), ale nie uruchomiono w trybie `rap`, bo bez roli lista H01 byłaby pusta. LIVE: BLOCKED. Manifest `dataMode=mock`, `sendInvoice=false`.
+
 **ABAP-08/UI5-08 (2026-11-02):** bez zmian kodu UI; po merge ABAP-07 regresja lokalna PASS (QUnit 69/69, OPA 13/13, build i build szablonu RAP; mock RAP + fake CAP). Dodano ignorowany `ui5-rap.local.yaml` (`/rap-ui` → origin H01 z pathPrefix bindingu, `reentranceTicket`, CAP 8080, Legacy `/sap`) — nieuruchomiony. **LIVE lista/szczegóły: BLOCKED** (Business Role niezweryfikowana, logowanie MCP). Manifest `dataMode=mock`, `sendInvoice=false`. [Dziennik](../journal/2026-11-02-abap-08-ui5-08.md).
 
 **ABAP-07/UI5-07 (2026-10-30):** rzeczywista lista H01 w UI pozostaje **BLOCKED na business-user IAM/routing**. Binding V4 UI i metadata ponownie200, UI kolekcje200/0 developer OAuth, Web API4/9/6. CAP LIVE user/Destination niezweryfikowane. Domyślny mock i wszystkie mutujące capabilities OFF. Dodano timeout odczytu CAP: domyślnie15 s, obejmuje połączenie i JSON; po terminie READ zostaje przerwany, dane RAP pozostają, integracja jest nieznana, Send zablokowany. Regresja: Maven178/178, QUnit69/69 (408), OPA13/13 (80), oba buildy PASS. To lokalny mock/HTTP, bez LIVE SAPUI5, AI/OCR/STT/Legacy. [Dziennik](../journal/2026-10-30-abap-07-ui5-07.md).
