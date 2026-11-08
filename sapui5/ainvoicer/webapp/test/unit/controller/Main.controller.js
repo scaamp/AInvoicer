@@ -1,8 +1,9 @@
 /*global QUnit*/
 
 sap.ui.define([
-	"ainvoicer/controller/Main.controller"
-], function (Controller) {
+	"ainvoicer/controller/Main.controller",
+	"sap/ui/model/json/JSONModel"
+], function (Controller, JSONModel) {
 	"use strict";
 
 	QUnit.module("Main Controller");
@@ -28,6 +29,23 @@ sap.ui.define([
 			"onKsefHistory", "onKsefOpenColumns", "onKsefScan", "_applyAiResultToKsef"
 		].forEach(function (sMethod) {
 			assert.strictEqual(typeof oController[sMethod], "function", sMethod);
+		});
+	});
+
+	QUnit.test("synchronous RAP filter validation clears busy and reports the error without HTTP", function (assert) {
+		var controller = new Controller();
+		var view = new JSONModel({ busy: false });
+		var data = new JSONModel({ invoices: [{ InvoiceUUID: "old" }] });
+		controller._ksefViewModel = function () { return view; };
+		controller.getView = function () { return { getModel: function () { return data; } }; };
+		controller._ksefServerQuery = function () { throw new Error("Currency is required"); };
+		controller._ksefText = function (key, args) { return args[0]; };
+		controller._ksefSetSelected = function () {};
+		controller._oKsefAdapter = { loadInvoices: function () { assert.ok(false, "HTTP must not be attempted"); } };
+		return controller._ksefLoad(0).then(function () {
+			assert.strictEqual(view.getProperty("/busy"), false);
+			assert.strictEqual(view.getProperty("/error"), "Currency is required");
+			assert.deepEqual(data.getProperty("/invoices"), []);
 		});
 	});
 

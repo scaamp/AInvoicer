@@ -99,6 +99,13 @@ sap.ui.define([], function () {
         InvoiceStatus: "string"
     });
 
+    // Długości pól z metadata RAP UI H01; CurrencyCode ma 5 (Web API: 3), walidacja ISO nadal wymaga 3 liter.
+    var StringMaxLengths = Object.freeze({
+        InvoiceNumber: 35, CompanyCode: 4, CurrencyCode: 5, SellerNip: 10, BuyerNip: 10,
+        SellerName: 100, BuyerName: 100, Direction: 10, OriginProcess: 10,
+        KsefNumber: 50, InvoiceStatus: 12, KsefStatus: 40
+    });
+
     return {
         Source: Source,
         Direction: Direction,
@@ -109,6 +116,7 @@ sap.ui.define([], function () {
         OperationType: OperationType,
         Columns: Columns,
         FilterableFields: FilterableFields,
+        StringMaxLengths: StringMaxLengths,
 
         /** @returns {boolean} czy status operacji jest końcowy (znany i terminalny) */
         isTerminalStatus: function (sStatus) {

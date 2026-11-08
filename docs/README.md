@@ -12,6 +12,8 @@ AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijan
 
 ## Od czego zacząć
 
+- [CAP-06.1 — hardening, pełna regresja i gotowość PR; smoke FLP nadal KNOWN BLOCKER](journal/2026-11-08-cap-06-1-hardening.md).
+
 - [CAP-06/UI5-09 — RAP LIVE + lokalny CAP, poprawki runtime i filtrów; IAS/WRITE nadal BLOCKED](journal/2026-11-08-cap-06-ui5-09.md).
 
 - [Referencyjne źródła UI DCL poza eksportem abapGit — ostrzeżenie bezpieczeństwa](abap-dcl-reference/README.md).

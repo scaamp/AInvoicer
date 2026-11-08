@@ -85,7 +85,7 @@
 			<scope>runtime</scope>
 		</dependency>
 
-		<!-- Przeglądarkowa konsola H2 dostępna w lokalnym profilu default. -->
+		<!-- Konsola H2 domyślnie OFF; wymaga izolowanego profilu h2-console-local i loopback. -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-h2console</artifactId>

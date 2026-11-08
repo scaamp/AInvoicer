@@ -51,12 +51,17 @@ sap.ui.define([
             return isFinite(fValue) ? fValue : undefined;
         }
         if (sType === "date") {
-            var sDate = String(vValue).trim().substring(0, 10);
-            return /^\d{4}-\d{2}-\d{2}$/.test(sDate) ? sDate : undefined;
+            var sDate = String(vValue).trim();
+            var iDate = Date.parse(sDate);
+            return /^\d{4}-\d{2}-\d{2}$/.test(sDate) && isFinite(iDate)
+                && new Date(iDate).toISOString().substring(0, 10) === sDate ? sDate : undefined;
         }
         var sValue = String(vValue).trim();
-        if (!sValue || sValue.length > MAX_STRING_LENGTH) {
+        if (!sValue || sValue.length > (KsefContract.StringMaxLengths[sTargetPath] || MAX_STRING_LENGTH)) {
             return undefined;
+        }
+        if (sTargetPath === "CurrencyCode") {
+            return /^[A-Z]{3}$/.test(sValue.toUpperCase()) ? sValue.toUpperCase() : undefined;
         }
         return ENUM_FIELDS.indexOf(sTargetPath) !== -1 ? sValue.toUpperCase() : sValue;
     }

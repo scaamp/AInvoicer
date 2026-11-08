@@ -104,6 +104,38 @@ sap.ui.define([
 
     QUnit.module("KsefAiFilterAdapter");
 
+    QUnit.test("RAP filters reject unknown fields and oversized literals inside nested trees", function (assert) {
+        var invalid = new Filter("SellerNip", "EQ", "12345678901");
+        assert.throws(function () { KsefFilterBuilder.serverFilters([new Filter({
+            and: false, filters: [new Filter("CompanyCode", "EQ", "1000"), invalid]
+        })]); }, /MaxLength/);
+        assert.throws(function () { KsefFilterBuilder.serverFilters([new Filter("UnknownField", "EQ", "x")]); }, /Unsupported/);
+        assert.strictEqual(KsefFilterBuilder.serverSorters([{ sPath: "UnknownField" }]).length, 0);
+        var mixed = new Filter({ and: false, filters: [new Filter("KsefStatus", "EQ", "ACCEPTED"),
+            new Filter("CompanyCode", "EQ", "1000")] });
+        assert.strictEqual(KsefFilterBuilder.serverFilters([mixed]).length, 0, "mixed OR must not narrow RAP results");
+        var state = KsefFilterBuilder.createEmptyState();
+        state.search = "x".repeat(100);
+        assert.strictEqual(KsefFilterBuilder.serverFilters(KsefFilterBuilder.build(state, "ALL"))[0].aFilters.length, 2);
+    });
+
+    QUnit.test("AI respects per-field RAP MaxLength and real calendar dates", function (assert) {
+        var result = KsefAiFilterAdapter.translate({ filters: [
+            { path: "SellerNip", operator: "EQ", value1: "12345678901" },
+            { path: "CompanyCode", operator: "BT", value1: "1000", value2: "20000" },
+            { path: "CurrencyCode", operator: "EQ", value1: "PLNX" },
+            { path: "InvoiceNumber", operator: "EQ", value1: "x".repeat(36) },
+            { path: "IssueDate", operator: "EQ", value1: "2026-02-30" },
+            { path: "IssueDate", operator: "EQ", value1: "2026-10-01garbage" },
+            { path: "IssueDate", operator: "EQ", value1: "2024-02-29" }
+        ] });
+        assert.strictEqual(result.ignored.length, 6);
+        assert.strictEqual(result.filters.length, 1);
+        assert.strictEqual(result.filters[0].oValue1, "2024-02-29", "Edm.Date is preserved without timestamp conversion");
+        var currency = KsefAiFilterAdapter.translate({ filters: [{ path: "CurrencyCode", operator: "EQ", value1: "pln" }] });
+        assert.strictEqual(currency.filters[0].oValue1, "PLN", "currency is normalized for case-sensitive RAP");
+    });
+
     QUnit.test("legacy /filter paths are mapped; approximate mappings are flagged", function (assert) {
         var oResult = KsefAiFilterAdapter.translate({
             filters: [

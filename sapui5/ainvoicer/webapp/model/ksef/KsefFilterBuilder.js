@@ -7,7 +7,7 @@ sap.ui.define([
 
     var SEARCH_FIELDS = ["InvoiceNumber", "SellerName", "BuyerName", "SellerNip", "BuyerNip", "KsefNumber"];
     // MaxLength z metadata UI H01: zbyt długi literał w dowolnej gałęzi OR odrzuca całe zapytanie.
-    var SEARCH_LENGTHS = { InvoiceNumber: 35, SellerName: 100, BuyerName: 100, SellerNip: 10, BuyerNip: 10, KsefNumber: 50 };
+    var SEARCH_LENGTHS = KsefContract.StringMaxLengths;
     /** Pola wyliczane w UI ze stanu CAP — RAP ich nie zna, więc nie trafiają do $filter. */
     var CLIENT_ONLY_FIELDS = ["KsefStatus"];
 
@@ -134,6 +134,13 @@ sap.ui.define([
                     return aChildren.length === 1 ? aChildren[0] : new Filter({ filters: aChildren, and: !!oFilter.bAnd });
                 }
                 if (CLIENT_ONLY_FIELDS.indexOf(oFilter.sPath) !== -1) { return null; }
+                if (!Object.prototype.hasOwnProperty.call(KsefContract.FilterableFields, oFilter.sPath)) {
+                    throw new Error("Unsupported RAP filter field");
+                }
+                var iMax = KsefContract.StringMaxLengths[oFilter.sPath];
+                if (iMax && [oFilter.oValue1, oFilter.oValue2].some(function (v) {
+                    return typeof v === "string" && v.length > iMax;
+                })) { throw new Error("RAP filter value exceeds MaxLength for " + oFilter.sPath); }
                 // H01 UI V4 nie obsługuje tolower(). Nie mutujemy filtrów klienckich ani wyniku AI.
                 if (oFilter.bCaseSensitive === false) {
                     return new Filter({ path: oFilter.sPath, operator: oFilter.sOperator,
@@ -159,7 +166,7 @@ sap.ui.define([
         /** RAP nie zna pól wyliczanych z CAP; takie sortery zostają wyłącznie na bieżącej stronie. */
         serverSorters: function (aSorters) {
             return (aSorters || []).filter(function (s) {
-                return ["KsefStatus", "LastUpdate", "OperationReference"].indexOf(s.sPath) === -1;
+                return s.sPath !== "KsefStatus" && Object.prototype.hasOwnProperty.call(KsefContract.FilterableFields, s.sPath);
             });
         },
 

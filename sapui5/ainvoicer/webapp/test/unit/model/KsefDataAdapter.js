@@ -191,6 +191,8 @@ sap.ui.define([
             assert.deepEqual(JSON.parse(aPosts[0].options.body), { invoiceUUID: UUID },
                 "only InvoiceUUID is sent — no NIP, environment, XML or idempotency key from the browser");
             assert.strictEqual(aPosts[0].options.headers["X-CSRF-Token"], "csrf-123");
+            assert.strictEqual(aPosts[0].options.redirect, "error", "mutations never follow redirects");
+            assert.notOk(aPosts[0].options.headers["OData-MaxVersion"], "version negotiation applies to CAP READ only");
             assert.strictEqual(oResult.status, "QUEUED");
         });
     });
@@ -202,5 +204,13 @@ sap.ui.define([
         });
         var oConfigured = new KsefDataAdapter({ dataMode: "cap", capabilities: { viewXml: true }, cap: { actions: { xml: "Documents({InvoiceUUID})/xml" } } });
         assert.strictEqual(oConfigured.getDocumentUrl("xml", UUID), "/odata/v4/KsefService/Documents(" + UUID + ")/xml");
+    });
+
+    QUnit.test("CAP routes reject foreign origins and traversal before fetch", function (assert) {
+        ["https://evil.invalid/", "//evil.invalid/", "/odata/../sap/"].forEach(function (base) {
+            var adapter = new KsefDataAdapter({ cap: { serviceUrl: base } });
+            assert.throws(function () { adapter._capUrl("InvoiceIntegrationStatus"); }, /Invalid CAP/);
+        });
+        assert.throws(function () { new KsefDataAdapter()._capUrl("../sap/"); }, /Invalid CAP/);
     });
 });

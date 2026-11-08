@@ -116,6 +116,9 @@ HTTP 202 nie oznacza przyjęcia faktury. Eksperyment na `feature/ksef-java-e2e-r
 
 ## Phase 5 — SAPUI5 + CAP
 
+- [x] **CAP-06.1 lokalny hardening i review (2026-11-08):** globalne bezpieczne ustawienia H2/mock users, opt-in loopback H2, izolacja/redirecty credentiali runnera, walidacja filtrów AI i tras CAP; Maven203, QUnit76/438, OPA13/80, runner3, oba buildy PASS. LIVE READ H011/1 i dual10/63 PASS. **Smoke FLP nadal KNOWN BLOCKER**, npm tooling74 advisories; bez IAS, SAP WRITE, SEND i merge. [Audyt](journal/2026-11-08-cap-06-1-hardening.md).
+- [ ] **CAP-07 — READY TO START:** IAS/XSUAA i approuter, zaufane claims/role collections, faktyczni użytkownicy A/B; wymaga konfiguracji administratora. CAP-04D nadal BLOCKED na odrębne bramki WRITE.
+
 - [x] **CAP-06/UI5-09 — 2026-11-08, zakres lokalny + LIVE H01:** CAP startup/metadata/status READ na świeżej H2, 0 operacji; realny RemoteService READ H01 1/1 (4/9/6, keyed READ i typy). SAPUI5 z RAP LIVE i CAP runtime z lokalnym mock principalem: 10/10 testów przeglądarki. Naprawione OData4.01/count, H2 console OFF, filtry RAP (tolower/MaxLength/waluta). Maven186, QUnit72, OPA13 i oba buildy PASS. [Dziennik](journal/2026-11-08-cap-06-ui5-09.md).
 - [ ] **CAP-06 — bramka tożsamości:** IAS/XSUAA dependencies/binding, approuter i trusted taxpayerNips/companyCodes, role collections i test faktycznego business usera. Obecny lokalny mock principal nie zalicza LIVE IAS. [Plan administratora](guides/RAP_UI_LIVE_CONNECTION.md#cap-06--tożsamość-cap-i-plan-btp).
 - [ ] **UI5-09 — pozostałe bramki:** izolacja A/B H01 (dodatkowe zatwierdzone dane/user), pełny deploy gate UI DCL na czystym systemie i naprawa serializacji; Legacy `/sap` 503/flex FLP. CAP-04D BLOCKED, bez SAP WRITE/KSeF SEND. Szczegóły niżej są historią wcześniejszych sprintów.

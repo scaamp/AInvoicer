@@ -8,6 +8,16 @@ tags: [ainvoicer, rap, abap, sapui5, iam, odata, abap-06]
 
 # RAP UI — połączenie LIVE
 
+## CAP-06.1 — bezpieczne lokalne ustawienia
+
+H2 console jest domyślnie OFF we wszystkich profilach; `/h2-console/` nie jest publiczną usługą. Preferuj narzędzia JDBC developerskie. Wyłącznie w izolowanym procesie lokalnym można jawnie uruchomić konsolę z `--spring.profiles.active=default,h2-console-local --server.address=127.0.0.1 --spring.h2.console.enabled=true`. Bez proxy, tunelu i forwarded; `web-allow-others=false`. CF/cloud/prod/production lub obecność VCAP blokują taki start. Dostęp konsoli jest ograniczony do adresu połączenia loopback, niezależnie od X-Forwarded-For; jej wyjątek CSRF nie obejmuje CAP.
+
+Domyślni mock users są OFF globalnie, nie tylko dla default. Konta lokalne wymagają jawnej ignorowanej konfiguracji i niepustego hasła; cf/cloud/prod/production wyłączają mock auth. Te ustawienia nie zastępują IAS/XSUAA i nie potwierdzają gotowości CF. Standardowe flagi KSeF/SAP WRITE i Send pozostają OFF.
+
+Runner `scripts/browser-test.mjs` z env `AINV_CAP_LOCAL_TEST_USER` / `AINV_CAP_LOCAL_TEST_PASSWORD` dodaje Basic tylko do GET/HEAD dokładnego loopback origin i `/odata/v4/KsefService/`. Każdy redirect (także do CAP) oraz pozostałe kanały mają Authorization usuwane. Logi są redagowane, screenshot przy aktywnym credentialu nie jest zapisywany. Nie używaj tu credentiali SAP ani produkcyjnych. Brak jednej z wymaganych zmiennych kończy test przed uruchomieniem browsera. `npm run test:runner` sprawdza te ograniczenia, również w realnym Chrome/CDP.
+
+Końcowe odczyty CAP/H01 i dual10/63 PASS. Smoke FLP nadal exit1: Legacy503, flex/LREP i MessageBroker preview. Szczegółowe wymagania niezależnej Destination Legacy i bramki **CAP-07 READY TO START / CAP-04D BLOCKED**: [audyt CAP-06.1](../journal/2026-11-08-cap-06-1-hardening.md). Poniższe wyniki opisują wcześniejszą sesję CAP-06.
+
 ## CAP-06/UI5-09 — odczyt dwóch backendów, 2026-11-08
 
 **RAP LIVE + CAP uruchomiony lokalnie: PASS w teście przeglądarkowym z lokalnym mock principalem CAP. IAS/XSUAA: BLOCKED.** UI5 działa na8086, CAP na127.0.0.1:8080, mock regresyjny na8085. RAP korzysta z istniejącego reentrance ticket business usera; CAP z osobnej tożsamości lokalnej. Nie przenosimy cookie SAP do CAP ani do Destination systemowej.

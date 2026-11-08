@@ -8,20 +8,20 @@ spring:
     username: sa
     password: ""
     driver-class-name: org.h2.Driver
-  h2.console:
-    enabled: true
-    path: /h2-console
-    settings.web-allow-others: false
 cds:
   data-source.auto-config.enabled: false
-  security:
-    mock:
-      # Lokalny runtime wymaga jawnego użytkownika; brak konta privileged/system z pustym hasłem.
-      defaultUsers.enabled: false
 ---
 # Bez profilu: Remote Service H01 obowiązuje w każdym środowisku (default, test, live, cf).
 # Destination AINV_H01 jest dostarczane przez środowisko (zmienna `destinations` lokalnie, BTP Destination Service na CF).
+spring:
+  h2.console:
+    enabled: false
+    path: /h2-console
+    settings.web-allow-others: false
 cds:
+  security.mock:
+    # Każdy profil wymaga jawnego użytkownika; brak privileged/system z pustym hasłem.
+    defaultUsers.enabled: false
   outbox:
     services:
       KsefSubmissionOutbox:
@@ -87,3 +87,6 @@ logging:
   level:
     # CAP 5.2 loguje tu surowe body błędów zdalnych. Zostawiamy tylko nasze bezpieczne kody.
     com.sap.cds.services.impl.odata.RemoteODataClient.errors: "OFF"
+---
+spring.config.activate.on-profile: cf | cloud | prod | production
+cds.security.mock.enabled: false
