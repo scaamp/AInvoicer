@@ -75,7 +75,7 @@ Wniosek: wariant A `OAuth2UserTokenExchange` z poświadczeniami `uaa` instancji 
 
 1. Merge `origin/main` (zachowane `docs/architecture/` i oba SVG).
 2. **Poprawka testu** `approuter/test/xs-app.test.mjs`: regex usług MTA `\n` → `\r?\n`. Świeży checkout z `core.autocrlf=true` (Windows) dawał CRLF i fałszywy FAIL (`[] != [destination, hana, xsuaa]`); deskryptor był poprawny. Po zmianie 7/7 w drzewie CRLF i LF.
-3. **Procedura MTAR**: `mbt module-build -g` uruchomione w katalogu projektu tworzy `.<projekt>_mta_build_tmp` wewnątrz projektu, a `mbt assemble` w tym samym katalogu pakuje go podwójnie (MTAR 134 MB z duplikatem JAR). Poprawny wariant: `module-build -s <repo>` z katalogu nadrzędnego, potem `assemble` w osobnym katalogu z `mtad.yaml`, katalogiem wyników i `cap-java/xs-security.json` → **75 MB** (runbook §4).
+3. **Procedura MTAR**: `mbt module-build -g` uruchomione w katalogu projektu tworzy `.<projekt>_mta_build_tmp` wewnątrz projektu, a `mbt assemble` w tym samym katalogu pakuje go podwójnie (MTAR 134 MB z duplikatem JAR). Poprawny wariant: `module-build -s <repo>` z katalogu nadrzędnego, potem `assemble` w osobnym katalogu z `mtad.yaml`, katalogiem wyników i `cap-java/xs-security.json` → **67 MB** (75 MB po rozpakowaniu) (runbook §4).
 4. Dokumentacja: runbook, BTP_IDENTITY_SETUP, RAP_UI_LIVE_CONNECTION, STATUS, ROADMAP, indeks, ten dziennik.
 
 ## Commands Executed
@@ -102,7 +102,7 @@ MCP ABAP FS h01: odata_resolve_service ×2, odata_get_metadata (UI), odata_query
 | QUnit / OPA (własny mock :8095) | **77/77 (442)** / **13/13 (80)** PASS | LOCAL MOCK |
 | Approuter `test:config` | pierwszy przebieg 6/7 (CRLF) → po poprawce **7/7** (CRLF i LF) | OFFLINE |
 | `mbt build` | BLOCKED (brak GNU make) | — |
-| `module-build` + `assemble` | PASS → `ainvoicer_0.7.1.mtar` 75 MB: JAR, HDI 16 artefaktów (operacje, rezerwacje, snapshoty, zgłoszenia, outbox, writeback + indeksy unikalności), approuter z `dist-cf` (`rap`, `sendInvoice=false`, 0 `node_modules`/testów/fixture/`default-env`), `xs-security.json`; mtad: `AINV_KSEF_ENABLED/AINV_SAP_WRITE_ENABLED="false"`, 1× `forwardAuthToken` (CAP); skan sekretów 0 | LOCAL |
+| `module-build` + `assemble` | PASS → `ainvoicer_0.7.1.mtar` 67 MB (75 MB po rozpakowaniu): JAR, HDI 16 artefaktów (operacje, rezerwacje, snapshoty, zgłoszenia, outbox, writeback + indeksy unikalności), approuter z `dist-cf` (`rap`, `sendInvoice=false`, 0 `node_modules`/testów/fixture/`default-env`), `xs-security.json`; mtad: `AINV_KSEF_ENABLED/AINV_SAP_WRITE_ENABLED="false"`, 1× `forwardAuthToken` (CAP); skan sekretów 0 | LOCAL |
 | H01 RAP UI `ZUI_AINV_INV_H_O4/0001` | published V4, metadata 200, Invoices **4**, `_Items` **9**, `_References` **6**; wszystkie CompanyCode 1000, NIP 5260002008 po stronie sprzedawcy lub nabywcy; `KsefNumber` puste; `LocalLastChangedAt` 2026-10-26T17:28:46.662912Z | LIVE READ (developer ADT OAuth MCP = `CB9980000000` z rolą), **nie** SSO z CF |
 | H01 Web API `ZAPI_AINV_INV_H_O4/0001` | published V4 (resolve) | LIVE |
 | CF deploy, XSUAA, AppRouter, SSO, HANA, A/B, macierz negatywna LIVE | **NOT EXECUTED — BLOCKED** | — |

@@ -12,7 +12,7 @@ tags: [ainvoicer, btp, cloud-foundry, deployment, xsuaa, hana, approuter, sso, c
 
 > **Stan 2026-11-08:** artefakty zbudowane i sprawdzone lokalnie (MTAR `ainvoicer_0.7.1.mtar` złożony przez `mbt module-build` + `mbt assemble`). **Nic nie wdrożono.** Żadna usługa, rola, Destination, trust ani Communication Arrangement nie zostały utworzone ani zmienione. Stan subaccount **NOT VERIFIED** — agent nie miał `cf`/`btp` CLI ani dostępu do cockpitu. Każdy krok oznaczony 🔒 wymaga osobnej zgody właściciela.
 
-> **CAP-07B etap 1 (2026-11-08):** nadal **nic nie wdrożono**. API `cf-eu20-001` osiągalne (CC v3 3.233.0, min. CLI 8.0.0); agent ma portable **cf 8.19.0** (`%USERPROFILE%\tools\cf8\x\cf.exe`), ale **bez logowania** — inventory, entitlementy i quota NOT VERIFIED. MTAR odbudowany poprawioną procedurą (§4, 75 MB). Regresja 236/77/13/7/7 PASS. [Dziennik CAP-07B](../journal/2026-11-08-cap-07b-btp-live-deployment.md).
+> **CAP-07B etap 1 (2026-11-08):** nadal **nic nie wdrożono**. API `cf-eu20-001` osiągalne (CC v3 3.233.0, min. CLI 8.0.0); agent ma portable **cf 8.19.0** (`%USERPROFILE%\tools\cf8\x\cf.exe`), ale **bez logowania** — inventory, entitlementy i quota NOT VERIFIED. MTAR odbudowany poprawioną procedurą (§4, 67 MB). Regresja 236/77/13/7/7 PASS. [Dziennik CAP-07B](../journal/2026-11-08-cap-07b-btp-live-deployment.md).
 
 ## 0. Zasady bezpieczeństwa wdrożenia
 
@@ -80,7 +80,7 @@ Opcja zapasowa **identity-smoke** (tylko gdy HANA niedostępna, 🔒 osobna zgod
 
 Build (wykonuje osoba z GNU make; agent nie miał make): `mbt build` w katalogu repo → `mta_archives/ainvoicer_0.7.1.mtar`. Bez make: `npm ci --prefix sapui5/ainvoicer && npm run build:cf --prefix sapui5/ainvoicer`, potem `mbt module-build` + `mbt assemble`.
 
-**Uwaga (CAP-07B):** `mbt module-build -g` uruchomione w katalogu repo tworzy `.<repo>_mta_build_tmp` **wewnątrz** projektu, a `mbt assemble` w tym samym katalogu pakuje go drugi raz (MTAR 134 MB z podwójnym JAR). Sprawdzona procedura (75 MB):
+**Uwaga (CAP-07B):** `mbt module-build -g` uruchomione w katalogu repo tworzy `.<repo>_mta_build_tmp` **wewnątrz** projektu, a `mbt assemble` w tym samym katalogu pakuje go drugi raz (MTAR 134 MB z podwójnym JAR). Sprawdzona procedura (plik 67 MB):
 
 ```bash
 cd <katalog nadrzędny repo>
