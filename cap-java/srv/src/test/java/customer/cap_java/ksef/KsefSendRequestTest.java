@@ -300,6 +300,14 @@ class KsefSendRequestTest {
         assertTrue(sendOperations().isEmpty());
     }
 
+    /** CAP-07: listy 2 NIP x 2 spółki nie opisują jednoznacznie par — requestSend fail closed (bez rezerwacji). */
+    @Test void ambiguousNipCompanyCrossProductIsForbidden() throws Exception {
+        var crossed = send("operator-cross-scope", "test-cross", invoice);
+        assertEquals(403, crossed.status());
+        assertEquals("KSEF_TAXPAYER_NOT_AUTHORIZED", code(crossed));
+        assertTrue(sendOperations().isEmpty());
+    }
+
     @Test void browserSuppliedContextIsIgnoredAndInputIsValidated() throws Exception {
         // Dodatkowe pola payloadu (NIP, środowisko, klucz) nie są częścią kontraktu akcji.
         var forged = post("operator-a", "test-a", "requestSend", Map.of("invoiceUUID", invoice.toString(),

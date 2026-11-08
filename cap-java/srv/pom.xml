@@ -55,10 +55,25 @@
 			<scope>runtime</scope>
 		</dependency>
 
-		<!-- Uwierzytelnianie mock users CAP Java w lokalnym development i testach -->
+		<!-- Spring Security: mock users tylko lokalnie/testowo; na BTP walidacja JWT XSUAA (CAP-07, ADR-0006). -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+
+		<!-- CAP-07: oficjalna integracja CAP Java 5.x z XSUAA/IAS (zastępuje usunięty cds-feature-xsuaa).
+		     Aktywuje się wyłącznie przy bindingu usługi xsuaa/identity; mapuje scope bez prefiksu xsappname
+		     na role CAP i xs.user.attributes na $user.<attr>. Brak własnej kryptografii JWT. -->
+		<dependency>
+			<groupId>com.sap.cds</groupId>
+			<artifactId>cds-feature-identity</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+		<!-- SAP Cloud Security Services Integration Library 4.x (Spring Boot 4): walidacja podpisu (JWKS),
+		     issuer, audience i ważności tokenu XSUAA. Wersja z java-bom w parent POM. -->
+		<dependency>
+			<groupId>com.sap.cloud.security</groupId>
+			<artifactId>resourceserver-security-spring-boot-starter</artifactId>
 		</dependency>
 
 		<dependency>
@@ -70,6 +85,14 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- Offline kontrakt JWT: syntetyczne tokeny i lokalny JWKS (WireMock) z testowym kluczem biblioteki SAP.
+		     To NIE jest dowód LIVE XSUAA. -->
+		<dependency>
+			<groupId>com.sap.cloud.security</groupId>
+			<artifactId>java-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
 

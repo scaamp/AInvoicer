@@ -53,11 +53,11 @@
 			</dependency>
 
 			<!-- SAP SECURITY -->
-			<!-- TODO: Check how we best handle the SAP security dependencies because on a cds-services level we don´t manage the dependency bom-->
+			<!-- CAP 5.2.0 (cds-feature-identity, cds-starter-cloudfoundry) deklaruje dokładnie 4.1.2. -->
 			<dependency>
 				<groupId>com.sap.cloud.security</groupId>
 				<artifactId>java-bom</artifactId>
-				<version>4.1.2</version>
+				<version>${sap.security.version}</version>
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
