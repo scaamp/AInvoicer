@@ -12,6 +12,7 @@ AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijan
 
 ## Od czego zacząć
 
+- [Docelowa architektura bezpieczeństwa — dwa diagramy SVG, granice tożsamości i relacje SAP IAM/DCL](architecture/README.md).
 - [Referencyjne źródła UI DCL poza eksportem abapGit — ostrzeżenie bezpieczeństwa](abap-dcl-reference/README.md).
 - [ABAP-08 stan końcowy 2026-11-07 — Business Role, READ 4/9/6 i lista SAPUI5 z H01 LIVE VERIFIED](journal/2026-11-02-abap-08-ui5-08.md#kontynuacja-2026-11-07-2--business-role-utworzona-business-user-read-pass-sapui5-live-pass).
 - [ABAP-08 kontynuacja 2026-11-07 — binding LIVE, DCL „bez roli” LIVE, Business Role do utworzenia](journal/2026-11-02-abap-08-ui5-08.md#kontynuacja-2026-11-07--logowanie-mcp-działa-business-role-nie-istnieje).

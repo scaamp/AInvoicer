@@ -148,6 +148,18 @@ The current ABAP Environment uses **custom simulated invoice tables** (`ZAINV_IN
 
 The target is to keep KSeF-specific HTTP, crypto and credential handling **inside CAP**, not in the browser or ABAP RAP business model. KSeF environment separation (TEST/DEMO/PROD) and taxpayer context must be enforced server-side; the currently tested submission path targets **TEST**.
 
+### Security architecture — target state
+
+The diagrams below document the **target security architecture** and the relationships between SAP authorization objects. They also distinguish mechanisms verified live in H01/KSeF TEST from locally tested code and planned BTP deployment elements. **A diagram is not evidence of production readiness.**
+
+[![AInvoicer target security architecture — identity, authorization and integration boundaries](docs/architecture/AInvoicer_Security_Architecture_Target.svg)](docs/architecture/AInvoicer_Security_Architecture_Target.svg)
+
+**SAP ABAP Cloud IAM / DCL dependency model**
+
+[![SAP authorization objects, restriction fields and types, IAM apps, catalogs, roles and CDS DCL](docs/architecture/AInvoicer_SAP_IAM_DCL_Relations.svg)](docs/architecture/AInvoicer_SAP_IAM_DCL_Relations.svg)
+
+Open either diagram for its full-resolution vector view. See [security architecture documentation](docs/architecture/README.md), [SAP IAM guide](docs/guides/RAP_UI_IAM_MODEL.md) and [ADR-0005](docs/decisions/ADR-0005-rap-business-status-cap-integration-status.md).
+
 ## Security, authorization & reliability
 
 Security is part of the solution design, not a UI-only feature:
