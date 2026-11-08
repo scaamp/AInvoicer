@@ -43,11 +43,16 @@ import com.sap.cloud.security.test.SecurityTest;
  * {@code java-security-test}; JWKS serwuje lokalny WireMock. Walidację wykonuje produkcyjny stos:
  * cds-feature-identity + resourceserver-security-spring-boot-starter. Jedyna różnica testowa to
  * zarejestrowana przez bibliotekę testową fabryka JKU zaufana wyłącznie dla localhost.
+ *
+ * <p>Baza H2 w profilu cf jest dopuszczona tylko w trybie {@code ainv.deployment.identity-smoke}; ten
+ * sam test dowodzi więc, że w takim trybie uprawniony operator nie utworzy historii procesu KSeF.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
     "spring.sql.init.platform=h2", "cds.data-source.auto-config.enabled=false",
     "spring.datasource.url=jdbc:h2:mem:xsuaa-jwt-contract;DB_CLOSE_DELAY=-1",
-    "ainv.sap-write.sweeper.enabled=false"
+    "ainv.sap-write.sweeper.enabled=false",
+    // CAP-07.1: na chmurze H2 jest dozwolona wyłącznie w jawnym trybie identity-smoke (CloudPersistenceGuard).
+    "ainv.deployment.identity-smoke=true"
 })
 @ActiveProfiles("cf")
 class XsuaaJwtODataContractTest {
@@ -117,17 +122,21 @@ class XsuaaJwtODataContractTest {
     }
 
     @Test void untrustedKeySetUrlIsRejected() throws Exception {
-        // Zaufanie XSUAA wynika z JKU w domenie bindingu; obcy JKU nie jest pobierany ani akceptowany.
+        // Produkcyjnie (java-security 4.1.2, XsuaaJwtSignatureValidator) nagłówek jku jest ignorowany: klucze
+        // pochodzą z <uaadomain z bindingu>/token_keys?zid=<app_tid>. Tutaj odrzucenie wymusza testowa fabryka
+        // JKU (zaufana tylko dla localhost) — test dowodzi, że obcy zestaw kluczy nie jest akceptowany.
         String token = operator(NIP_A, "1000").withHeaderParameter("jku", "https://keys.example.invalid/token_keys")
             .createToken().getTokenValue();
         assertEquals(401, get("Bearer " + token, "InvoiceIntegrationStatus").statusCode());
     }
 
     /**
-     * Zaobserwowany kontrakt SAP java-security 4.1.2 dla XSUAA: claim {@code iss} NIE jest osobno walidowany.
-     * Kotwicą zaufania jest JKU w domenie bindingu (uaadomain) + podpis kluczem z tego JWKS + audience.
-     * Bez klucza prywatnego XSUAA nie da się więc podmienić iss; obcy JKU z dowolnym iss jest odrzucany.
-     * Test utrwala to zachowanie — zmiana biblioteki wymaga ponownej oceny (ADR-0006).
+     * Kontrakt SAP java-security 4.1.2 dla XSUAA (potwierdzony w źródle {@code JwtValidatorBuilder}:
+     * {@code JwtIssuerValidator} jest dodawany wyłącznie dla IAS): claim {@code iss} NIE jest walidowany.
+     * Łańcuch XSUAA = ważność czasowa + podpis kluczem z JWKS {@code uaadomain} bindingu (kid, zid z tokenu)
+     * + audience (clientid/xsappname bindingu). Bez klucza prywatnego strefy XSUAA nie da się podmienić iss;
+     * audience blokuje tokeny innych aplikacji. Test utrwala to zachowanie — zmiana biblioteki wymaga
+     * ponownej oceny (ADR-0006, CAP-07.1).
      */
     @Test void xsuaaTrustAnchorIsBoundKeySetNotIssuerClaim() throws Exception {
         String foreignIss = "https://foreign-issuer.example.invalid/oauth/token";
@@ -198,6 +207,32 @@ class XsuaaJwtODataContractTest {
         var cross = read(crossed, "InvoiceIntegrationStatus?$count=true&$filter=invoiceUUID%20eq%20'" + invoice + "'");
         assertEquals(0, cross.path("value").size());
         assertEquals(0, cross.path("@odata.count").asInt());
+    }
+
+    // ---- CAP-07.1: tryb identity-smoke nie zapisuje historii (bezpośredni request do CAP) ----------
+
+    @Test void identitySmokeRejectsSendAndOperationWritesForAuthorizedOperator() throws Exception {
+        String token = operator(NIP_A, "1000").createToken().getTokenValue();
+        var send = post(token, "requestSend", "{\"invoiceUUID\":\"" + invoice + "\"}");
+        assertEquals(409, send.statusCode(), send::body);
+        assertTrue(send.body().contains("AINV_IDENTITY_SMOKE_READ_ONLY"), send::body);
+        var create = post(token, "KsefOperations", """
+            {"sapDocumentRef":"%s","taxpayerNip":"%s","companyCode":"1000","direction":"OUTBOUND",
+             "operationType":"CHECK_STATUS","idempotencyKey":"%s"}""".formatted(invoice, NIP_A, UUID.randomUUID()));
+        assertEquals(409, create.statusCode(), create::body);
+        // Bez tokenu nadal odmowa (Spring Security: 401 albo 403 dla POST bez CSRF/tokenu) — tryb nie osłabia
+        // uwierzytelnienia i nie dochodzi do handlera.
+        int anonymous = http.send(HttpRequest.newBuilder(uri("requestSend")).header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString("{}")).build(), HttpResponse.BodyHandlers.ofString()).statusCode();
+        assertTrue(anonymous == 401 || anonymous == 403, "anonymous POST: " + anonymous);
+        var own = read(token, "KsefOperations?$filter=sapDocumentRef%20eq%20'" + invoice + "'");
+        assertEquals(1, own.path("value").size(), "brak nowych operacji poza danymi testu");
+    }
+
+    private HttpResponse<String> post(String token, String path, String body) throws Exception {
+        return http.send(HttpRequest.newBuilder(uri(path)).header("Authorization", "Bearer " + token)
+            .header("Content-Type", "application/json").header("OData-MaxVersion", "4.0")
+            .POST(HttpRequest.BodyPublishers.ofString(body)).build(), HttpResponse.BodyHandlers.ofString());
     }
 
     // ---- Pomocnicze -----------------------------------------------------------------------------

@@ -1,0 +1,16 @@
+{
+  "name": "ainvoicer-db-deployer",
+  "private": true,
+  "description": "HDI deployer for AInvoicer CAP persistence (CAP-07.1). Based on `cds add hana` (cds-dk 10.2.0); build uses the project-pinned cds-dk instead of npx. Not deployed.",
+  "dependencies": {
+    "hdb": "^2.0.0",
+    "@sap/hdi-deploy": "^5"
+  },
+  "engines": {
+    "node": "^24.0.0"
+  },
+  "scripts": {
+    "start": "node node_modules/@sap/hdi-deploy/deploy.js --use-hdb --parameter com.sap.hana.di.table/try_fast_table_migration=true",
+    "build": "npm ci --prefix .. && node ../node_modules/@sap/cds-dk/bin/cds.js build .. --for hana --production"
+  }
+}

@@ -102,6 +102,17 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- CAP-07.1: SAP HANA Cloud (HDI) na Cloud Foundry. CAP tworzy DataSource z bindingu `hana`
+		     (auto-konfiguracja aktywna poza profilem default). Pojedyncza zależność zamiast cds-starter-cloudfoundry
+		     (ADR-0006: bez multitenancy). Lokalnie i w testach nadal H2; CloudPersistenceGuard blokuje H2 na chmurze. -->
+		<dependency>
+			<groupId>com.sap.cds</groupId>
+			<artifactId>cds-feature-hana</artifactId>
+			<scope>runtime</scope>
+		</dependency>
+
+		<!-- H2 wyłącznie lokalnie/testowo. Na CF bez bindingu HANA Spring Boot utworzyłby z niej cichą bazę
+		     w pamięci — dlatego CloudPersistenceGuard odmawia startu (poza jawnym trybem identity-smoke). -->
 		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
