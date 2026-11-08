@@ -44,6 +44,17 @@ cds:
         - name: operator-without-taxpayer-attribute
           password: test-no-nip
           roles: [KsefOperator]
+        - name: operator-without-company-attribute
+          password: test-no-cc
+          roles: [KsefOperator]
+          attributes:
+            taxpayerNips: ["1234567802"]
+        - name: operator-malformed-scope
+          password: test-malformed
+          roles: [KsefOperator]
+          attributes:
+            taxpayerNips: ["invalid", ""]
+            companyCodes: ["1000"]
 ainv:
   sap-write:
     # Testy wywołują sweep() jawnie; tło nie może tworzyć zleceń w trakcie asercji innych testów.

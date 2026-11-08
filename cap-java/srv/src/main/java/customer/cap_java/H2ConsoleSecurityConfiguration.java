@@ -1,6 +1,7 @@
 package customer.cap_java;
 
 import org.springframework.boot.security.autoconfigure.web.servlet.PathRequest;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -13,6 +14,7 @@ import org.springframework.security.web.SecurityFilterChain;
 /** Lokalna obsługa konsoli H2; ustawienia nie są aktywne poza profilem default. */
 @Configuration(proxyBeanMethods = false)
 @Profile("default")
+@ConditionalOnProperty(name = "spring.h2.console.enabled", havingValue = "true")
 public class H2ConsoleSecurityConfiguration {
 
 	/** Konsola H2 używa ramek i formularza bez tokenu CSRF, więc wyjątek ograniczamy do jej ścieżki. */

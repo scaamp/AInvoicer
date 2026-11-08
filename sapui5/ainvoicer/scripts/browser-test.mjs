@@ -134,6 +134,32 @@ try {
     });
     await cdp.send("Runtime.enable");
     await cdp.send("Page.enable");
+    // Opcjonalny principal mock CAP wyłącznie do lokalnego testu dwóch backendów.
+    // Nagłówek nie trafia do RAP, UI5 CDN, plików strony ani logu. IAS/XSUAA testujemy osobno.
+    if (process.env.AINV_CAP_LOCAL_TEST_USER || process.env.AINV_CAP_LOCAL_TEST_PASSWORD) {
+        const target = new URL(url);
+        if (target.protocol !== "http:" || !["localhost", "127.0.0.1"].includes(target.hostname)
+                || !process.env.AINV_CAP_LOCAL_TEST_USER || !process.env.AINV_CAP_LOCAL_TEST_PASSWORD) {
+            throw new Error("Local CAP test authentication requires loopback HTTP and both environment variables");
+        }
+        const authorization = "Basic " + Buffer.from(process.env.AINV_CAP_LOCAL_TEST_USER + ":"
+            + process.env.AINV_CAP_LOCAL_TEST_PASSWORD).toString("base64");
+        cdp.on((msg) => {
+            if (msg.method === "Fetch.requestPaused") {
+                const requestUrl = new URL(msg.params.request.url);
+                const headers = Object.entries(msg.params.request.headers)
+                    .filter(([name]) => name.toLowerCase() !== "authorization")
+                    .map(([name, value]) => ({ name, value }));
+                if (requestUrl.origin === target.origin && requestUrl.pathname.startsWith("/odata/v4/KsefService/")) {
+                    headers.push({ name: "Authorization", value: authorization });
+                }
+                cdp.send("Fetch.continueRequest", { requestId: msg.params.requestId, headers }).catch(() => {});
+            }
+        });
+        await cdp.send("Fetch.enable", { patterns: [{
+            urlPattern: target.origin + "/odata/v4/KsefService/*", requestStage: "Request"
+        }] });
+    }
     await cdp.send("Page.navigate", { url });
 
     if (mode === "qunit") {

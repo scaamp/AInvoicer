@@ -1,12 +1,18 @@
 ---
 title: "SAPUI5 — kokpit faktur KSeF"
-date: 2026-10-30
+date: 2026-11-08
 type: guide
 status: aktywny
 tags: [ainvoicer, sapui5, ksef, cap-java, frontend]
 ---
 
 # SAPUI5 — kokpit faktur KSeF
+
+**CAP-06/UI5-09 (2026-11-08): RAP LIVE + lokalny CAP READ potwierdzone w pełnej aplikacji.** Test opt-in `test/live/dualBackend.qunit.html`:10/10 (63 asercje), z rzeczywistą listą4, pozycjami9 i referencjami6, otwieranym dialogiem i rzeczywistą pustą historią CAP. CAP używa lokalnego mock principala z ograniczonym NIP/spółką, nie IAS. CAP401/403/network/timeout testowane przez symulację awarii przy rzeczywistym RAP. Standardowa regresja mock: QUnit72/72 (420), OPA13/13 (80), buildy PASS. Smoke FLP ma exit1 (Legacy503/flex/MessageBroker), mimo poprawnej listy i Send OFF; LIVE AI/OCR/STT/Legacy niezaliczone.
+
+Filtry RAP uwzględniają wielkość liter (bez nieobsługiwanego `tolower`), ograniczenia MaxLength i walutę. **Przed filtrem Gross Amount wybierz Currency w dodatkowych filtrach**, np. PLN; kwota bez waluty jest odrzucana przed HTTP i zwalnia busy. Tak samo traktowane są filtry kwotowe AI. Wyszukiwanie długiego numeru nie dodaje go do krótszych pól NIP. Mock zachowuje wyszukiwanie bez rozróżniania wielkości liter. Dane nadal pochodzą z named model `rap`, CAP obsługuje wyłącznie statusy/akcje. Adapter jawnie negocjuje OData4.0 dla kompletności historii CAP. Send i manifest domyślny bez zmian: OFF/mock.
+
+Uruchomienie, zakres uwierzytelnienia runnera oraz konkretne kroki IAS/XSUAA administratora: [połączenie LIVE](RAP_UI_LIVE_CONNECTION.md#cap-06ui5-09--odczyt-dwóch-backendów-2026-11-08). Zwykły browser bez sesji CAP otrzyma401 — testowe uwierzytelnienie nie ustanawia SSO użytkownika. [Dowody i ograniczenia](../journal/2026-11-08-cap-06-ui5-09.md). Poniższe wpisy są historią.
 
 **ABAP-08 (2026-11-07, stan końcowy): SAPUI5 LIVE VERIFIED (lista).** W trybie `rap` (lokalna, ignorowana konfiguracja) kokpit pokazuje 4 rzeczywiste faktury z H01: All (4), Purchase (2), Sales (2), z kierunkiem, procesem, stronami, NIP i datami. Przy niedostępnym CAP pojawia się ostrzeżenie „CAP integration status is unavailable … SAP data is shown; sending is disabled”, a dane RAP pozostają widoczne. „Send to KSeF” jest wyłączony (`sendInvoice=false`). Zmiana narzędzi: `@sap/ux-ui5-tooling` przypięty do `1.19.6` (reentrance ticket dla BTP ABAP); regresja po zmianie: build PASS, QUnit 69/69 (408), OPA 13/13 (80). Wizualnie niezweryfikowane: szczegóły, sort, filtr, paging. Instrukcja uruchomienia: [RAP_UI_LIVE_CONNECTION.md](RAP_UI_LIVE_CONNECTION.md).
 

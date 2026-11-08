@@ -429,7 +429,8 @@ sap.ui.define([
             return Promise.reject(adapterError(ErrorCode.NETWORK, "fetch is not available"));
         }
         var oRequest = Object.assign({ credentials: "same-origin" }, oOptions);
-        oRequest.headers = Object.assign({ Accept: "application/json;IEEE754Compatible=true" }, oOptions.headers);
+        // CAP 5.2 bez negocjacji używa 4.01 (@count). Kontrakt adaptera to V4.0 (@odata.count/nextLink).
+        oRequest.headers = Object.assign({ Accept: "application/json;IEEE754Compatible=true", "OData-MaxVersion": "4.0" }, oOptions.headers);
         return this._fnFetch(sUrl, oRequest).then(function (oResponse) {
             if (!oResponse.ok) {
                 return readODataError(oResponse).then(function (sMessage) {

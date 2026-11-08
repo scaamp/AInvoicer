@@ -122,6 +122,7 @@ sap.ui.define([
                 "/odata/v4/KsefService/KsefOperations?$filter=sapDocumentRef eq '" + UUID + "'&$orderby=createdAt desc");
             assert.strictEqual(fnFetch.calls[0].options.credentials, "same-origin", "session auth only, no tokens in JS");
             assert.notOk(fnFetch.calls[0].options.headers.Authorization, "no Authorization header from the browser");
+            assert.strictEqual(fnFetch.calls[0].options.headers["OData-MaxVersion"], "4.0", "CAP returns @odata.count as required by the adapter");
             assert.strictEqual(aOps[0].status, "REJECTED", "newest first");
         });
     });

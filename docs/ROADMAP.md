@@ -1,6 +1,6 @@
 ---
 title: "AInvoicer — plan rozwoju"
-date: 2026-10-30
+date: 2026-11-08
 type: roadmap
 status: aktywny
 tags: [ainvoicer, roadmap, cap-java, ksef]
@@ -115,6 +115,10 @@ przez B pozostają niepotwierdzone (NIP/PartyData; bez drugiej wysyłki).
 HTTP 202 nie oznacza przyjęcia faktury. Eksperyment na `feature/ksef-java-e2e-runner` jest referencją według kontekstu projektu; nie zalicza tego etapu.
 
 ## Phase 5 — SAPUI5 + CAP
+
+- [x] **CAP-06/UI5-09 — 2026-11-08, zakres lokalny + LIVE H01:** CAP startup/metadata/status READ na świeżej H2, 0 operacji; realny RemoteService READ H01 1/1 (4/9/6, keyed READ i typy). SAPUI5 z RAP LIVE i CAP runtime z lokalnym mock principalem: 10/10 testów przeglądarki. Naprawione OData4.01/count, H2 console OFF, filtry RAP (tolower/MaxLength/waluta). Maven186, QUnit72, OPA13 i oba buildy PASS. [Dziennik](journal/2026-11-08-cap-06-ui5-09.md).
+- [ ] **CAP-06 — bramka tożsamości:** IAS/XSUAA dependencies/binding, approuter i trusted taxpayerNips/companyCodes, role collections i test faktycznego business usera. Obecny lokalny mock principal nie zalicza LIVE IAS. [Plan administratora](guides/RAP_UI_LIVE_CONNECTION.md#cap-06--tożsamość-cap-i-plan-btp).
+- [ ] **UI5-09 — pozostałe bramki:** izolacja A/B H01 (dodatkowe zatwierdzone dane/user), pełny deploy gate UI DCL na czystym systemie i naprawa serializacji; Legacy `/sap` 503/flex FLP. CAP-04D BLOCKED, bez SAP WRITE/KSeF SEND. Szczegóły niżej są historią wcześniejszych sprintów.
 
 - [ ] **ABAP-08/UI5-08 — 2026-11-07: główny cel LIVE VERIFIED** (Business Role `ZBR_AINV_READ_1000`, READ 4/9/6, SAPUI5 lista z H01 przez `/rap-ui`, Send OFF); **scalone do `main` (`153c3f3`)**. Pozostaje: szczegóły/sort/filtr w UI, izolacja A/B (drugi user lub zgoda na fakturę spoza zakresu), pusty wiersz BUK w IAM App, eksport abapGit, ATC. Osobno: UI5 CLI v4 (odblokuje nowsze `@sap/ux-ui5-tooling`), host trasy Legacy `/sap`. [Dziennik](journal/2026-11-02-abap-08-ui5-08.md). Historia:
 - [ ] **ABAP-08/UI5-08 (2026-11-02), IN PROGRESS/BLOCKED:** ABAP-07 zintegrowane na `feature/abap-08-live-integration` (merge `160130c`); Maven 178/178, QUnit 69/69, OPA 13/13, oba buildy PASS (lokalnie/mock). Do zrobienia: Business Role z `ZAINV_BC_READ` (Read=Restricted, Write=No Access, NIP5260002008/BUK1000) i przypisanie business usera, ponowne logowanie MCP, business-user READ i macierz DCL, UI5 w trybie rap (lokalnie, Send OFF), eksport abapGit (puste DCL w diffie MCP), potem osobno CAP-04D (NOT READY). [Dziennik](journal/2026-11-02-abap-08-ui5-08.md). **2026-11-07:** binding UI LIVE VERIFIED, DCL „bez roli” LIVE VERIFIED (UI 0 vs Web API 4), Business Role **nie istnieje** (I_IAMBusinessRole) → do utworzenia przez administratora; regresja 178/69/13 PASS. [Kontynuacja](journal/2026-11-02-abap-08-ui5-08.md#kontynuacja-2026-11-07--logowanie-mcp-działa-business-role-nie-istnieje).

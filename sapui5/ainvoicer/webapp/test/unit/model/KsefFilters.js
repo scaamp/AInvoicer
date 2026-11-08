@@ -46,6 +46,16 @@ sap.ui.define([
         assert.deepEqual(apply(KsefFilterBuilder.build(oState, "SALES")), ["2", "3"]);
     });
 
+    QUnit.test("long invoice search omits impossible short-field branches rejected by RAP", function (assert) {
+        var state = KsefFilterBuilder.createEmptyState();
+        state.search = ROWS[0].InvoiceNumber;
+        var filters = KsefFilterBuilder.build(state, "ALL");
+        assert.deepEqual(apply(filters), ["1"]);
+        assert.notOk(filters[0].aFilters.some(function (f) { return f.sPath === "SellerNip" || f.sPath === "BuyerNip"; }));
+        state.search = "x".repeat(101);
+        assert.throws(function () { KsefFilterBuilder.build(state, "ALL"); }, /at most 100/);
+    });
+
     QUnit.test("multi-select, date range and amount range combine with AND", function (assert) {
         var oState = KsefFilterBuilder.createEmptyState();
         oState.originProcesses = ["FI_AR", "SD_BILL", "MM_IV"];
@@ -68,6 +78,28 @@ sap.ui.define([
     QUnit.test("counts and distinct values", function (assert) {
         assert.deepEqual(KsefFilterBuilder.countByView(ROWS), { ALL: 4, PURCHASE: 2, SALES: 2 });
         assert.deepEqual(KsefFilterBuilder.distinctValues(ROWS, "CompanyCode"), ["1000", "2000"]);
+    });
+
+    QUnit.test("RAP string filters avoid unsupported tolower without changing client filters", function (assert) {
+        var client = new Filter({ path: "InvoiceNumber", operator: "Contains", value1: "AINV", caseSensitive: false });
+        var server = KsefFilterBuilder.serverFilters([client])[0];
+        assert.strictEqual(server.bCaseSensitive, true);
+        assert.strictEqual(client.bCaseSensitive, false);
+        assert.strictEqual(server.oValue1, "AINV");
+    });
+
+    QUnit.test("RAP amount scope requires an unconditional currency equality", function (assert) {
+        var amount = new Filter("GrossAmount", "GE", 1000);
+        var currency = new Filter("CurrencyCode", "EQ", "PLN");
+        assert.ok(KsefFilterBuilder.hasUnscopedAmount([amount]));
+        assert.notOk(KsefFilterBuilder.hasUnscopedAmount([amount, currency]));
+        assert.ok(KsefFilterBuilder.hasUnscopedAmount([new Filter({ filters: [amount, currency], and: false })]));
+        var state = KsefFilterBuilder.createEmptyState();
+        state.currencyCode = " pln ";
+        state.amountFrom = "1000";
+        var filters = KsefFilterBuilder.build(state, "ALL");
+        assert.notOk(KsefFilterBuilder.hasUnscopedAmount(filters));
+        assert.deepEqual(apply(filters), ["1", "2", "3", "4"]);
     });
 
     QUnit.module("KsefAiFilterAdapter");

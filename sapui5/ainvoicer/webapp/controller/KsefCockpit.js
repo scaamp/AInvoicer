@@ -164,8 +164,12 @@ sap.ui.define([
             if (this._oKsefAi) {
                 aFilters = aFilters.concat(this._oKsefAi.filters);
             }
+            var aServerFilters = KsefFilterBuilder.serverFilters(aFilters);
+            if (KsefFilterBuilder.hasUnscopedAmount(aServerFilters)) {
+                throw new Error(this._ksefText("ksefFilterAmountCurrencyRequired"));
+            }
             return {
-                filters: KsefFilterBuilder.serverFilters(aFilters),
+                filters: aServerFilters,
                 sorters: KsefFilterBuilder.serverSorters(this._aKsefServerSorters || (this._oKsefAi && this._oKsefAi.sorter
                     ? [].concat(this._oKsefAi.sorter) : [new Sorter("IssueDate", true), new Sorter("InvoiceNumber", false)]))
                     .concat(new Sorter("InvoiceUUID", false)),
@@ -182,7 +186,10 @@ sap.ui.define([
             oViewModel.setProperty("/busy", true);
             oViewModel.setProperty("/error", "");
 
-            return this._oKsefAdapter.loadInvoices(this._ksefServerQuery(iSkip)).then(function (aPage) {
+            // Walidacja filtrów może odrzucić zapytanie przed HTTP; wspólna ścieżka zwalnia busy również wtedy.
+            return Promise.resolve().then(function () {
+                return this._oKsefAdapter.loadInvoices(this._ksefServerQuery(iSkip));
+            }.bind(this)).then(function (aPage) {
                 var aRows = aPage;
                 var oPage = this._oKsefAdapter.getLastPage();
                 oViewModel.setProperty("/hasMore", !!(oPage && oPage.hasMore));

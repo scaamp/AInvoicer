@@ -22,8 +22,10 @@
                 <fb:control>
                     <SearchField
                         id="ksefSearchField"
+                        maxLength="100"
                         value="{ksefView>/filters/search}"
                         placeholder="{i18n>ksefFilterSearchPlaceholder}"
+                        tooltip="{= ${ksefView>/mode} === 'rap' ? ${i18n>ksefFilterRapCaseSensitive} : ${i18n>ksefFilterSearchPlaceholder} }"
                         search=".onKsefSearch"
                     />
                 </fb:control>
@@ -88,6 +90,17 @@
                         valueFormat="yyyy-MM-dd"
                         change=".onKsefDateRangeChange"
                     />
+                </fb:control>
+            </fb:FilterGroupItem>
+            <fb:FilterGroupItem
+                name="CurrencyCode"
+                label="{i18n>ksefColCurrencyCode}"
+                groupName="Ksef"
+                visibleInFilterBar="false"
+            >
+                <fb:control>
+                    <Input id="ksefCurrencyFilter" maxLength="3" value="{ksefView>/filters/currencyCode}"
+                        placeholder="{i18n>ksefFilterCurrencyPlaceholder}" />
                 </fb:control>
             </fb:FilterGroupItem>
             <fb:FilterGroupItem
