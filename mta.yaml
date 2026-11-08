@@ -1,9 +1,11 @@
-# AInvoicer — deskryptor MTA (CAP-07). PRZYGOTOWANIE, NIE WDROŻONO.
-# Nie uruchamiać `cf deploy` / `cf push` / `cf create-service` bez osobnego upoważnienia (docs/guides/BTP_IDENTITY_SETUP.md).
+# AInvoicer — deskryptor MTA (CAP-07 / CAP-07.1). PRZYGOTOWANIE, NIE WDROŻONO.
+# Nie uruchamiać `cf deploy` / `cf push` / `cf create-service` bez osobnego upoważnienia
+# (docs/guides/BTP_FIRST_DEPLOYMENT_RUNBOOK.md). `cf deploy` tego deskryptora TWORZY usługi:
+# xsuaa/application, destination/lite oraz hana/hdi-shared (wymaga instancji SAP HANA Cloud — koszt/entitlement).
 # Wartości oznaczone TO VERIFY wymagają potwierdzenia w docelowym subaccount przed CAP-07B.
 _schema-version: "3.1"
 ID: ainvoicer
-version: 0.7.0
+version: 0.7.1
 description: AInvoicer — SAPUI5 + CAP Java (KSeF integration) + SAP RAP UI, single-tenant
 
 parameters:
@@ -14,38 +16,61 @@ build-parameters:
     - builder: custom
       commands:
         - npm ci --prefix sapui5/ainvoicer
-        - npm run build --prefix sapui5/ainvoicer
+        # Wariant CF: dataMode=rap, wszystkie capabilities OFF, Legacy OFF, bez test/ i localService/;
+        # skrypt kończy się błędem (bez artefaktu), jeśli weryfikacja wykryje testy, fixture lub credentiale.
+        - npm run build:cf --prefix sapui5/ainvoicer
 
 modules:
-  # CAP Java + Spring Boot. Profil cf: mock auth OFF, CloudIdentityGuard wymaga dokładnie jednego bindingu XSUAA.
+  # CAP Java + Spring Boot. Profil cf: mock auth OFF; CloudIdentityGuard wymaga dokładnie jednego bindingu XSUAA,
+  # CloudPersistenceGuard — trwałej bazy SAP HANA Cloud (bez cichej H2 w pamięci).
   - name: ainvoicer-srv
     type: java
     path: cap-java/srv
     build-parameters:
       builder: custom
       commands:
-        - mvn -f ../pom.xml clean package -DskipTests=true -Dcds.cds.skipVersionCheck=true
+        - mvn -B -f ../pom.xml clean package -DskipTests=true -Dcds.cds.skipVersionCheck=true
       build-result: target/*-exec.jar
     parameters:
       buildpack: sap_java_buildpack_jakarta
       memory: 1024M
       disk-quota: 1024M
+      instances: 1
       # Bez sprawdzania HTTP: endpointy CAP wymagają tokenu.
       health-check-type: port
     properties:
       SPRING_PROFILES_ACTIVE: cf
-      # TO VERIFY: dostępność SapMachine 25 w sap_java_buildpack_jakarta danego landscape (projekt wymaga JDK 25).
+      # Wzorzec zgodny z `cds add mta` (cds-dk 10.2.0). TO VERIFY: SapMachine 25 w buildpacku danego landscape.
       JBP_CONFIG_COMPONENTS: "jres: ['com.sap.xs.java.buildpack.jre.SAPMachineJRE']"
       JBP_CONFIG_SAP_MACHINE_JRE: "{ version: 25.+ }"
-      # BLOCKER CAP-07B: profil cf nie ma trwałej bazy. H2 na CF jest niezgodne z AGENTS.md;
-      # wymagana decyzja właściciela: SAP HANA Cloud (entitlement) albo jawny wyjątek dla smoke testu tożsamości.
+      # Jawnie OFF (domyślne z application.yaml); włączenie wyłącznie w osobno zatwierdzonym sprincie.
+      AINV_KSEF_ENABLED: "false"
+      AINV_SAP_WRITE_ENABLED: "false"
     requires:
       - name: ainvoicer-auth
       - name: ainvoicer-destination
+      - name: ainvoicer-db
     provides:
       - name: srv-api
         properties:
           srv-url: ${default-url}
+
+  # HDI deployer: tabele CAP (operacje, rezerwacje, zgłoszenia, outbox, writeback) z `cds build --for hana`.
+  # Uruchamia się jednorazowo przy deployu i kończy (no-route). Wymaga instancji SAP HANA Cloud w space.
+  - name: ainvoicer-db-deployer
+    type: hdb
+    path: cap-java/db
+    build-parameters:
+      builder: custom
+      commands:
+        - npm run build
+      ignore: ["node_modules/"]
+    parameters:
+      buildpack: nodejs_buildpack
+      memory: 256M
+      disk-quota: 512M
+    requires:
+      - name: ainvoicer-db
 
   # SAP Application Router: SAPUI5 (statycznie z resources/), CAP przez token użytkownika, RAP przez business-user Destination.
   - name: ainvoicer-approuter
@@ -54,11 +79,15 @@ modules:
     build-parameters:
       builder: custom
       commands:
-        - npm ci --omit=dev
-        - node -e "require('fs').cpSync('../sapui5/ainvoicer/dist','resources',{recursive:true})"
+        - node -e "const fs=require('fs');fs.rmSync('resources',{recursive:true,force:true});fs.cpSync('../sapui5/ainvoicer/dist-cf','resources',{recursive:true})"
+      # Zależności instaluje buildpack z package-lock.json; testy konfiguracji i lokalne bindingi nie trafiają do MTAR.
+      ignore: ["node_modules/", "test/", "default-env.json", "default-services.json", "*.log"]
     parameters:
       memory: 256M
       disk-quota: 512M
+      instances: 1
+      # Ten sam host co redirect-uris XSUAA poniżej (bez wildcard na współdzieloną domenę CF).
+      host: ${org}-${space}-ainvoicer-approuter
       keep-existing-routes: true
     properties:
       SESSION_TIMEOUT: 15
@@ -71,7 +100,8 @@ modules:
     requires:
       - name: srv-api
       - name: ainvoicer-auth
-      # Destination Service: AINV_H01_UI_USER (business-user SSO do H01) tworzy administrator w subaccount.
+      # Destination Service: AINV_H01_UI_USER (business-user SSO do H01) tworzy administrator w subaccount;
+      # bez HTML5.ForwardAuthToken (Authentication != NoAuthentication). Runbook §6.
       - name: ainvoicer-destination
 
 resources:
@@ -86,8 +116,10 @@ resources:
         xsappname: ainvoicer-${org}-${space}
         tenant-mode: dedicated
         oauth2-configuration:
+          # Wyłącznie host approutera. Wildcard *.${default-domain} dopuszczałby dowolną aplikację na
+          # współdzielonej domenie CF jako cel przekierowania OAuth.
           redirect-uris:
-            - https://*.${default-domain}/**
+            - https://${org}-${space}-ainvoicer-approuter.${default-domain}/**
 
   # Destination Service plan lite: AINV_H01 (CAP -> Web API, communication user) i AINV_H01_UI_USER
   # (approuter -> RAP UI, propagacja business usera). Obie konfiguruje administrator; brak sekretów w repo.
@@ -96,3 +128,11 @@ resources:
     parameters:
       service: destination
       service-plan: lite
+
+  # SAP HANA Cloud — kontener HDI dla trwałej historii procesu KSeF (CAP-07.1, ADR-0007).
+  # Wymaga istniejącej instancji SAP HANA Cloud w subaccount/space (entitlement + koszt; TO VERIFY).
+  - name: ainvoicer-db
+    type: com.sap.xs.hdi-container
+    parameters:
+      service: hana
+      service-plan: hdi-shared

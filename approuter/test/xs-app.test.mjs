@@ -51,14 +51,45 @@ test('brak trasy proxy do Web API H01 i do konsoli H2', () => {
   }
 });
 
-test('MTA: token użytkownika przekazywany tylko do CAP; brak sekretów i usług kosztowych', () => {
+test('MTA: token użytkownika przekazywany tylko do CAP; brak sekretów; usługi jawnie zadeklarowane', () => {
   assert.match(mta, /name: ainvoicer-cap\s+url: ~\{srv-url\}\s+forwardAuthToken: true/);
+  assert.equal([...mta.matchAll(/forwardAuthToken: true/g)].length, 1, 'token XSUAA wyłącznie do CAP');
   assert.match(mta, /service: xsuaa\s+service-plan: application/);
   assert.match(mta, /path: \.\/cap-java\/xs-security\.json/);
   assert.match(mta, /SPRING_PROFILES_ACTIVE: cf/);
-  // Tylko xsuaa i destination; bez HANA/usług kosztowych w tym sprincie i bez sekretów.
+  // CAP-07.1: trwała baza CAP to HDI SAP HANA Cloud (deklaracja, bez deployu); brak innych usług kosztowych.
   const services = [...mta.matchAll(/service: ([\w-]+)\n/g)].map((match) => match[1]).sort();
-  assert.deepEqual(services, ['destination', 'xsuaa']);
+  assert.deepEqual(services, ['destination', 'hana', 'xsuaa']);
+  assert.match(mta, /service: hana\s+service-plan: hdi-shared/);
+  assert.match(mta, /name: ainvoicer-srv[\s\S]*?requires:\s+- name: ainvoicer-auth\s+- name: ainvoicer-destination\s+- name: ainvoicer-db/);
   assert.doesNotMatch(mta, /clientsecret|password:|BEGIN (RSA )?PRIVATE KEY/i);
   assert.doesNotMatch(mta, /ainv\.(ksef|sap-write)\.enabled:\s*true/i);
+  assert.match(mta, /AINV_KSEF_ENABLED: "false"/);
+  assert.match(mta, /AINV_SAP_WRITE_ENABLED: "false"/);
+  assert.doesNotMatch(mta, /identity-smoke|IDENTITY_SMOKE/i, 'tryb identity-smoke wymaga osobnej zgody i nie jest w deskryptorze');
+});
+
+test('MTA: XSUAA redirect tylko na host approutera, bez wildcard na współdzieloną domenę', () => {
+  assert.doesNotMatch(mta, /https:\/\/\*\./);
+  assert.match(mta, /host: \$\{org\}-\$\{space\}-ainvoicer-approuter/);
+  assert.match(mta, /redirect-uris:\s+- https:\/\/\$\{org\}-\$\{space\}-ainvoicer-approuter\.\$\{default-domain\}\/\*\*/);
+});
+
+test('MTA: approuter pakuje wariant UI5 CF (rap, bez testów), bez node_modules i testów konfiguracji', () => {
+  assert.match(mta, /npm run build:cf --prefix sapui5\/ainvoicer/);
+  assert.match(mta, /cpSync\('\.\.\/sapui5\/ainvoicer\/dist-cf','resources'/);
+  assert.doesNotMatch(mta, /sapui5\/ainvoicer\/dist'/, 'nie kopiować builda developerskiego (dataMode=mock, test/)');
+  assert.match(mta, /ignore: \["node_modules\/", "test\/", "default-env\.json", "default-services\.json", "\*\.log"\]/);
+});
+
+test('RAP UI: bez przekazywania tokenu CAP i bez CSRF approutera; trasa Legacy /sap nie istnieje', () => {
+  const rap = routeFor('/rap-ui/Invoices');
+  assert.equal(rap.forwardAuthToken, undefined);
+  assert.equal(rap.csrfProtection, false, 'CSRF obsługuje backend SAP (x-csrf-token)');
+  for (const path of ['/sap/opu/odata4/sap/zui_fi_acdoca_o4/srvd/sap/zui_fi_acdoca_o4/0001/$metadata', '/sap/bc/lrep/flex/data/x',
+    '/odata/v4/OtherService/Entities', '/odata/v4/ksefservice/InvoiceIntegrationStatus', '/test-resources/sap/ui/qunit/x.js']) {
+    const route = routeFor(path);
+    assert.equal(route.localDir, 'resources', `${path} nie może trafić do żadnego backendu`);
+    assert.equal(route.destination, undefined);
+  }
 });
