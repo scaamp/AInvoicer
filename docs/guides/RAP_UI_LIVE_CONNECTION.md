@@ -8,6 +8,10 @@ tags: [ainvoicer, rap, abap, sapui5, iam, odata, abap-06]
 
 # RAP UI — połączenie LIVE
 
+## CAP-07 — routing BTP (przygotowany, niewdrożony)
+
+Approuter ([`approuter/xs-app.json`](../../approuter/xs-app.json)) mapuje `/rap-ui/*` na ścieżkę bindingu `ZUI_AINV_INV_H_O4/0001` przez Destination `AINV_H01_UI_USER` z propagacją business usera, a `/odata/v4/KsefService/*` na CAP z tokenem XSUAA. Manifest UI5 nie wymaga zmian (względne `/rap-ui/` i `/odata/v4/KsefService/`). Lokalny reentrance ticket pozostaje bez zmian. **Business-user SSO CF → H01 jest BLOCKED** — mechanizm propagacji musi potwierdzić administrator; nie zastępować go Basic Auth ani communication userem `AINV_H01`. JWT CAP nie daje dostępu do H01. Szczegóły: [BTP_IDENTITY_SETUP](BTP_IDENTITY_SETUP.md#8-business-user-sso-do-h01--blocked), [ADR-0006](../decisions/ADR-0006-btp-identity-xsuaa.md).
+
 ## CAP-06.1 — bezpieczne lokalne ustawienia
 
 H2 console jest domyślnie OFF we wszystkich profilach; `/h2-console/` nie jest publiczną usługą. Preferuj narzędzia JDBC developerskie. Wyłącznie w izolowanym procesie lokalnym można jawnie uruchomić konsolę z `--spring.profiles.active=default,h2-console-local --server.address=127.0.0.1 --spring.h2.console.enabled=true`. Bez proxy, tunelu i forwarded; `web-allow-others=false`. CF/cloud/prod/production lub obecność VCAP blokują taki start. Dostęp konsoli jest ograniczony do adresu połączenia loopback, niezależnie od X-Forwarded-For; jej wyjątek CSRF nie obejmuje CAP.

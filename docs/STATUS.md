@@ -14,6 +14,12 @@ tags: [ainvoicer, cap-java, status]
 
 ## Current Phase
 
+**CAP-07 BTP Identity (2026-11-08): XSUAA w CAP + approuter przygotowane i przetestowane OFFLINE; LIVE BTP BLOCKED (admin).** Branch `feature/cap-07-btp-identity` z `ed35935` (PR #1 nadal OPEN, clean → **READY FOR OWNER MERGE**, bez merge). Decyzja [ADR-0006](decisions/ADR-0006-btp-identity-xsuaa.md): XSUAA `application`/`dedicated`, `cds-feature-identity` + `resourceserver-security-spring-boot-starter` 4.1.2, deskryptor `cap-java/xs-security.json` (scope `KsefOperator`, wymagane atrybuty NIP/spółka przypięte do roli). `KsefScopeUserInfoProvider` zamyka dostęp przy ≥2 NIP **i** ≥2 spółkach (para krzyżowa nie jest dozwolona); `CloudIdentityGuard` blokuje start na CF bez jednego bindingu XSUAA lub z mock. Approuter 23.4.0 + `mta.yaml` (niewdrożone).
+
+Wyniki: **Maven 230/230** (+27; build bez repackage JAR, bo działający CAP 8080 blokuje `cap-java-exec.jar`), **OFFLINE JWT CONTRACT 10/10** (prawdziwy stos SAP, syntetyczny binding/klucz), approuter statycznie 4/4 i runtime z syntetycznym XSUAA PASS, UI5 build/runner3/QUnit76 (438)/OPA13 (80) PASS na istniejącym serwerze mock; `npm ci` UI5 NOT EXECUTED. Zaobserwowano: XSUAA `iss` nie jest walidowany przez bibliotekę (kotwica = JKU + podpis + audience). **LIVE XSUAA/IAS, business-user SSO CF → H01, CF deploy: BLOCKED/ADMIN.** CAP-04D preflight read-only: binding/READ/`Z_AINV_KSF` potwierdzone, arrangement/ACTVT16/CSRF niezweryfikowane. SAP WRITE i KSeF SEND **NOT EXECUTED**; flagi bez zmian. [Dziennik](journal/2026-11-08-cap-07-btp-identity.md) · [Przewodnik administratora](guides/BTP_IDENTITY_SETUP.md).
+
+### Poprzedni stan — CAP-06.1
+
 **CAP-06.1 hardening (2026-11-08): lokalny kod gotowy do review main.** H2 console globalnie OFF, opt-in tylko `h2-console-local` na loopback bez CF/PROD/proxy; domyślni privileged/system/authenticated OFF we wszystkich profilach, mock auth OFF dla cf/cloud/prod/production. Dodano regresję ochrony H2 i braku kont, izolację/redirecty Basic Auth runnera, walidację MaxLength/dat/waluty AI i bezpieczne trasy CAP. ADR-0005 i wszystkie transporty/capabilities pozostają bez zmian/OFF.
 
 **Publikacja:** kod `ed66718` wypchnięty na `feature/cap-06-ui5-09-dual-backend`; **[PR #1](https://github.com/scaamp/AInvoicer/pull/1) OPEN, gotowy do review**, bez konfliktów z main141bda4. Późniejszy commit uzupełnia wyłącznie dokumentację publikacji. **Merge i auto-merge NOT EXECUTED.**
@@ -162,6 +168,7 @@ SAPUI5 → RAP UI (dane i wynik biznesowy; live BLOCKED) + CAP (akcje/statusy) �
 
 ## Next Steps
 
+0. CAP-07: owner merge PR #1, review stacked PR CAP-07; zatrzymać lokalny CAP 8080 i powtórzyć `mvn clean verify` z JAR-em. CAP-07B wg [przewodnika BTP](guides/BTP_IDENTITY_SETUP.md#10-czynności-administratora-kolejno): entitlementy, decyzja DB, deploy po zgodzie, role collection, SSO do H01.
 1. CAP-04D po osobnej zgodzie: ograniczone nadanie, HTTP WRITE na uzgodnionych danych, commit/ETag/no-op, autoryzacja rzeczywistym principalem i pełne dwa równoległe wywołania akcji.
 2. Uzgodnić poprawne syntetyczne NIP-y i źródło PartyData, wykonać READ H01 oraz lokalne przygotowanie przez zintegrowany generator B. Następny LIVE send to osobny eksperyment; istniejący numer/UPO zachować.
 3. Przed wdrożeniem: trwała baza, obsługa operacyjna retry/konfliktów/Retry-After i testy HANA/CF. Domyślna baza development jest in-memory.

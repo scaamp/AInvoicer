@@ -12,6 +12,7 @@ AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijan
 
 ## Od czego zacząć
 
+- [CAP-07 — BTP Identity: XSUAA, approuter, fail-closed par NIP/spółka (OFFLINE PASS, LIVE BLOCKED)](journal/2026-11-08-cap-07-btp-identity.md) · [ADR-0006](decisions/ADR-0006-btp-identity-xsuaa.md) · [Przewodnik: BTP Identity setup](guides/BTP_IDENTITY_SETUP.md).
 - [CAP-06.1 — hardening, pełna regresja i gotowość PR; smoke FLP nadal KNOWN BLOCKER](journal/2026-11-08-cap-06-1-hardening.md).
 
 - [CAP-06/UI5-09 — RAP LIVE + lokalny CAP, poprawki runtime i filtrów; IAS/WRITE nadal BLOCKED](journal/2026-11-08-cap-06-ui5-09.md).
