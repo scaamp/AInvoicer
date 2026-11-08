@@ -31,7 +31,7 @@ BTP Cockpit → Global Account → Subaccounts → właściwy subaccount:
 | Gdzie jest H01 | Instances and Subscriptions → ABAP Environment | czy instancja H01 jest w **tym samym** subaccount co CF |
 | Trust / IdP | Security → Trust Configuration | IdP, w którym istnieją business userzy H01 (IAS) |
 
-**Wskazówka z repo (nie dowód):** dotychczasowe usługi Node/Python działają na `cfapps.us10-001` (trial), a host H01 to `9197a0a5-….abap.eu20.hana.ondemand.com`. Jeśli CF dla AInvoicera jest w trial `us10`, to CF i H01 są w **różnych** subaccountach i regionach → wariant SSO B (§6.2).
+**Potwierdzone przez właściciela (zrzut BTP Cockpit, 2026-11-08):** jeden subaccount zawiera środowisko Cloud Foundry `dev-v2xzij9s_dev` (plan `free`, landscape `cf-eu20-001`) oraz instancję **ABAP environment `dev`** (plan `free`, runtime CF, space `dev`, 1 service key) = H01 (`9197a0a5-….abap.eu20` / `.abap-web.eu20`). Druga instancja: `default_aicore` (SAP AI Core, `free`). Brak instancji xsuaa/destination/HANA. **CF i H01 są w tym samym subaccount → wariant SSO A** (§6.2). Usługi Node/Python na `cfapps.us10-001` należą do innego konta (Legacy). Uwaga: plany są `free` (free tier), a nie trial — opis „BTP Trial” w AGENTS.md jest w tym punkcie nieprecyzyjny.
 
 CLI (wykonuje właściciel; same odczyty): `cf login` → `cf target`, `cf marketplace -e xsuaa`, `cf marketplace -e destination`, `cf marketplace -e hana`, `cf services`, `cf buildpacks | findstr java`.
 
@@ -43,9 +43,11 @@ CLI (wykonuje właściciel; same odczyty): `cf login` → `cf target`, `cf marke
 | Destination `destination` / `lite` | `AINV_H01`, `AINV_H01_UI_USER` | **NOT VERIFIED** |
 | SAP HANA Cloud (instancja bazy) | trwałość CAP | **NOT VERIFIED** |
 | SAP HANA Schemas & HDI Containers `hana` / `hdi-shared` | kontener `ainvoicer-db` | **NOT VERIFIED** |
-| Cloud Foundry Runtime (pamięć) | 3 aplikacje | **NOT VERIFIED** |
+| Cloud Foundry Runtime | 3 aplikacje | **AVAILABLE** (środowisko `dev-v2xzij9s_dev`, plan `free`, `cf-eu20-001`, status Created — zrzut właściciela); quota pamięci **NOT VERIFIED** |
 | Buildpack `sap_java_buildpack_jakarta` + SapMachine 25 | CAP Java 5.2 / JDK 25 | **NOT VERIFIED** (wzorzec `JBP_CONFIG_SAP_MACHINE_JRE: { version: 25.+ }` zgodny z `cds add mta`, cds-dk 10.2.0) |
-| ABAP Environment H01 | RAP UI + Web API | **AVAILABLE** (MCP 2026-11-08: oba bindingi published/V4/0001, READ 4 nagłówki) |
+| ABAP Environment H01 | RAP UI + Web API | **AVAILABLE** — instancja `dev`, plan `free`, ten sam subaccount co CF (zrzut właściciela); MCP 2026-11-08: oba bindingi published/V4/0001, READ 4 nagłówki |
+
+Brak instancji xsuaa/destination/HANA w subaccount nie przesądza o entitlementach — sprawdź *Entitlements*. W free tier SAP HANA Cloud ma osobny plan bezpłatny z ograniczeniami (**TO VERIFY** w Entitlements: SAP HANA Cloud oraz SAP HANA Schemas & HDI Containers).
 
 Cockpit → Subaccount → **Entitlements** → *Configure Entitlements* — tylko odczyt; dodanie entitlementu 🔒.
 
@@ -96,7 +98,21 @@ Wymagania niezależne od wariantu:
 | **A** `OAuth2UserTokenExchange` | CF i H01 w **tym samym** subaccount (ta sama strefa XSUAA) | Client ID / Secret + Token Service URL (`…/oauth/token`) z poświadczeń XSUAA instancji ABAP (service key H01, sekcja `uaa`) — **TO VERIFY** w SAP Help *Routing via Destination* | brak dodatkowego trustu; business user H01 z rolą `ZBR_AINV_READ_1000` | wariant najprostszy, jeśli §1 potwierdzi ten sam subaccount |
 | **B** `SAMLAssertion` (lub `OAuth2SAMLBearerAssertion`) | CF i H01 w **różnych** subaccountach (wskazówka z §1) | Audience / AuthnContextClassRef / nameIdFormat wg SAP Help *Configure OAuth 2.0 SAML Bearer Assertion Grant*; certyfikat podpisu: Destination Service subaccountu CF → *Download Trust* | Communication System (inbound) z zaufanym certyfikatem/IdP subaccountu CF i odpowiedni Communication Arrangement — scenariusz/ID **TO VERIFY** | wymaga administratora H01; dla `OAuth2SAMLBearerAssertion` approuter wymaga scope `uaa.user` (dokumentacja approutera) → wtedy dodać role-template `Token_Exchange` z `uaa.user` do `xs-security.json` (osobna zmiana + test) |
 
-**Dlaczego bez finalnego wyboru:** oficjalne strony SAP Help (*Routing via Destination*, *Configure OAuth 2.0 SAML Bearer Assertion Grant*, *Application Routes and Destinations*) w sesjach agenta zwracały pustą powłokę JS; przeczytano wyłącznie dokumentację approutera z SAP-docs/btp-cloud-platform. Reguła „ten sam subaccount → `OAuth2UserTokenExchange`, różne → `SAMLAssertion`” pochodzi z opisu zadania i źródeł wtórnych — administrator potwierdza ją z SAP Help dla bieżącej wersji H01 przed utworzeniem Destination.
+**Wybór (2026-11-08): wariant A** — CF i H01 w jednym subaccount (§1). Konfiguracja do wykonania przez administratora 🔒:
+
+| Właściwość | Wartość |
+| --- | --- |
+| Name | `AINV_H01_UI_USER` |
+| Type / ProxyType | `HTTP` / `Internet` |
+| URL | `https://9197a0a5-b602-4c28-84b4-6b63c6daa54d.abap.eu20.hana.ondemand.com` (host API `.abap.`, **nie** `.abap-web.`) |
+| Authentication | `OAuth2UserTokenExchange` |
+| Client ID / Client Secret | z istniejącego service key instancji ABAP `dev`, sekcja `uaa` (`clientid`, `clientsecret`) — wpisać tylko w Destination, nigdy w repo/czacie |
+| Token Service URL | `<uaa.url z tego service key>/oauth/token` (Token Service URL Type: Dedicated) — **TO VERIFY** z SAP Help *Routing via Destination* |
+| Bez | `HTML5.ForwardAuthToken`, `sap-client`, User/Password |
+
+Warunek tożsamości: approuter musi logować użytkownika przez **ten sam IdP (IAS)**, który obsługuje logowanie do H01 (Security → Trust Configuration). Role collection `KsefOperator` przypisz użytkownikowi w tym originie; jeśli aktywny jest też SAP ID service, użytkownik wybiera przy logowaniu IAS (ewentualne `identityProvider` w `xs-app.json` — osobna zmiana po poznaniu nazwy originu). Wariant B pozostaje opisem rezerwowym.
+
+**Pierwotny powód braku wyboru:** oficjalne strony SAP Help (*Routing via Destination*, *Configure OAuth 2.0 SAML Bearer Assertion Grant*, *Application Routes and Destinations*) w sesjach agenta zwracały pustą powłokę JS; przeczytano wyłącznie dokumentację approutera z SAP-docs/btp-cloud-platform. Reguła „ten sam subaccount → `OAuth2UserTokenExchange`, różne → `SAMLAssertion`” pochodzi z opisu zadania i źródeł wtórnych — administrator potwierdza ją z SAP Help dla bieżącej wersji H01 przed utworzeniem Destination.
 
 ### 6.3 CAP → H01 Web API: `AINV_H01` (bez zmian)
 

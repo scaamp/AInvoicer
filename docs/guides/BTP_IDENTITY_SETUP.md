@@ -86,7 +86,7 @@ Sesja approutera: `SESSION_TIMEOUT=15` min, wylogowanie `/do/logout`. Legacy `/s
 
 ## 8. Business-user SSO do H01 — TECHNICALLY SPECIFIED (CAP-07.1)
 
-Specyfikacja Destination `AINV_H01_UI_USER` z dwoma wariantami (A `OAuth2UserTokenExchange` — ten sam subaccount; B `SAMLAssertion`/`OAuth2SAMLBearerAssertion` — różne subaccounty) i warunkami wspólnymi (origin API H01, bez `HTML5.ForwardAuthToken`, bez Basic, unikalny URL destination w sesji approutera, ten sam IAS) jest w [runbooku §6.2](BTP_FIRST_DEPLOYMENT_RUNBOOK.md#62-approuter--h01-rap-ui-ainv_h01_ui_user-business-user-sso). Wskazówka z repo: CF trial `us10`, H01 `eu20` → prawdopodobnie wariant B. Oficjalne strony SAP Help dla ABAP Environment nie były czytelne dla agenta — administrator potwierdza wariant i nazwy pól przed utworzeniem. **LIVE NOT EXECUTED.** Lokalnie nadal działa reentrance ticket (UI5-09).
+Specyfikacja Destination `AINV_H01_UI_USER` z dwoma wariantami (A `OAuth2UserTokenExchange` — ten sam subaccount; B `SAMLAssertion`/`OAuth2SAMLBearerAssertion` — różne subaccounty) i warunkami wspólnymi (origin API H01, bez `HTML5.ForwardAuthToken`, bez Basic, unikalny URL destination w sesji approutera, ten sam IAS) jest w [runbooku §6.2](BTP_FIRST_DEPLOYMENT_RUNBOOK.md#62-approuter--h01-rap-ui-ainv_h01_ui_user-business-user-sso). **Wybrany wariant A** — właściciel potwierdził (zrzut Cockpit 2026-11-08), że CF `cf-eu20-001` i ABAP environment `dev` (H01) są w jednym subaccount; Client ID/Secret z service key instancji ABAP, approuter loguje przez IAS H01. Oficjalne strony SAP Help dla ABAP Environment nie były czytelne dla agenta — administrator potwierdza wariant i nazwy pól przed utworzeniem. **LIVE NOT EXECUTED.** Lokalnie nadal działa reentrance ticket (UI5-09).
 
 ## 9. Testy
 

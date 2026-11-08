@@ -125,6 +125,12 @@ Brak POST, brak nadań, `ainv.sap-write.enabled=false`.
 - Funkcje AI/Scanner/Voice na CF nie działają (zewnętrzne hosty, brak tras).
 - npm tooling UI5: 74 advisories (bez zmian, narzędzia developerskie).
 
+## Kontynuacja — potwierdzenie landscape przez właściciela
+
+Relacja użytkownika (zrzut BTP Cockpit, nie odczyt agenta): jeden subaccount z CF `dev-v2xzij9s_dev` (`free`, `cf-eu20-001`, Created), instancją **ABAP environment `dev`** (`free`, CF space `dev`, 1 key, Usable) = H01 (`9197a0a5-….abap-web.eu20`) oraz `default_aicore` (SAP AI Core, `free`). Brak instancji xsuaa/destination/HANA.
+
+Skutek: **SSO H01 — wariant A `OAuth2UserTokenExchange` wybrany** (runbook §6.2: URL hosta API `.abap.`, Client ID/Secret i token URL z service key instancji ABAP `dev`, bez ForwardAuthToken/Basic; approuter loguje przez ten sam IAS co H01). Wcześniejsza wskazówka „CF trial us10” była błędna (us10 = inne konto Legacy). Plany są free tier, nie trial. Entitlementy xsuaa/destination/HANA nadal NOT VERIFIED; CF runtime i ABAP environment AVAILABLE. Bez zmian kodu.
+
 ## Next Step
 
 Właściciel: (1) merge PR #1, review stacked PR CAP-07 i CAP-07.1; (2) runbook §1–2: potwierdzić subaccount/region H01 vs CF i entitlementy (xsuaa, destination, HANA Cloud, hdi-shared); (3) po zgodzie `mbt build` + `cf deploy`, role collection A/B, Destination `AINV_H01_UI_USER` wg wariantu; (4) przekazać URL approutera do testów runbooku §7.
