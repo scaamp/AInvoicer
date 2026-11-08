@@ -83,7 +83,7 @@ Zatrzymano wyłącznie rozpoznane procesy lokalnego CAP oraz dwóch serwerów Fi
 | `npm run serve-mock`; `npm run test:unit` | **76/76,438 asercji PASS** |
 | `npm run test:opa` | **13/13,80 asercji PASS**; komunikaty TTS disabled in tests są świadomą atrapą |
 | `npm run test:runner` | **3/3 PASS**, w tym realny Chrome/CDP: bez nagłówka na RAP, SAP, zasobie CDN-fixture i obcym origin; redirect także do dozwolonej ścieżki CAP nie dostaje credentiala |
-| `npx fiori run --config ui5-rap.local.yaml --port8086 --open false` | Serwer działa; istniejący reentrance ticket READ |
+| `npx fiori run --config ui5-rap.local.yaml --port 8086 --open false` | Serwer działa; istniejący reentrance ticket READ |
 | `npx ui5 build --config ui5-rap.local.yaml --clean-dest --dest dist/rap-read` | PASS |
 | `node scripts/browser-test.mjs qunit http://localhost:8086/test/live/dualBackend.qunit.html 60000` + jawne env lokalnego readera | **10/10,63 asercje PASS**, RAP LIVE + autentyczny lokalny CAP runtime z mock principalem; końcowy kod ponowiony |
 | `browser-test.mjs smoke .../test/flp.html#app-preview ... 60000`, z/bez lokalnego auth | **FAIL/exit1**, known Legacy/flex/MessageBroker; końcowe stany4 faktury, RAP nieukryty |
@@ -95,6 +95,12 @@ Odczyty UI5 obejmują koperty `$batch` z READ. Nie zawierają mutacji. Testy Mav
 ## F. Git / Review
 
 Przegląd objął kod, testy i dokumentację23 zastanych plików oraz poprawki powyżej. Bez niepowiązanych refaktoringów i aktualizacji zależności. `git diff --check` PASS; nie ma zmian ADR-0005 ani eksportu SAP. Przed publikacją ponowny fetch nadal wskazuje main141bda4 i brak commitów main poza feature — nie ma rozbieżnej historii wymagającej merge/rebase. Wyniki publikacji i konkretne SHA należy czytać w dopisku poniżej oraz w PR; wejściowy HEAD nie jest SHA finalnej zmiany.
+
+### Publikacja i PR
+
+Kod, testy i audyt zapisano w **`ed667188c387f306eeba8cdd05b0686162c825fa`**, `fix(cap-ui5): harden dual-backend runtime and secure local defaults` (23 pliki hardeningu). `git push origin feature/cap-06-ui5-09-dual-backend` PASS; po pushu HEAD i origin zgodne, drzewo czyste, feature3 ahead/0 behind main141bda4. `git merge-tree --write-tree origin/main HEAD` exit0 (symulacja, bez merge). GitHub potwierdził `mergeable=true`.
+
+Utworzono **[PR #1 do main](https://github.com/scaamp/AInvoicer/pull/1)**, open, non-draft, `merged=false`; pełny diff34 plików obejmuje także dwa wcześniejsze commity CAP-06. Opis zawiera wyniki lokalne/LIVE, smoke FAIL i wszystkie bramki bezpieczeństwa/deploymentu. Nie wykonywano merge ani nie włączano auto-merge. Ten dopisek jest osobnym commitem dokumentacji po utworzeniu PR; nie zmienia przetestowanego kodu. Końcowy HEAD tego commita jest w historii PR i końcowym raporcie, aby uniknąć samoodwołania SHA w jego treści.
 
 ## G. Next Sprint Readiness / Next Steps
 
