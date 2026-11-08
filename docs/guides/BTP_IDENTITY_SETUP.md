@@ -12,6 +12,8 @@ tags: [ainvoicer, btp, xsuaa, ias, approuter, cap-java, security, cap-07]
 
 > **CAP-07.1 (2026-11-08):** pierwsze wdrożenie prowadzi [runbook](BTP_FIRST_DEPLOYMENT_RUNBOOK.md) (entitlementy, HANA, Destinations, testy, rollback, koszty). Trwałość: [ADR-0007](../decisions/ADR-0007-cap-persistence-hana-cloud.md). SSO H01: specyfikacja techniczna wariantów A/B w runbooku §6.2.
 >
+> **CAP-07B etap 1 (2026-11-08):** XSUAA, role collection, trust i użytkownicy A/B nadal **nieutworzone** — agent bez sesji CF/BTP. Przed testami A/B właściciel musi mieć **drugiego business usera B** (w tym samym originie IdP co approuter i H01) z inną, rzeczywiście istniejącą parą NIP/spółka albo bez roli; bez tego test izolacji pozostaje BLOCKED (nie wymyślamy wartości). Nie przełączać approutera na binding IAS `identity`: `OAuth2UserTokenExchange` (SSO H01, wariant A) nie współpracuje z przekazywaniem tokenów IAS (dokumentacja `@sap/approuter`). [Dziennik CAP-07B](../journal/2026-11-08-cap-07b-btp-live-deployment.md).
+>
 > **Stan:** artefakty przygotowane i przetestowane offline. **Nic nie wdrożono**, nie utworzono żadnej usługi, roli, Destination ani trustu. Dostępność usług w subaccount trial **nie została potwierdzona**. Poniższe kroki wykonuje administrator, a `cf deploy` wymaga osobnej zgody.
 
 ## 1. Wybrany model uwierzytelniania

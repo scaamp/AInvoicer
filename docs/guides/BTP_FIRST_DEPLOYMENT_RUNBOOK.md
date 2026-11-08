@@ -12,6 +12,8 @@ tags: [ainvoicer, btp, cloud-foundry, deployment, xsuaa, hana, approuter, sso, c
 
 > **Stan 2026-11-08:** artefakty zbudowane i sprawdzone lokalnie (MTAR `ainvoicer_0.7.1.mtar` złożony przez `mbt module-build` + `mbt assemble`). **Nic nie wdrożono.** Żadna usługa, rola, Destination, trust ani Communication Arrangement nie zostały utworzone ani zmienione. Stan subaccount **NOT VERIFIED** — agent nie miał `cf`/`btp` CLI ani dostępu do cockpitu. Każdy krok oznaczony 🔒 wymaga osobnej zgody właściciela.
 
+> **CAP-07B etap 1 (2026-11-08):** nadal **nic nie wdrożono**. API `cf-eu20-001` osiągalne (CC v3 3.233.0, min. CLI 8.0.0); agent ma portable **cf 8.19.0** (`%USERPROFILE%\tools\cf8\x\cf.exe`), ale **bez logowania** — inventory, entitlementy i quota NOT VERIFIED. MTAR odbudowany poprawioną procedurą (§4, 75 MB). Regresja 236/77/13/7/7 PASS. [Dziennik CAP-07B](../journal/2026-11-08-cap-07b-btp-live-deployment.md).
+
 ## 0. Zasady bezpieczeństwa wdrożenia
 
 - Pierwsze wdrożenie to **smoke tożsamości i odczytu**: logowanie, role, odczyt RAP i statusów CAP. Bez KSeF SEND, bez SAP WRITE, bez syntetycznych faktur.
@@ -35,6 +37,14 @@ BTP Cockpit → Global Account → Subaccounts → właściwy subaccount:
 
 CLI (wykonuje właściciel; same odczyty): `cf login` → `cf target`, `cf marketplace -e xsuaa`, `cf marketplace -e destination`, `cf marketplace -e hana`, `cf services`, `cf buildpacks | findstr java`.
 
+**Logowanie dla agenta (CAP-07B):** właściciel we **własnym** terminalu (nie w czacie, bez przekazywania passcode):
+
+```powershell
+& "$env:USERPROFILE\tools\cf8\x\cf.exe" login -a https://api.cf.eu20-001.hana.ondemand.com --sso -o dev-v2xzij9s_dev -s dev
+```
+
+Passcode z przeglądarki trafia wyłącznie do CLI; sesja zapisuje się w `%USERPROFILE%\.cf\config.json` (zawiera tokeny — nie wysyłać, nie commitować). Potem agent wykonuje tylko odczyty: `cf target`, `cf org <org>` (quota), `cf space dev`, `cf services`, `cf apps`, `cf marketplace` (+ `-e xsuaa`, `-e destination`, `-e hana`, `-e hana-cloud`), `cf buildpacks`, `cf curl /v3/service_plans?...` — bez `cf service-key`/`cf env` (sekrety). Wylogowanie po sprincie: `cf logout`.
+
 ## 2. Entitlementy — stan
 
 | Usługa / plan | Do czego | Stan 2026-11-08 |
@@ -51,6 +61,8 @@ Brak instancji xsuaa/destination/HANA w subaccount nie przesądza o entitlementa
 
 Cockpit → Subaccount → **Entitlements** → *Configure Entitlements* — tylko odczyt; dodanie entitlementu 🔒.
 
+**Bramka kosztowa (CAP-07B):** konto jest free tier, nie trial — plan płatny w tym koncie nalicza opłaty. Deploy dopuszczalny wyłącznie, gdy SAP HANA Cloud ma przypisany plan **bezpłatny** (free tier; nazwa w marketplace TO VERIFY, np. `hana-cloud`/`hana-free`) oraz `hana`/`hdi-shared`. Instancję HANA Cloud tworzy właściciel w *SAP HANA Cloud Central* (hasło `DBADMIN` ustala wyłącznie on; agent go nie zna i nie przekazuje w `cf create-service -c`). Brak planu bezpłatnego → STOP, decyzja: plan płatny (osobna zgoda z kwotą) albo identity-smoke (§3).
+
 ## 3. Wybór bazy
 
 Decyzja: [ADR-0007](../decisions/ADR-0007-cap-persistence-hana-cloud.md) — **SAP HANA Cloud + kontener HDI `hdi-shared`**. Profil `cf` bez HANA **nie wystartuje** (`CloudPersistenceGuard`, sprawdzone lokalnie na JAR: komunikat `requires durable SAP HANA Cloud persistence (found database 'H2')`). Przed zmianą istniała cicha baza `jdbc:h2:mem:<uuid>`.
@@ -66,7 +78,20 @@ Opcja zapasowa **identity-smoke** (tylko gdy HANA niedostępna, 🔒 osobna zgod
 | `ainvoicer-db` | hana/hdi-shared | wymaga instancji HANA Cloud zmapowanej do org/space (HANA Cloud Central → Instance Mapping) |
 | aplikacje | `ainvoicer-srv`, `ainvoicer-approuter`, `ainvoicer-db-deployer` (task, kończy się) | `mta.yaml` |
 
-Build (wykonuje osoba z GNU make; agent nie miał make): `mbt build` w katalogu repo → `mta_archives/ainvoicer_0.7.1.mtar`. Bez make: `npm ci --prefix sapui5/ainvoicer && npm run build:cf --prefix sapui5/ainvoicer`, potem `mbt module-build -m ainvoicer-srv,ainvoicer-db-deployer,ainvoicer-approuter -g` i `mbt assemble`. Deploy: `cf deploy mta_archives/ainvoicer_0.7.1.mtar` 🔒.
+Build (wykonuje osoba z GNU make; agent nie miał make): `mbt build` w katalogu repo → `mta_archives/ainvoicer_0.7.1.mtar`. Bez make: `npm ci --prefix sapui5/ainvoicer && npm run build:cf --prefix sapui5/ainvoicer`, potem `mbt module-build` + `mbt assemble`.
+
+**Uwaga (CAP-07B):** `mbt module-build -g` uruchomione w katalogu repo tworzy `.<repo>_mta_build_tmp` **wewnątrz** projektu, a `mbt assemble` w tym samym katalogu pakuje go drugi raz (MTAR 134 MB z podwójnym JAR). Sprawdzona procedura (75 MB):
+
+```bash
+cd <katalog nadrzędny repo>
+mbt module-build -s <repo> -m ainvoicer-srv,ainvoicer-db-deployer,ainvoicer-approuter -g   # -> ./mtad.yaml + ./.<repo>_mta_build_tmp/
+mkdir asm asm/cap-java && cp mtad.yaml asm/ && cp -r .<repo>_mta_build_tmp asm/ && cp <repo>/cap-java/xs-security.json asm/cap-java/
+cd asm && mbt assemble -t ../mtar-out                                                       # -> ainvoicer_0.7.1.mtar
+```
+
+Weryfikacja przed deployem: `unzip -l` = 3 moduły + `cap-java/xs-security.json` + `META-INF`; approuter `data.zip` bez `node_modules/`, `test/`, `default-env.json`, `resources/manifest.json` z `dataMode=rap` i `sendInvoice=false`; `mtad.yaml` z `AINV_KSEF_ENABLED/AINV_SAP_WRITE_ENABLED: "false"`; skan `clientsecret|PRIVATE KEY|eyJhbGciOi` = 0.
+
+Deploy (wymaga pluginu MultiApps `cf install-plugin multiapps`): `cf deploy mtar-out/ainvoicer_0.7.1.mtar` 🔒.
 
 ## 5. XSUAA i rola KsefOperator (po deployu 🔒)
 
@@ -109,6 +134,8 @@ Wymagania niezależne od wariantu:
 | Client ID / Client Secret | z istniejącego service key instancji ABAP `dev`, sekcja `uaa` (`clientid`, `clientsecret`) — wpisać tylko w Destination, nigdy w repo/czacie |
 | Token Service URL | `<uaa.url z tego service key>/oauth/token` (Token Service URL Type: Dedicated) — **TO VERIFY** z SAP Help *Routing via Destination* |
 | Bez | `HTML5.ForwardAuthToken`, `sap-client`, User/Password |
+
+**Weryfikacja wariantu A (CAP-07B, źródła dostępne agentowi):** dokumentacja `@sap/approuter` — `OAuth2UserTokenExchange` nie współpracuje z przekazywaniem tokenów **IAS** (binding `identity`); AInvoicer loguje przez XSUAA, więc warunek spełniony, ale approutera nie wolno przełączać na `identity` bez zmiany wariantu. Tutorial SAP (ABAP env → Fiori na CF) wymaga tego samego subaccount i autoryzacji użytkownika do usługi OData (Business Role). SAP Help *Routing via Destination* nadal nieodczytany. Ostateczny dowód = test §7 #3 i #8 (principal w H01 = business user).
 
 Warunek tożsamości: approuter musi logować użytkownika przez **ten sam IdP (IAS)**, który obsługuje logowanie do H01 (Security → Trust Configuration). Role collection `KsefOperator` przypisz użytkownikowi w tym originie; jeśli aktywny jest też SAP ID service, użytkownik wybiera przy logowaniu IAS (ewentualne `identityProvider` w `xs-app.json` — osobna zmiana po poznaniu nazwy originu). Wariant B pozostaje opisem rezerwowym.
 

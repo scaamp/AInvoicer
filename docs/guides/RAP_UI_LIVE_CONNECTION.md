@@ -8,6 +8,10 @@ tags: [ainvoicer, rap, abap, sapui5, iam, odata, abap-06]
 
 # RAP UI — połączenie LIVE
 
+## CAP-07B — stan 2026-11-08 (etap 1)
+
+Ponowny odczyt LIVE przez MCP (developer ADT OAuth, business user z `ZBR_AINV_READ_1000`): `ZUI_AINV_INV_H_O4/0001` published, metadata 200, **4/9/6**, wszystkie rekordy CompanyCode 1000 / NIP 5260002008, bez zapisów KSeF od seeda. To **nie** jest SSO z CF: approuter, Destination `AINV_H01_UI_USER` i token exchange nie istnieją (brak deployu, agent bez sesji CF). Wdrażany UI5 (`dist-cf` w MTAR) nadal `dataMode=rap`, Send OFF. [Dziennik CAP-07B](../journal/2026-11-08-cap-07b-btp-live-deployment.md).
+
 ## CAP-07.1 — wariant CF i SSO H01 (przygotowane, niewdrożone)
 
 Wdrażany UI5 pochodzi z `npm run build:cf` (`dist-cf`): `dataMode=rap` celowo, wszystkie capabilities OFF, `legacy.enabled=false` (zakładka SAP FI ukryta, brak wczesnych żądań `/sap`), `flexEnabled=false`, bez `test/` i `localService/`. Domyślny manifest developerski pozostaje `mock`. Ścieżki `/rap-ui/` i `/odata/v4/KsefService/` są sprawdzane testem względem `xs-app.json`. Destination `AINV_H01_UI_USER`: specyfikacja wariantów A/B w [runbooku §6.2](BTP_FIRST_DEPLOYMENT_RUNBOOK.md#62-approuter--h01-rap-ui-ainv_h01_ui_user-business-user-sso) — bez `HTML5.ForwardAuthToken`, bez Basic, z originem API H01. Zachowane funkcje AI/Scanner/Voice wołają z przeglądarki zewnętrzne hosty (`*.cfapps.us10-001…`, `api.openai.com`) — approuter ich nie routuje; na CF pozostają niedziałające do osobnego zadania. **LIVE SSO NOT EXECUTED.**
