@@ -36,11 +36,13 @@ Zweryfikowane fakty (2026-11-08):
 ## Konsekwencje
 
 - Pozytywne: rzeczywista walidacja JWT (podpis z JWKS domeny bindingu, audience, ważność) przez oficjalny stos SAP; brak mock na CF; brak eskalacji przy wielu rolach.
-- Zaobserwowane ograniczenie biblioteki: dla XSUAA claim `iss` nie jest osobno walidowany; kotwicą zaufania jest JKU w `uaadomain` + podpis + audience (test `xsuaaTrustAnchorIsBoundKeySetNotIssuerClaim`).
+- Model zaufania XSUAA (zweryfikowany w CAP-07.1 w źródle `java-security` 4.1.2): `JwtValidatorBuilder` dla `Service.XSUAA` składa `JwtTimestampValidator` + `XsuaaJwtSignatureValidator` + `JwtAudienceValidator`; `JwtIssuerValidator` jest dodawany **tylko dla IAS**, więc claim `iss` nie jest walidowany (test `xsuaaTrustAnchorIsBoundKeySetNotIssuerClaim`: obcy `iss` + poprawny podpis → 200). Nagłówek `jku` jest w produkcji **ignorowany**: klucze pochodzą z `<uaadomain bindingu>/token_keys?zid=<app_tid>` (nagłówek `X-zid`), wybór po `kid`. Kotwica zaufania = `uaadomain` z bindingu + podpis + audience (`clientid`/`xsappname` bindingu) + ważność. Test „obcy JKU → 401” dowodzi tego tylko pośrednio (testowa fabryka JKU z `java-security-test`, zaufana wyłącznie dla localhost). README 4.1.2 opisuje `XsuaaJkuValidator`, którego nie ma w łańcuchu domyślnym — dokumentacja nieaktualna.
+- Zagrożenie rezydualne: token innej strefy XSUAA tej samej `uaadomain` (inny subaccount w regionie) ma ważny podpis kluczem swojej strefy; przed akceptacją chroni wyłącznie **audience** (identyfikator klienta naszej instancji, unikalny w landscape). Ewentualna dodatkowa kontrola `zid` == strefa bindingu jest możliwa przez oficjalny punkt rozszerzeń `JwtValidatorBuilder.with(...)`, ale nie jest wdrożona (decyzja przy CAP-07B; bez własnej kryptografii). Najnowsze wydanie biblioteki 4.3.1 (2026-11-06) nie zmienia walidacji issuer/jku; CAP 5.2.0 deklaruje 4.1.2 — bez aktualizacji.
 - Ograniczenie modelu: operator z wieloma parami NIP×spółka w obu wymiarach nie ma dostępu, dopóki nie powstanie model tuple (np. jeden atrybut `ksefScopes` z wartością `NIP:BUK` i trwała kolumna zakresu). To osobna decyzja.
 - Role collection z wartościami atrybutów tworzy administrator (deskryptor nie zawiera `role-collections`).
 - Principal propagation approuter → ABAP Environment nie jest potwierdzona dla tego landscape (BLOCKED); bez niej trasa `/rap-ui/` na CF nie zadziała. Nie zastępujemy jej Basic Auth.
-- Profil `cf` nie ma trwałej bazy — CAP-07B wymaga decyzji HANA Cloud albo jawnego wyjątku smoke.
+- Profil `cf` nie miał trwałej bazy — rozstrzygnięte w [ADR-0007](ADR-0007-cap-persistence-hana-cloud.md) (HANA Cloud/HDI, fail-closed, opcjonalny identity-smoke).
+- CAP-07.1: `redirect-uris` XSUAA zawężone z `https://*.${default-domain}/**` do hosta approutera.
 
 ## Alternatywy odrzucone
 

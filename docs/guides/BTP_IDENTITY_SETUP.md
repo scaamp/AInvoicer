@@ -10,6 +10,8 @@ tags: [ainvoicer, btp, xsuaa, ias, approuter, cap-java, security, cap-07]
 
 [Project Home](../README.md) · [ADR-0006](../decisions/ADR-0006-btp-identity-xsuaa.md) · [Dziennik CAP-07](../journal/2026-11-08-cap-07-btp-identity.md) · [RAP UI LIVE](RAP_UI_LIVE_CONNECTION.md)
 
+> **CAP-07.1 (2026-11-08):** pierwsze wdrożenie prowadzi [runbook](BTP_FIRST_DEPLOYMENT_RUNBOOK.md) (entitlementy, HANA, Destinations, testy, rollback, koszty). Trwałość: [ADR-0007](../decisions/ADR-0007-cap-persistence-hana-cloud.md). SSO H01: specyfikacja techniczna wariantów A/B w runbooku §6.2.
+>
 > **Stan:** artefakty przygotowane i przetestowane offline. **Nic nie wdrożono**, nie utworzono żadnej usługi, roli, Destination ani trustu. Dostępność usług w subaccount trial **nie została potwierdzona**. Poniższe kroki wykonuje administrator, a `cf deploy` wymaga osobnej zgody.
 
 ## 1. Wybrany model uwierzytelniania
@@ -33,7 +35,7 @@ JWT wystawiony dla CAP **nie jest** akceptowany automatycznie przez H01. Communi
 | Authorization and Trust Management (`xsuaa`) | `application` | `ainvoicer-auth` | z `cap-java/xs-security.json` |
 | Destination (`destination`) | `lite` | `ainvoicer-destination` | `AINV_H01`, `AINV_H01_UI_USER` |
 | Cloud Foundry runtime | — | `ainvoicer-srv`, `ainvoicer-approuter` | ~1,3 GB RAM łącznie |
-| SAP HANA Cloud | — | **brak w tym sprincie** | bloker CAP-07B: profil `cf` nie ma bazy |
+| SAP HANA Cloud + HDI (`hana`) | `hdi-shared` | `ainvoicer-db` (+ moduł `ainvoicer-db-deployer`) | CAP-07.1/ADR-0007; bez HANA profil `cf` nie startuje (`CloudPersistenceGuard`) |
 
 Administrator najpierw potwierdza w cockpit **Entitlements**, że `xsuaa/application` i `destination/lite` są dostępne. Nie zakładamy ich dostępności.
 
@@ -74,7 +76,7 @@ Katalog [`approuter/`](../../approuter/): `@sap/approuter` **23.4.0** (Node `^22
 | `/resources/*` | `https://ui5.sap.com` (biblioteki UI5) | brak — publiczne pliki |
 | `/*` | statyczny build SAPUI5 (`resources/`) | `xsuaa` |
 
-Sesja approutera: `SESSION_TIMEOUT=15` min, wylogowanie `/do/logout`. Legacy `/sap` i usługi AI Node/Python **nie są** routowane (osobne zadanie). Build MTA kopiuje `sapui5/ainvoicer/dist` do `approuter/resources` (katalog ignorowany). Uwaga: build UI5 zawiera katalogi `test/`; przed produkcją wyłączyć je z artefaktu.
+Sesja approutera: `SESSION_TIMEOUT=15` min, wylogowanie `/do/logout`. Legacy `/sap` i usługi AI Node/Python **nie są** routowane (osobne zadanie). Build MTA uruchamia `npm run build:cf` i kopiuje `sapui5/ainvoicer/dist-cf` do `approuter/resources` (katalog ignorowany). Wariant CF (CAP-07.1): `dataMode=rap`, wszystkie capabilities OFF, Legacy OFF, flex OFF, bez `test/` i `localService/`, weryfikowany automatycznie. Redirect XSUAA wyłącznie na host approutera (`${org}-${space}-ainvoicer-approuter`). Trasy `/sap/*`, `/test-resources/*` i inne usługi CAP nie trafiają do backendu (statyczne 404).
 
 ## 7. Destinations
 
@@ -82,19 +84,13 @@ Sesja approutera: `SESSION_TIMEOUT=15` min, wylogowanie `/do/logout`. Legacy `/s
 - `AINV_H01_UI_USER` (approuter → RAP UI): URL = origin API H01, propagacja business usera — typ uwierzytelnienia **do potwierdzenia** (§8). Nie konfigurować Basic ani communication usera.
 - `ainvoicer-cap` i `ui5` są zdefiniowane w `mta.yaml` (env `destinations` approutera).
 
-## 8. Business-user SSO do H01 — BLOCKED
+## 8. Business-user SSO do H01 — TECHNICALLY SPECIFIED (CAP-07.1)
 
-Oficjalnej procedury SAP Help dla principal propagation BTP CF → ABAP Environment **nie udało się odczytać w tej sesji** (help.sap.com zwracał pustą powłokę). Nie przyjmujemy więc konkretnego typu Destination (np. SAML/JWT bearer) ani nazwy scenariusza komunikacyjnego. Administrator ustala z dokumentacją SAP:
-
-1. czy subaccount CF i H01 korzystają z tego samego tenantu IAS / IdP;
-2. wspierany typ Destination i wymagany communication scenario/system w H01 dla propagacji użytkownika;
-3. mapowanie użytkownika (e-mail lub login) do business usera H01 z `ZBR_AINV_READ_1000`.
-
-Dopóki to nie jest potwierdzone, `/rap-ui/` na CF nie zadziała; lokalnie działa istniejący reentrance ticket (UI5-09).
+Specyfikacja Destination `AINV_H01_UI_USER` z dwoma wariantami (A `OAuth2UserTokenExchange` — ten sam subaccount; B `SAMLAssertion`/`OAuth2SAMLBearerAssertion` — różne subaccounty) i warunkami wspólnymi (origin API H01, bez `HTML5.ForwardAuthToken`, bez Basic, unikalny URL destination w sesji approutera, ten sam IAS) jest w [runbooku §6.2](BTP_FIRST_DEPLOYMENT_RUNBOOK.md#62-approuter--h01-rap-ui-ainv_h01_ui_user-business-user-sso). Wskazówka z repo: CF trial `us10`, H01 `eu20` → prawdopodobnie wariant B. Oficjalne strony SAP Help dla ABAP Environment nie były czytelne dla agenta — administrator potwierdza wariant i nazwy pól przed utworzeniem. **LIVE NOT EXECUTED.** Lokalnie nadal działa reentrance ticket (UI5-09).
 
 ## 9. Testy
 
-**Offline (wykonane, PASS):** `mvn clean verify` — `XsuaaJwtODataContractTest` (profil `cf`, syntetyczny binding XSUAA, lokalny JWKS z `java-security-test`), `CloudIdentityGuardTest`, `KsefScopePairODataTest`, `KsefScopeUserInfoProviderTest`, `XsSecurityDescriptorTest`; `node --test approuter/test/xs-app.test.mjs`. To **nie** jest dowód LIVE XSUAA.
+**Offline (wykonane, PASS):** `mvn clean verify` — `XsuaaJwtODataContractTest` (profil `cf` w trybie identity-smoke, syntetyczny binding XSUAA, lokalny JWKS z `java-security-test`), `CloudIdentityGuardTest`, `CloudPersistenceGuardTest`, `KsefScopePairODataTest`, `KsefScopeUserInfoProviderTest`, `XsSecurityDescriptorTest`; `node --test approuter/test/xs-app.test.mjs` (7); CAP-07.1: start JAR `cf` bez bindingu/bez HANA → odmowa startu; approuter 23.4.0 z syntetycznym XSUAA → strona logowania/401, bez wywołań backendów. To **nie** jest dowód LIVE XSUAA. Pełna lista LIVE: [runbook §7](BTP_FIRST_DEPLOYMENT_RUNBOOK.md#7-testy-po-wdrożeniu-wykonuje-właściciel-lub-agent-z-przekazanym-url-approutera).
 
 **LIVE po wdrożeniu (do wykonania, CAP-07B):**
 
@@ -112,7 +108,7 @@ Dopóki to nie jest potwierdzone, `/rap-ui/` na CF nie zadziała; lokalnie dzia�
 ## 10. Czynności administratora (kolejno)
 
 1. Potwierdzić entitlementy `xsuaa/application`, `destination/lite` i limit pamięci CF.
-2. Zdecydować o bazie dla CAP-07B (HANA Cloud albo zatwierdzony wyjątek smoke).
+2. Potwierdzić HANA Cloud + `hdi-shared` (ADR-0007) albo zatwierdzić wyjątek identity-smoke (runbook §3).
 3. Potwierdzić dostępność SapMachine 25 w `sap_java_buildpack_jakarta` (lub decyzję o JDK).
 4. Po zgodzie na deploy: `mbt build` + `cf deploy` (tworzy `ainvoicer-auth`, `ainvoicer-destination`).
 5. Utworzyć rolę i role collection z §4, przypisać jednego business usera; drugi użytkownik z inną parą do testu A/B.

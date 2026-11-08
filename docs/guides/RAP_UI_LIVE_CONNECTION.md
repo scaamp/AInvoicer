@@ -8,6 +8,10 @@ tags: [ainvoicer, rap, abap, sapui5, iam, odata, abap-06]
 
 # RAP UI — połączenie LIVE
 
+## CAP-07.1 — wariant CF i SSO H01 (przygotowane, niewdrożone)
+
+Wdrażany UI5 pochodzi z `npm run build:cf` (`dist-cf`): `dataMode=rap` celowo, wszystkie capabilities OFF, `legacy.enabled=false` (zakładka SAP FI ukryta, brak wczesnych żądań `/sap`), `flexEnabled=false`, bez `test/` i `localService/`. Domyślny manifest developerski pozostaje `mock`. Ścieżki `/rap-ui/` i `/odata/v4/KsefService/` są sprawdzane testem względem `xs-app.json`. Destination `AINV_H01_UI_USER`: specyfikacja wariantów A/B w [runbooku §6.2](BTP_FIRST_DEPLOYMENT_RUNBOOK.md#62-approuter--h01-rap-ui-ainv_h01_ui_user-business-user-sso) — bez `HTML5.ForwardAuthToken`, bez Basic, z originem API H01. Zachowane funkcje AI/Scanner/Voice wołają z przeglądarki zewnętrzne hosty (`*.cfapps.us10-001…`, `api.openai.com`) — approuter ich nie routuje; na CF pozostają niedziałające do osobnego zadania. **LIVE SSO NOT EXECUTED.**
+
 ## CAP-07 — routing BTP (przygotowany, niewdrożony)
 
 Approuter ([`approuter/xs-app.json`](../../approuter/xs-app.json)) mapuje `/rap-ui/*` na ścieżkę bindingu `ZUI_AINV_INV_H_O4/0001` przez Destination `AINV_H01_UI_USER` z propagacją business usera, a `/odata/v4/KsefService/*` na CAP z tokenem XSUAA. Manifest UI5 nie wymaga zmian (względne `/rap-ui/` i `/odata/v4/KsefService/`). Lokalny reentrance ticket pozostaje bez zmian. **Business-user SSO CF → H01 jest BLOCKED** — mechanizm propagacji musi potwierdzić administrator; nie zastępować go Basic Auth ani communication userem `AINV_H01`. JWT CAP nie daje dostępu do H01. Szczegóły: [BTP_IDENTITY_SETUP](BTP_IDENTITY_SETUP.md#8-business-user-sso-do-h01--blocked), [ADR-0006](../decisions/ADR-0006-btp-identity-xsuaa.md).
