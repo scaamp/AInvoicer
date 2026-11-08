@@ -10,3 +10,6 @@ archive.zip
 ui5-rap.local.yaml
 .*_mta_build_tmp
 webapp.rap.local/
+# CAP-07.1: wariant CF (scripts/build-cf.mjs) — staging i wynik builda, nie commitujemy.
+dist-cf/
+build/

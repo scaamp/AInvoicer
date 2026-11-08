@@ -215,6 +215,7 @@
                     <IconTabFilter
                         id="viewTabLegacy"
                         key="LEGACY"
+                        visible="{= ${ksefView>/legacyAvailable} !== false }"
                         text="{i18n>viewLegacy}"
                     />
                 </items>

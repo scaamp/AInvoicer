@@ -49,4 +49,22 @@ sap.ui.define([
 		});
 	});
 
+	QUnit.test("Legacy view stays unavailable when the deployment has no Legacy route (legacy.enabled=false)", function (assert) {
+		var controller = new Controller();
+		var view = new JSONModel({ viewKey: "ALL", legacyMode: false, legacyAvailable: false });
+		var applied = 0;
+		controller._ksefViewModel = function () { return view; };
+		controller._isRapMode = function () { return false; };
+		controller._ksefApplyFilters = function () { applied++; };
+		controller._ksefUpdateActions = function () {};
+		controller._ksefSetView("LEGACY");
+		assert.strictEqual(view.getProperty("/viewKey"), "ALL");
+		assert.strictEqual(view.getProperty("/legacyMode"), false, "Legacy table never becomes visible");
+		assert.strictEqual(applied, 1, "KSeF list is shown instead");
+
+		view.setProperty("/legacyAvailable", true);
+		controller._ksefSetView("LEGACY");
+		assert.strictEqual(view.getProperty("/legacyMode"), true, "development default keeps Legacy");
+	});
+
 });
