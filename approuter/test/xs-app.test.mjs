@@ -58,7 +58,8 @@ test('MTA: token użytkownika przekazywany tylko do CAP; brak sekretów; usługi
   assert.match(mta, /path: \.\/cap-java\/xs-security\.json/);
   assert.match(mta, /SPRING_PROFILES_ACTIVE: cf/);
   // CAP-07.1: trwała baza CAP to HDI SAP HANA Cloud (deklaracja, bez deployu); brak innych usług kosztowych.
-  const services = [...mta.matchAll(/service: ([\w-]+)\n/g)].map((match) => match[1]).sort();
+  // \r?\n: checkout z core.autocrlf=true (Windows) ma CRLF; test nie może zależeć od końców linii.
+  const services = [...mta.matchAll(/service: ([\w-]+)\r?\n/g)].map((match) => match[1]).sort();
   assert.deepEqual(services, ['destination', 'hana', 'xsuaa']);
   assert.match(mta, /service: hana\s+service-plan: hdi-shared/);
   assert.match(mta, /name: ainvoicer-srv[\s\S]*?requires:\s+- name: ainvoicer-auth\s+- name: ainvoicer-destination\s+- name: ainvoicer-db/);
