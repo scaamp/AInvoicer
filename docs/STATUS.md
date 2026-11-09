@@ -18,7 +18,7 @@ tags: [ainvoicer, cap-java, status]
 
 ### Historia CAP-07B
 
-Publikacja CAP-07C: implementacja `38fea84` wypchnięta, [PR #2](https://github.com/scaamp/AInvoicer/pull/2) OPEN/mergeable względem CAP-07B, bez merge. CI Ubuntu wykryło dwie różnice precyzji fixture (lease i mock Retry-After); oba mają teraz jawne 100 ns, bez zmiany asercji i kodu produkcyjnego. Lokalna regresja obu klas **37/37, exit0**. Zdalny PASS całości po poprawkach nadal wymaga odczytu.
+Publikacja CAP-07C: implementacja `38fea84`, poprawki testów do `ca3739a`, [PR #2](https://github.com/scaamp/AInvoicer/pull/2) OPEN/mergeable względem CAP-07B, bez merge. **CI Ubuntu PASS dla `ca3739a`** — [run 42671257855](https://github.com/scaamp/AInvoicer/actions/runs/42671257855): Maven 243/243, executable JAR CF 8/8, MTAR, oba buildy UI5, QUnit 79/446, OPA 13/80, runner 4/4 i AppRouter 8/8. Dwa fixture timestampów (lease i mock Retry-After) mają jawne 100 ns, bez zmiany asercji i kodu produkcyjnego; lokalna regresja obu klas 37/37. To testy offline na prawdziwym runnerze GitHub, nie LIVE BTP/SAP/KSeF.
 
 **CAP-07B LIVE BTP — etap 1 (2026-11-08): BLOCKED na logowaniu CF właściciela i warunkowej zgodzie na deploy; nic nie wdrożono.** Branch `feature/cap-07b-live-btp` z CAP-07.1 `c9a8345` + merge `main` `552fdb9` (`docs/architecture/` i 2 SVG zachowane, konflikt tylko w `docs/README.md`). Inventory BTP: API `cf-eu20-001` osiągalne (CC v3 3.233.0), portable **cf 8.19.0** zainstalowany lokalnie, ale `Not logged in` → subaccount, entitlementy (xsuaa, destination, HANA Cloud free, hdi-shared), quota CF i SapMachine 25 **NOT VERIFIED**; `btp` CLI niezainstalowany (EULA właściciela). Konto free tier (nie trial) → HANA wyłącznie w planie bezpłatnym, inaczej STOP.
 
