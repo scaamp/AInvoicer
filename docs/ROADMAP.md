@@ -9,7 +9,7 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
 # Plan rozwoju
 
 - [x] **KSEF-IN-01 — rdzeń offline:** metadata/XML przez SDK 3.0.29, bezpieczny parser FA(3), deduplikacja, planer HWM i kontrakt checkpointów; 77 nowych testów, brak LIVE/DB/schedulera. [Dziennik](journal/2026-11-09-ksef-in-01-inbound.md).
-- [x] **INT-01 — integracja lokalna PASS:** CAP-07C + INBOUND bez konfliktów i utraty historii, 321 Maven oraz pełna regresja UI5/CF smoke; PR/CI w toku, bez merge/deploy/LIVE. [Dziennik](journal/2026-11-09-int-01-branch-integration.md) · [Review/plan merge](audits/2026-11-09-int-01-integration-review.md).
+- [x] **INT-01 — LOCAL + CI PASS dla kodu `18ca64e`:** CAP-07C + INBOUND bez konfliktów i utraty historii, 321 Maven oraz pełna regresja UI5/CF smoke; [PR #3](https://github.com/scaamp/AInvoicer/pull/3) i [Ubuntu CI](https://github.com/scaamp/AInvoicer/actions/runs/42685746135), bez merge/deploy/LIVE. Aktualne checks końcowego HEAD w PR. [Dziennik](journal/2026-11-09-int-01-branch-integration.md) · [Review/plan merge](audits/2026-11-09-int-01-integration-review.md).
 - [ ] **KSEF-IN-02 — staging/checkpoint persistence:** trwałe dokumenty/granty/checkpointy, storage XML, lease/CAS, autoryzowany token provider i ograniczony scheduler; osobne testy DB/restart/konkurencja przed LIVE.
 
 - [x] **CAP-07C — LOCAL + CI PASS:** generator bezpiecznego MTAR smoke, guardy/testy executable JAR-a CF, fail-closed usług zewnętrznych UI5, CI offline i mocniejszy consent CAP-04D. [PR #2](https://github.com/scaamp/AInvoicer/pull/2), [Ubuntu CI PASS](https://github.com/scaamp/AInvoicer/actions/runs/42671257855) dla kodu `ca3739a`; bez merge/deploy/SAP WRITE/KSeF SEND. Dokładne wyniki regresji/publikacji: [dziennik](journal/2026-11-09-cap-07c-autonomous-hardening.md).

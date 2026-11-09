@@ -15,6 +15,8 @@ tags: [ainvoicer, audit, integration, security, ksef, inbound, git]
 Merge CAP-07C `e850a69` i KSEF-IN-01 `344a67b`, wspólna baza `9d7a380`,
 merge commit `350e64392a0eccacb30a30921606f8e106a9fb90`. Bez konfliktów, squash i utraty historii.
 INBOUND wnosi 37 plików: 25 produkcyjnych Java, 9 testowych Java, XML fixture i 2 dokumenty.
+Publikacja: [PR #3](https://github.com/scaamp/AInvoicer/pull/3), 43 pliki względem CAP-07C;
+[CI Ubuntu PASS dla 18ca64e](https://github.com/scaamp/AInvoicer/actions/runs/42685746135), zdalne Maven 321/321, QUnit 79/79 i OPA 13/13.
 Nie zmienia kodu OUTBOUND, modeli CDS, POM, konfiguracji Spring, UI5 ani infrastruktury.
 INT-01 dodaje jeden test rzeczywistego kontekstu CF/XSUAA: brak beanów INBOUND i brak publikacji
 wewnętrznych typów w uwierzytelnionym `$metadata`. Nie było potrzeby zmiany kodu produkcyjnego.
@@ -31,7 +33,7 @@ Wynik zdalnego CI i publikację zapisuje dziennik; lokalny PASS nie oznacza LIVE
 | Kryptografia | Brak nowego auth/szyfrowania; SHA-256 identyfikuje treść. JWT dostarczany przez zaufany backend, nie z payloadu OData. |
 | FA(3) | StAX odczytuje ograniczony zestaw pól; istniejący generator i walidator XSD OUTBOUND zachowane. Parser nie jest pełnym walidatorem XSD. |
 | Wersje | CAP 5.2.0, Boot 4.1.1, SDK MF 3.0.29, security 4.1.2 bez zmian POM/locków. |
-| Błędy/logi | `InboundFailure` nie przenosi przyczyny/body/URL SDK; token i XML mają redagowane `toString`. Brak loggerów w pakiecie INBOUND. |
+| Błędy/logi | `InboundFailure` nie przenosi przyczyny/body/URL SDK; `InboundAccessToken.toString` jest redagowany, `RetrievedInvoice.toString` nie wypisuje XML. Brak loggerów w pakiecie INBOUND. Rekordów metadanych i sparsowanych danych nie należy logować (domyślny `toString` zawiera dane biznesowe). |
 | Spring/startup | Żadnej adnotacji komponentu, schedulera, listenera ani konfiguracji INBOUND; test kontekstu CF potwierdza brak beanów. SDK crypto nadal lazy. |
 | Konteksty | Klient porównuje token/context/environment przed HTTP; metadane, granty i checkpointy rozdzielają środowisko/NIP/rolę. Nie jest to walidacja claimów JWT ani autoryzacja użytkownika. |
 | XML/XXE | DTD i encje zewnętrzne OFF, resolver odmawia, namespace/encoding/rozmiar/głębokość/liczba elementów i wierszy ograniczone; testy negatywne PASS. |
@@ -99,7 +101,7 @@ Nie trzeba osobnego PR dla każdej nazwy sprintu, żeby zachować te commity.
 1. Właściciel przegląda zbiorcze CAP-07C → main (zawiera CAP-06.1/07/07.1/07B/07C i istniejący merge dokumentacji main).
    `origin/main` jest przodkiem CAP-07C; konflikt PR #1 jest już rozwiązany historycznie w CAP-07B.
    Compare: https://github.com/scaamp/AInvoicer/compare/main...feature/cap-07c-autonomous-hardening .
-   Po akceptacji owner tworzy/scaleniem takiego PR wprowadza cały stos; PR #1 i #2 stają się zastąpione i owner może je zamknąć.
+   Po akceptacji owner tworzy i scala taki PR, wprowadzając cały stos; PR #1 i #2 stają się zastąpione i owner może je zamknąć.
 2. Dopiero po scaleniu wcześniejszego stosu retarget INT-01 z CAP-07C na main, ponownie sprawdzić diff i CI; owner wykonuje merge commit.
 
 Alternatywa etapowa: PR #1 z rozwiązaniem powyżej → CAP-07 → CAP-07.1 → CAP-07B → PR #2/CAP-07C → INT-01.

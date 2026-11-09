@@ -2,7 +2,7 @@
 title: "INT-01 — integracja CAP-07C i KSEF-IN-01"
 date: 2026-11-09
 type: journal
-status: w-trakcie
+status: zakonczony
 tags: [ainvoicer, journal, integration, cap-java, ksef, inbound, ci]
 ---
 
@@ -101,8 +101,8 @@ tymczasowa kopia ui5-mock bez backend proxy US10; CDN wyłącznie dla bibliotek 
 | AppRouter | 8 | **8** | PASS |
 | deploy invariants | 4 | **4** | PASS |
 | UI5 build / CF build / MTAR | poprawny artefakt | 67 366 302 B MTAR, 75 065 650 B JAR | PASS |
-| Secret patterns / whitespace | brak ustaleń | 2528 śledzonych plików przed dokumentacją, 0 wzorców | PASS, heurystyka |
-| GitHub Actions INT-01 | finalny HEAD | publikacja i wynik poniżej | PENDING |
+| Secret patterns / whitespace | brak ustaleń | 2530 śledzonych plików po dodaniu dokumentacji, 0 wzorców | PASS, heurystyka |
+| GitHub Actions INT-01 | zintegrowany kod | **321 Maven, 79 QUnit, 13 OPA**, wszystkie kroki workflow success | PASS dla `18ca64e`, run poniżej |
 
 Subsetów writeback nie należy dodawać do sumy 321: accepted-writeback jest w OUTBOUND, pozostałe writeback w SAP.
 LIVE testy jawnie wyłączone tagami Maven, nie są przypadkowym skipem.
@@ -123,7 +123,26 @@ Historia poszczególnych sprintów pozostaje zachowana przez merge commits; szcz
 
 ## Current State
 
-Lokalna regresja i audyt ukończone. Publikacja/CI: do uzupełnienia po zdalnej weryfikacji.
+Lokalna regresja i audyt ukończone. Branch wypchnięty; [PR #3](https://github.com/scaamp/AInvoicer/pull/3)
+OPEN, base `feature/cap-07c-autonomous-hardening`; GitHub potwierdził `mergeable=true` dla `18ca64e`.
+PR ma 43 zmienione pliki; pierwotny kod INBOUND identyczny z `344a67b`, pozostały kod produkcyjny
+identyczny z CAP-07C. Obaj rodzice merge są przodkami brancha. Repo źródłowe pozostaje czyste na `e850a69`.
+
+**CI Ubuntu PASS dla `18ca64e034855935baad1340d1d1dbc7b7d50a18`**:
+[run 42685746135](https://github.com/scaamp/AInvoicer/actions/runs/42685746135), job `129391972677`.
+Zweryfikowano zakończenie workflow `success`, wszystkie kroki oraz logi: Maven **321/321**, zero failures/errors/skips;
+MTAR validation PASS; QUnit **79/446**, OPA **13/80**. JAR CF, AppRouter, CF artefakt, runner i secret scan również success.
+Nie dodano nowego workflow — istniejący automatycznie objął pakiet INBOUND.
+
+Commity INT-01: `350e643` (merge dwóch sprintów), `18ca64e` (regresja izolacji i dokumentacja),
+następnie dokumentacyjny `docs(int-01): record successful Ubuntu CI and PR publication`.
+Ostatni commit aktualizuje wyłącznie dowody publikacji/review; bieżący wynik dla jego HEAD należy sprawdzać
+w [checks PR #3](https://github.com/scaamp/AInvoicer/pull/3/checks). Nie przypisujemy wyniku run 42685746135 innemu SHA.
+
+Wykonano również `git push -u origin feature/int-01-cap07c-ksef-integration`, ponowny push aktualizacji dokumentacji,
+odczyty PR/workflow/job/log przez connector GitHub; pomocniczo publiczny REST Actions do potwierdzenia uruchomienia.
+`git diff --check`, kontrola względnych linków nowych dokumentów, scan 2530 plików i brak śledzonych JAR/MTAR PASS.
+
 Dotychczasowy LIVE CF (ainvoicer-srv/approuter/auth/destination, identity-smoke, bez HANA) to stan historycznie
 potwierdzony w CAP-07C; INT-01 nie odpytywał ani nie zmieniał CF. SSO H01 nie zostało zaliczone.
 Nie wykonano merge main, deploy/restart, SAP WRITE, KSeF SEND ani INBOUND LIVE.
