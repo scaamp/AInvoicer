@@ -18,7 +18,7 @@ tags: [ainvoicer, cap-java, status]
 
 ### Historia CAP-07B
 
-Publikacja CAP-07C: implementacja `38fea84` wypchnięta, [PR #2](https://github.com/scaamp/AInvoicer/pull/2) OPEN/mergeable względem CAP-07B, bez merge. GitHub Actions przyjęło workflow (queued przy odczycie); zdalny PASS nadal niepotwierdzony.
+Publikacja CAP-07C: implementacja `38fea84` wypchnięta, [PR #2](https://github.com/scaamp/AInvoicer/pull/2) OPEN/mergeable względem CAP-07B, bez merge. Pierwszy pełny CI Ubuntu wykrył różnicę 9 ns w testowym zegarze lease (242/243); fixture zmieniono na deterministyczne 100 ns, lokalna regresja hardening 20/20 PASS. Zdalny PASS całości po poprawce nadal wymaga odczytu.
 
 **CAP-07B LIVE BTP — etap 1 (2026-11-08): BLOCKED na logowaniu CF właściciela i warunkowej zgodzie na deploy; nic nie wdrożono.** Branch `feature/cap-07b-live-btp` z CAP-07.1 `c9a8345` + merge `main` `552fdb9` (`docs/architecture/` i 2 SVG zachowane, konflikt tylko w `docs/README.md`). Inventory BTP: API `cf-eu20-001` osiągalne (CC v3 3.233.0), portable **cf 8.19.0** zainstalowany lokalnie, ale `Not logged in` → subaccount, entitlementy (xsuaa, destination, HANA Cloud free, hdi-shared), quota CF i SapMachine 25 **NOT VERIFIED**; `btp` CLI niezainstalowany (EULA właściciela). Konto free tier (nie trial) → HANA wyłącznie w planie bezpłatnym, inaczej STOP.
 

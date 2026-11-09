@@ -57,9 +57,9 @@ final class WritebackFixtures {
         return snapshot;
     }
 
-    /** Zegar sterowany przez test; pozwala przekroczyć dzierżawę i Retry-After bez czekania. */
+    /** Zegar sterowany przez test; stałe 100 ns odpowiada CDS Timestamp na Windows i Linux. */
     static final class MutableClock extends Clock {
-        private final AtomicReference<Instant> now = new AtomicReference<>(Instant.now());
+        private final AtomicReference<Instant> now = new AtomicReference<>(Instant.parse("2026-10-28T12:00:00.1234567Z"));
 
         void advance(Duration duration) {
             now.updateAndGet(value -> value.plus(duration));
