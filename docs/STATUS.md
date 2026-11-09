@@ -14,6 +14,8 @@ tags: [ainvoicer, cap-java, status]
 
 ## Current Phase
 
+**INT-01 (2026-11-09), LOCAL PASS:** nowy worktree `D:\AInvoicer-int-01`, merge CAP-07C `e850a69` + KSEF-IN-01 `344a67b` bez konfliktów, historia zachowana. **321/321 Maven** (77 INBOUND + 243 CAP-07C + 1 test izolacji), CF JAR 8/8, QUnit 79/446, OPA 13/80, runner 4/4, UI5 CF 8/8, AppRouter 8/8, deploy 4/4; MTAR **67 366 302 B**, niewdrożony. INBOUND bez beanów/schedulera/endpointów i zmian DB; security review bez blokera integracyjnego. Publikacja/CI INT-01: **PENDING**, wynik po weryfikacji w [dzienniku](journal/2026-11-09-int-01-branch-integration.md). [Audyt PR #1 i plan merge](audits/2026-11-09-int-01-integration-review.md). Bez merge main, CF deploy, SAP WRITE i LIVE KSeF. Następne: owner review, CAP-07B.2 (SSO) i KSEF-IN-02 (trwały staging/checkpoint).
+
 **CAP-07C (2026-11-09), LOCAL PASS:** powtarzalny `npm run build:btp:smoke --prefix deploy` → MTAR 67 295 265 B (bez HDI i nowych usług); Maven 243/243, executable JAR CF 8/8, QUnit 79 testów/446 asercji, OPA 13/80, runner 4/4, CF artefakt 8/8 i approuter 8/8. AI/Scanner/Voice/TTS w CF OFF + CSP; harness CAP-04D chroni seed i wymaga nowego fixture, consent oraz NIP/spółki. CI zaimplementowane i zweryfikowane lokalnie; zdalny wynik na moment wpisu **NOT EXECUTED**, nie PASS. [Dowody/komendy/ograniczenia](journal/2026-11-09-cap-07c-autonomous-hardening.md). Własny LIVE READ CF: obie aplikacje 1/1 i XSUAA/Destination, brak HANA; obecny CAP `/` 200 (fix niewdrożony), metadata/H2/health 401. **CF redeploy, business-user SSO, SAP WRITE i KSeF SEND NOT EXECUTED.** Następny etap: CAP-07B.2, zgoda na redeploy → Role Collection → Destination/SSO i A/B; CAP-04D nadal osobna bramka.
 
 ### Historia CAP-07B

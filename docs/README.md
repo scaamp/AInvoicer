@@ -12,6 +12,9 @@ AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijan
 
 ## Od czego zacząć
 
+- [INT-01 — integracja CAP-07C + KSEF-IN-01, pełna regresja i publikacja PR](journal/2026-11-09-int-01-branch-integration.md) · [Audyt integracji, konflikt PR #1 i plan merge do main](audits/2026-11-09-int-01-integration-review.md).
+- [KSEF-IN-01 — rdzeń metadata/XML, parser FA(3), deduplikacja i HWM; offline](journal/2026-11-09-ksef-in-01-inbound.md) · [Architektura INBOUND](guides/KSEF_INBOUND_ARCHITECTURE.md).
+
 - [CAP-07C — powtarzalny MTAR identity-smoke, regresja executable JAR CF, blokady AI/Scanner/Voice, CI i CAP-04D offline](journal/2026-11-09-cap-07c-autonomous-hardening.md).
 
 - [CAP-07B etap 1 — weryfikacja przed LIVE BTP: regresja PASS, MTAR 67 MB, H01 4/9/6; deploy BLOCKED (login CF + zgoda właściciela)](journal/2026-11-08-cap-07b-btp-live-deployment.md).
