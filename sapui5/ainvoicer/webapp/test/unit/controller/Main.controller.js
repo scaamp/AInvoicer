@@ -1,11 +1,40 @@
 /*global QUnit*/
 
 sap.ui.define([
-	"ainvoicer/controller/Main.controller"
-], function (Controller) {
+	"ainvoicer/controller/Main.controller",
+	"sap/ui/model/json/JSONModel"
+], function (Controller, JSONModel) {
 	"use strict";
 
 	QUnit.module("Main Controller");
+
+	QUnit.test("CF refuses every external AI/Scanner/Voice entry point before network or file access", function (assert) {
+		var controller = new Controller();
+		controller.getOwnerComponent = function () { return { getManifestEntry: function () {
+			return { externalServices: { ai: false, scanner: false, voice: false, tts: false } };
+		} }; };
+		controller.getView = function () { throw new Error("disabled handler must not read invoice or file models"); };
+		var originalFetch = window.fetch;
+		window.fetch = function () { assert.ok(false, "external HTTP must never be attempted"); throw new Error("HTTP denied"); };
+		return Promise.resolve().then(function () {
+			controller.onAiCommandExecute(); controller.onVoiceInput(); controller.onPlayTTS("invoice");
+			controller.handleFileChange(); controller.handleAnalyzeInvoice(); controller.onKsefScan();
+			return Promise.all([controller._processAiQuery("invoice", "search", 0),
+				controller._sendToNodeJs("invoice", "image/png"), controller._sendToOpenAI("invoice", "image/png")]);
+		}).then(function () { assert.ok(true, "all external paths refused"); })
+			.finally(function () { window.fetch = originalFetch; controller.destroy(); });
+	});
+
+	QUnit.test("external services require explicit true; local opt-in is preserved", function (assert) {
+		var controller = new Controller();
+		var config = {};
+		controller.getOwnerComponent = function () { return { getManifestEntry: function () { return config; } }; };
+		assert.strictEqual(controller._externalServiceEnabled("ai"), false);
+		config.externalServices = { ai: "true", scanner: true };
+		assert.strictEqual(controller._externalServiceEnabled("ai"), false);
+		assert.strictEqual(controller._externalServiceEnabled("scanner"), true);
+		controller.destroy();
+	});
 
 	QUnit.test("I should test the Main controller", function (assert) {
 		// onInit wymaga widoku i komponentu — pełną inicjalizację sprawdzają testy OPA.
@@ -29,6 +58,41 @@ sap.ui.define([
 		].forEach(function (sMethod) {
 			assert.strictEqual(typeof oController[sMethod], "function", sMethod);
 		});
+	});
+
+	QUnit.test("synchronous RAP filter validation clears busy and reports the error without HTTP", function (assert) {
+		var controller = new Controller();
+		var view = new JSONModel({ busy: false });
+		var data = new JSONModel({ invoices: [{ InvoiceUUID: "old" }] });
+		controller._ksefViewModel = function () { return view; };
+		controller.getView = function () { return { getModel: function () { return data; } }; };
+		controller._ksefServerQuery = function () { throw new Error("Currency is required"); };
+		controller._ksefText = function (key, args) { return args[0]; };
+		controller._ksefSetSelected = function () {};
+		controller._oKsefAdapter = { loadInvoices: function () { assert.ok(false, "HTTP must not be attempted"); } };
+		return controller._ksefLoad(0).then(function () {
+			assert.strictEqual(view.getProperty("/busy"), false);
+			assert.strictEqual(view.getProperty("/error"), "Currency is required");
+			assert.deepEqual(data.getProperty("/invoices"), []);
+		});
+	});
+
+	QUnit.test("Legacy view stays unavailable when the deployment has no Legacy route (legacy.enabled=false)", function (assert) {
+		var controller = new Controller();
+		var view = new JSONModel({ viewKey: "ALL", legacyMode: false, legacyAvailable: false });
+		var applied = 0;
+		controller._ksefViewModel = function () { return view; };
+		controller._isRapMode = function () { return false; };
+		controller._ksefApplyFilters = function () { applied++; };
+		controller._ksefUpdateActions = function () {};
+		controller._ksefSetView("LEGACY");
+		assert.strictEqual(view.getProperty("/viewKey"), "ALL");
+		assert.strictEqual(view.getProperty("/legacyMode"), false, "Legacy table never becomes visible");
+		assert.strictEqual(applied, 1, "KSeF list is shown instead");
+
+		view.setProperty("/legacyAvailable", true);
+		controller._ksefSetView("LEGACY");
+		assert.strictEqual(view.getProperty("/legacyMode"), true, "development default keeps Legacy");
 	});
 
 });

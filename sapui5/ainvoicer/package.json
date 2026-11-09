@@ -18,6 +18,7 @@
     "start": "fiori run --open \"test/flp.html#app-preview\"",
     "start-local": "fiori run --config ./ui5-local.yaml --open \"test/flp.html#app-preview\"",
     "build": "ui5 build --config=ui5.yaml --clean-dest --dest dist",
+    "build:cf": "node scripts/build-cf.mjs",
     "deploy": "fiori verify",
     "deploy-config": "fiori add deploy-config",
     "start-noflp": "fiori run --open \"index.html?sap-ui-xx-viewCache=false\"",
@@ -28,6 +29,8 @@
     "serve-mock": "fiori run --config ./ui5-mock.yaml --port 8085",
     "test:unit": "node scripts/browser-test.mjs qunit http://localhost:8085/test/unit/unitTests.qunit.html",
     "test:opa": "node scripts/browser-test.mjs qunit http://localhost:8085/test/integration/opaTests.qunit.html",
+    "test:runner": "node --test scripts/local-cap-auth.test.mjs scripts/cf-network.test.mjs",
+    "test:cf-build": "node --test scripts/build-cf.test.mjs",
     "test": "npm run test:unit && npm run test:opa"
   },
   "sapuxLayer": "CUSTOMER_BASE"

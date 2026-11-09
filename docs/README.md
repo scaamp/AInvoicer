@@ -12,6 +12,15 @@ AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijan
 
 ## Od czego zacząć
 
+- [CAP-07C — powtarzalny MTAR identity-smoke, regresja executable JAR CF, blokady AI/Scanner/Voice, CI i CAP-04D offline](journal/2026-11-09-cap-07c-autonomous-hardening.md).
+
+- [CAP-07B etap 1 — weryfikacja przed LIVE BTP: regresja PASS, MTAR 67 MB, H01 4/9/6; deploy BLOCKED (login CF + zgoda właściciela)](journal/2026-11-08-cap-07b-btp-live-deployment.md).
+- [CAP-07.1 — gotowość wdrożenia CF: HANA/HDI fail-closed, UI5 build CF, MTAR, SSO H01 (LOCAL PASS, LIVE NOT EXECUTED)](journal/2026-11-08-cap-07-1-deployment-readiness.md) · [Runbook pierwszego wdrożenia](guides/BTP_FIRST_DEPLOYMENT_RUNBOOK.md) · [ADR-0007](decisions/ADR-0007-cap-persistence-hana-cloud.md).
+- [CAP-07 — BTP Identity: XSUAA, approuter, fail-closed par NIP/spółka (OFFLINE PASS, LIVE BLOCKED)](journal/2026-11-08-cap-07-btp-identity.md) · [ADR-0006](decisions/ADR-0006-btp-identity-xsuaa.md) · [Przewodnik: BTP Identity setup](guides/BTP_IDENTITY_SETUP.md).
+- [CAP-06.1 — hardening, pełna regresja i gotowość PR; smoke FLP nadal KNOWN BLOCKER](journal/2026-11-08-cap-06-1-hardening.md).
+
+- [CAP-06/UI5-09 — RAP LIVE + lokalny CAP, poprawki runtime i filtrów; IAS/WRITE nadal BLOCKED](journal/2026-11-08-cap-06-ui5-09.md).
+
 - [Docelowa architektura bezpieczeństwa — dwa diagramy SVG, granice tożsamości i relacje SAP IAM/DCL](architecture/README.md).
 - [Referencyjne źródła UI DCL poza eksportem abapGit — ostrzeżenie bezpieczeństwa](abap-dcl-reference/README.md).
 - [ABAP-08 stan końcowy 2026-11-07 — Business Role, READ 4/9/6 i lista SAPUI5 z H01 LIVE VERIFIED](journal/2026-11-02-abap-08-ui5-08.md#kontynuacja-2026-11-07-2--business-role-utworzona-business-user-read-pass-sapui5-live-pass).

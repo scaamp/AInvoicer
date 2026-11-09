@@ -178,7 +178,9 @@ class KsefSubmissionWorkerTest {
 
     @Test void retryAfterDelaysSafeReadsAndExhaustionIsDurable() {
         enqueue();
-        Instant notBefore = Instant.now().plusSeconds(120);
+        // Mock terminu Retry-After zachowuje pełne 100 ns CDS, niezależnie od precyzji zegara OS.
+        Instant notBefore = Instant.now().plusSeconds(120)
+                .with(java.time.temporal.ChronoField.NANO_OF_SECOND, 123_456_700);
         when(session.status(anyString(), anyString(), any())).thenThrow(new KsefFailure("KSEF_STATUS_HTTP_429", false, true, notBefore));
         assertThrows(KsefFailure.class, () -> worker.process(id));
         assertEquals(notBefore, worker.status(id).get("retryNotBefore"));

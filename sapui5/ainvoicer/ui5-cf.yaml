@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=https://sap.github.io/ui5-tooling/schema/ui5.yaml.json
+# CAP-07.1: wyłącznie build wariantu SAP BTP Cloud Foundry (`npm run build:cf`), bez serwera i proxy.
+# Źródło build/cf-webapp przygotowuje scripts/build-cf.mjs (kopia webapp bez test/ i localService/,
+# manifest dataMode=rap, capabilities OFF, Legacy OFF). Katalog jest ignorowany przez Git.
+specVersion: "3.1"
+metadata:
+  name: ainvoicer
+type: application
+resources:
+  configuration:
+    paths:
+      webapp: build/cf-webapp

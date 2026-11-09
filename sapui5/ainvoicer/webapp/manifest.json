@@ -72,6 +72,7 @@
     },
     "config": {
       "ksefCockpit": {
+        "externalServices": { "ai": true, "scanner": true, "voice": true, "tts": true },
         "dataMode": "mock",
         "targetEnvironment": "TEST",
         "rap": {

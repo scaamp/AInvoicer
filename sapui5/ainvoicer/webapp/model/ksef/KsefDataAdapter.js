@@ -357,6 +357,10 @@ sap.ui.define([
 
     KsefDataAdapter.prototype._capUrl = function (sPath) {
         var sBase = (this._oConfig.cap || {}).serviceUrl || "/odata/v4/KsefService/";
+        // Trasy aplikacji są same-origin. Konfiguracja nie może kierować akcji/CSRF na obcy serwer.
+        if (!/^\/(?!\/)[A-Za-z0-9_/-]+$/.test(sBase) || /(^|\/)\.\.(\/|$)|\\/.test(sPath)) {
+            throw adapterError(ErrorCode.PARSE, "Invalid CAP service path");
+        }
         return sBase.replace(/\/?$/, "/") + sPath.replace(/^\//, "");
     };
 
@@ -416,6 +420,7 @@ sap.ui.define([
         return this._fnFetch(this._capUrl(""), {
             method: "HEAD",
             credentials: "same-origin",
+            redirect: "error",
             headers: { "X-CSRF-Token": "Fetch" }
         }).then(function (oResponse) {
             return oResponse.headers.get("X-CSRF-Token");
@@ -428,8 +433,12 @@ sap.ui.define([
         if (!this._fnFetch) {
             return Promise.reject(adapterError(ErrorCode.NETWORK, "fetch is not available"));
         }
-        var oRequest = Object.assign({ credentials: "same-origin" }, oOptions);
+        var oRequest = Object.assign({ credentials: "same-origin", redirect: "error" }, oOptions);
+        // CAP 5.2 bez negocjacji używa 4.01 (@count). Kontrakt adaptera to V4.0 (@odata.count/nextLink).
         oRequest.headers = Object.assign({ Accept: "application/json;IEEE754Compatible=true" }, oOptions.headers);
+        if (oRequest.method === "GET" && sUrl.indexOf(this._capUrl("")) === 0) {
+            oRequest.headers["OData-MaxVersion"] = "4.0";
+        }
         return this._fnFetch(sUrl, oRequest).then(function (oResponse) {
             if (!oResponse.ok) {
                 return readODataError(oResponse).then(function (sMessage) {

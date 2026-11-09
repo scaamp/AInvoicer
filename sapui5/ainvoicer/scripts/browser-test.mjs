@@ -13,6 +13,7 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { localCapAuth } from "./local-cap-auth.mjs";
 
 const BROWSERS = [
     process.env.CHROME_PATH,
@@ -29,6 +30,14 @@ if (!["qunit", "smoke"].includes(mode) || !url) {
     process.exit(2);
 }
 const timeoutMs = Number(mode === "qunit" ? arg3 : arg4) || 180000;
+let capAuth;
+try {
+    capAuth = localCapAuth(process.env, url);
+} catch (e) {
+    console.error(e.message);
+    process.exit(2);
+}
+const log = (message) => console.log(capAuth ? capAuth.redact(message) : message);
 const browserPath = BROWSERS.find((p) => existsSync(p));
 if (!browserPath) {
     console.error("ENVIRONMENT: no Chrome/Edge found (set CHROME_PATH)");
@@ -120,20 +129,40 @@ async function waitFor(cdp, expression, label) {
 }
 
 let exitCode = 0;
+const errors = [];
 try {
     const cdp = await connect(await cdpTarget());
-    const errors = [];
     cdp.on((msg) => {
         if (msg.method === "Runtime.consoleAPICalled" && msg.params.args.some((a) => String(a.value ?? "").includes("Component-preload.js"))) {
             return; // standardowy brak preload w trybie dev, nie błąd aplikacji
         } else if (msg.method === "Runtime.exceptionThrown") {
-            errors.push("exception: " + (msg.params.exceptionDetails.exception?.description || msg.params.exceptionDetails.text));
+            const detail = msg.params.exceptionDetails;
+            errors.push("exception: " + (detail.exception?.description || detail.text)
+                + " " + (detail.stackTrace?.callFrames || []).slice(0, 4)
+                    .map(frame => `${frame.functionName}@${frame.url}:${frame.lineNumber + 1}`).join(" <- "));
         } else if (msg.method === "Runtime.consoleAPICalled" && msg.params.type === "error") {
             errors.push("console.error: " + msg.params.args.map((a) => a.value ?? a.description ?? "").join(" "));
         }
     });
     await cdp.send("Runtime.enable");
     await cdp.send("Page.enable");
+    // Opcjonalny principal mock CAP wyłącznie do lokalnego testu dwóch backendów.
+    // Nagłówek nie trafia do RAP, UI5 CDN, plików strony ani logu. IAS/XSUAA testujemy osobno.
+    let interceptionFailed = false;
+    if (capAuth) {
+        cdp.on((msg) => {
+            if (msg.method === "Fetch.requestPaused") {
+                Promise.resolve().then(() => cdp.send("Fetch.continueRequest", {
+                    requestId: msg.params.requestId, headers: capAuth.headers(msg.params)
+                })).catch(() => {
+                    interceptionFailed = true;
+                    cdp.send("Fetch.failRequest", { requestId: msg.params.requestId, errorReason: "BlockedByClient" }).catch(() => {});
+                });
+            }
+        });
+        // Wszystkie kanały i kolejne kroki redirectu, aby przeglądarka nie odziedziczyła Authorization.
+        await cdp.send("Fetch.enable", { patterns: [{ urlPattern: "*", requestStage: "Request" }] });
+    }
     await cdp.send("Page.navigate", { url });
 
     if (mode === "qunit") {
@@ -151,26 +180,51 @@ try {
                     li.querySelector('.module-name')?.innerText + ' :: ' + li.querySelector('.test-name')?.innerText)
             };
         })()`);
-        report.passed.forEach((name) => console.log("PASS  " + name));
-        report.failed.forEach((f) => console.log("FAIL  " + f.name + "\n      " + f.messages.join("\n      ")));
-        console.log("\n" + report.summary);
+        report.passed.forEach((name) => log("PASS  " + name));
+        report.failed.forEach((f) => log("FAIL  " + f.name + "\n      " + f.messages.join("\n      ")));
+        log("\n" + report.summary);
         exitCode = report.failed.length === 0 && report.total > 0 ? 0 : 1;
     } else {
         await waitFor(cdp, `!!(window.sap && sap.ui && sap.ui.getCore && document.querySelector('[id$="ksefInvoiceTable"]'))`, "app render");
-        await sleep(2500);
-        const shot = await cdp.send("Page.captureScreenshot", { format: "png" });
-        writeFileSync(arg3, Buffer.from(shot.data, "base64"));
-        console.log("Screenshot: " + arg3);
+        // Sam render tabeli nie oznacza ukończenia READ RAP/CAP; stały sleep dawał obraz pustej, zajętej listy.
+        await waitFor(cdp, `(() => {
+            const table = sap.ui.getCore().byId(document.querySelector('[id$="ksefInvoiceTable"]').id);
+            let view = table;
+            while (view && !view.getController) { view = view.getParent(); }
+            const controller = view && view.getController();
+            return controller && table.getModel('ksefView').getProperty('/busy') === false
+                && (controller._oKsefAdapter.getMode() === 'mock' || controller._oKsefAdapter.getLastPage()
+                    || table.getModel('ksefView').getProperty('/error'));
+        })()`, "app data load settled");
+        await sleep(250);
+        const state = await evaluate(cdp, `(() => {
+            const table = sap.ui.getCore().byId(document.querySelector('[id$="ksefInvoiceTable"]').id);
+            const rows = table.getModel('ksef').getProperty('/invoices') || [];
+            return { invoiceCount: rows.length, loadError: !!table.getModel('ksefView').getProperty('/error'),
+                integrationAvailable: rows.length > 0 && rows.every(row => row.IntegrationAvailable) };
+        })()`);
+        log("Smoke state: " + JSON.stringify(state));
+        if (state.loadError) { exitCode = 1; }
+        // Przy aktywnych credentialach nie utrwalamy DOM, który mógłby odbić treść błędu HTTP.
+        if (capAuth) {
+            log("Screenshot disabled while local CAP test authentication is active");
+        } else {
+            const shot = await cdp.send("Page.captureScreenshot", { format: "png" });
+            writeFileSync(arg3, Buffer.from(shot.data, "base64"));
+            log("Screenshot: " + arg3);
+        }
     }
     if (errors.length) {
-        console.log("\nBrowser errors (" + errors.length + "):\n  " + errors.slice(0, 30).join("\n  "));
+        log("\nBrowser errors (" + errors.length + "):\n  " + errors.slice(0, 30).join("\n  "));
         if (mode === "smoke") {
             exitCode = 1;
         }
     }
+    if (interceptionFailed) { throw new Error("Local CAP authentication interception failed"); }
     cdp.close();
 } catch (e) {
-    console.error(e.message);
+    console.error(capAuth ? capAuth.redact(e.message) : e.message);
+    if (errors.length) { log("Browser errors (" + errors.length + "):\n  " + errors.slice(0, 30).join("\n  ")); }
     exitCode = e.message.startsWith("ENVIRONMENT") ? 2 : 1;
 } finally {
     browser.kill();

@@ -78,7 +78,13 @@ sap.ui.define([
         _initKsefCockpit: function () {
             var oComponent = this.getOwnerComponent();
             var oConfig = (oComponent && oComponent.getManifestEntry("/sap.ui5/config/ksefCockpit")) || {};
+            // Legacy SAP FI (/sap, ZC_FI_ACDOCA) wymaga własnej trasy backendu. Wariant CF bez tej trasy ustawia
+            // legacy.enabled=false: zakładka znika i widok nie przełącza się na tabelę bez backendu.
+            var bLegacyAvailable = !(oConfig.legacy && oConfig.legacy.enabled === false);
             var sDefaultView = KsefContract.ViewKey[oConfig.defaultView] || KsefContract.ViewKey.ALL;
+            if (!bLegacyAvailable && sDefaultView === KsefContract.ViewKey.LEGACY) {
+                sDefaultView = KsefContract.ViewKey.ALL;
+            }
 
             this._oKsefConfig = oConfig;
             // Tryb rap: named OData V4 model "rap" (manifest) = usługa RAP UI; CAP tylko stan integracji i akcje.
@@ -95,6 +101,7 @@ sap.ui.define([
             this.getView().setModel(new JSONModel({
                 viewKey: sDefaultView,
                 legacyMode: sDefaultView === KsefContract.ViewKey.LEGACY,
+                legacyAvailable: bLegacyAvailable,
                 mode: this._oKsefAdapter.getMode(),
                 modeText: this._ksefModeText(),
                 busy: false,
@@ -164,8 +171,12 @@ sap.ui.define([
             if (this._oKsefAi) {
                 aFilters = aFilters.concat(this._oKsefAi.filters);
             }
+            var aServerFilters = KsefFilterBuilder.serverFilters(aFilters);
+            if (KsefFilterBuilder.hasUnscopedAmount(aServerFilters)) {
+                throw new Error(this._ksefText("ksefFilterAmountCurrencyRequired"));
+            }
             return {
-                filters: KsefFilterBuilder.serverFilters(aFilters),
+                filters: aServerFilters,
                 sorters: KsefFilterBuilder.serverSorters(this._aKsefServerSorters || (this._oKsefAi && this._oKsefAi.sorter
                     ? [].concat(this._oKsefAi.sorter) : [new Sorter("IssueDate", true), new Sorter("InvoiceNumber", false)]))
                     .concat(new Sorter("InvoiceUUID", false)),
@@ -182,7 +193,10 @@ sap.ui.define([
             oViewModel.setProperty("/busy", true);
             oViewModel.setProperty("/error", "");
 
-            return this._oKsefAdapter.loadInvoices(this._ksefServerQuery(iSkip)).then(function (aPage) {
+            // Walidacja filtrów może odrzucić zapytanie przed HTTP; wspólna ścieżka zwalnia busy również wtedy.
+            return Promise.resolve().then(function () {
+                return this._oKsefAdapter.loadInvoices(this._ksefServerQuery(iSkip));
+            }.bind(this)).then(function (aPage) {
                 var aRows = aPage;
                 var oPage = this._oKsefAdapter.getLastPage();
                 oViewModel.setProperty("/hasMore", !!(oPage && oPage.hasMore));
@@ -249,6 +263,10 @@ sap.ui.define([
 
         _ksefSetView: function (sKey) {
             var oViewModel = this._ksefViewModel();
+            if (sKey === KsefContract.ViewKey.LEGACY && oViewModel.getProperty("/legacyAvailable") === false) {
+                // Bez skonfigurowanej trasy Legacy nie pokazujemy pustej/błędnej tabeli SAP FI.
+                sKey = KsefContract.ViewKey.ALL;
+            }
             oViewModel.setProperty("/viewKey", sKey);
             oViewModel.setProperty("/legacyMode", sKey === KsefContract.ViewKey.LEGACY);
             if (sKey !== KsefContract.ViewKey.LEGACY) {
@@ -521,6 +539,7 @@ sap.ui.define([
         },
 
         onKsefScan: function () {
+            if (!this._externalServiceEnabled("scanner")) { return; }
             // Istniejący skaner tworzy rekord SAP FI (ZC_FI_ACDOCA) — dialog pokazuje to jawnie.
             this.onAddInvoice();
         },

@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -45,6 +48,12 @@ class SapInvoiceRemoteAdapterLiveTest {
 			UUID id = UUID.fromString(invoice.header().get("InvoiceUUID").toString());
 			assertTrue(invoice.items().stream().allMatch(r -> id.toString().equals(r.get("InvoiceUUID").toString())));
 			assertTrue(invoice.references().stream().allMatch(r -> id.toString().equals(r.get("InvoiceUUID").toString())));
+			// Walidujemy semantykę typów z rzeczywistego RemoteService, bez zapisu i konwersji do milisekund.
+			LocalDate.parse(invoice.header().get("IssueDate").toString());
+			assertTrue(new BigDecimal(invoice.header().get("GrossAmount").toString()).signum() > 0);
+			Instant.parse(invoice.header().get("LocalLastChangedAt").toString());
+			assertTrue(!invoice.header().get("InvoiceStatus").toString().isBlank());
+			assertTrue(adapter.readInvoice(id).isPresent(), "keyed READ finds the same UUID");
 		}
 	}
 }

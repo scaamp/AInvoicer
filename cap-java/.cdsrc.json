@@ -1,2 +1,7 @@
 {
+  "requires": {
+    "[production]": {
+      "db": "hana"
+    }
+  }
 }

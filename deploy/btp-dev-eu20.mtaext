@@ -1,0 +1,9 @@
+# Rozszerzenie MTA dla środowiska dev (subaccount z H01, CF cf-eu20-001, org "…_dev-v2xzij9s", space dev).
+# Tylko nazwy publiczne: bez danych uwierzytelniających i bez trybów testowych. Użycie: cf deploy <mtar> -e deploy/btp-dev-eu20.mtaext
+# Host musi być unikalny na współdzielonej domenie cfapps.eu20-001 (sprawdzone `cf check-route` 2026-11-09: wolne).
+_schema-version: "3.1"
+ID: ainvoicer.btp-dev-eu20
+extends: ainvoicer
+
+parameters:
+  ainv-host-prefix: ainvoicer-v2xzij9s

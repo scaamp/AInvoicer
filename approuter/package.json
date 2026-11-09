@@ -1,0 +1,16 @@
+{
+  "name": "ainvoicer-approuter",
+  "version": "0.7.0",
+  "private": true,
+  "description": "SAP Application Router for AInvoicer (CAP-07): SAPUI5 static content, CAP Java OData V4 and SAP RAP UI with business-user authentication",
+  "engines": {
+    "node": "^22.0.0 || ^24.0.0"
+  },
+  "scripts": {
+    "start": "node node_modules/@sap/approuter/approuter.js",
+    "test:config": "node --test test/xs-app.test.mjs"
+  },
+  "dependencies": {
+    "@sap/approuter": "23.4.0"
+  }
+}

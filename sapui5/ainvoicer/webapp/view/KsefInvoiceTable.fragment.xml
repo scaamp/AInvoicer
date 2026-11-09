@@ -157,6 +157,7 @@
                 />
                 <Button
                     id="ksefScanButton"
+                    enabled="{externalServices>/scanner}"
                     icon="sap-icon://camera"
                     type="Transparent"
                     text="{i18n>ksefActionScan}"

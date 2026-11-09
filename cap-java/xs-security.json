@@ -1,0 +1,38 @@
+{
+  "xsappname": "ainvoicer",
+  "tenant-mode": "dedicated",
+  "description": "AInvoicer CAP Java single-tenant security descriptor (CAP-07, ADR-0006)",
+  "scopes": [
+    {
+      "name": "$XSAPPNAME.KsefOperator",
+      "description": "Read KSeF integration status and request send within assigned taxpayer NIP and company code"
+    }
+  ],
+  "attributes": [
+    {
+      "name": "taxpayerNips",
+      "description": "Taxpayer NIP (10 digits); assign exactly one NIP and one company code per role",
+      "valueType": "s",
+      "valueRequired": true
+    },
+    {
+      "name": "companyCodes",
+      "description": "SAP company code (4 characters); assign exactly one NIP and one company code per role",
+      "valueType": "s",
+      "valueRequired": true
+    }
+  ],
+  "role-templates": [
+    {
+      "name": "KsefOperator",
+      "description": "KSeF operator restricted to statically assigned taxpayer NIP and company code",
+      "scope-references": [
+        "$XSAPPNAME.KsefOperator"
+      ],
+      "attribute-references": [
+        "taxpayerNips",
+        "companyCodes"
+      ]
+    }
+  ]
+}

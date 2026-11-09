@@ -1,12 +1,16 @@
 ---
 title: "AInvoicer — plan rozwoju"
-date: 2026-10-30
+date: 2026-11-09
 type: roadmap
 status: aktywny
 tags: [ainvoicer, roadmap, cap-java, ksef]
 ---
 
 # Plan rozwoju
+
+- [x] **CAP-07C — LOCAL + CI PASS:** generator bezpiecznego MTAR smoke, guardy/testy executable JAR-a CF, fail-closed usług zewnętrznych UI5, CI offline i mocniejszy consent CAP-04D. [PR #2](https://github.com/scaamp/AInvoicer/pull/2), [Ubuntu CI PASS](https://github.com/scaamp/AInvoicer/actions/runs/42671257855) dla kodu `ca3739a`; bez merge/deploy/SAP WRITE/KSeF SEND. Dokładne wyniki regresji/publikacji: [dziennik](journal/2026-11-09-cap-07c-autonomous-hardening.md).
+- [ ] **CAP-07B.2 — LIVE Business User SSO Acceptance:** osobno zatwierdzony redeploy nowego smoke → poprawny IdP/Role Collection → `AINV_H01_UI_USER` → principal H01 i izolacja A/B. Brak HANA free/HDI nadal blokuje trwały workflow; bez płatnych usług.
+- [ ] **CAP-04D — SAP Write Contract LIVE:** dedykowana nowa faktura `AINV-CAP04D-*`, dokładna zgoda/zakres i potwierdzony principal/ACTVT16/CSRF/ETag. Istniejące4 seed chronione; brak LIVE WRITE w CAP-07C.
 
 [Project Home](README.md) · [Aktualny stan i dowody](STATUS.md) · [Decyzja architektoniczna](decisions/ADR-0001-cap-java-ksef-architecture.md)
 
@@ -116,6 +120,20 @@ HTTP 202 nie oznacza przyjęcia faktury. Eksperyment na `feature/ksef-java-e2e-r
 
 ## Phase 5 — SAPUI5 + CAP
 
+- [x] **CAP-06.1 lokalny hardening i review (2026-11-08):** globalne bezpieczne ustawienia H2/mock users, opt-in loopback H2, izolacja/redirecty credentiali runnera, walidacja filtrów AI i tras CAP; Maven203, QUnit76/438, OPA13/80, runner3, oba buildy PASS. LIVE READ H011/1 i dual10/63 PASS. **Smoke FLP nadal KNOWN BLOCKER**, npm tooling74 advisories; bez IAS, SAP WRITE, SEND i merge. [Audyt](journal/2026-11-08-cap-06-1-hardening.md).
+- [x] **CAP-07 — BTP Identity, OFFLINE (2026-11-08):** XSUAA (ADR-0006), `cds-feature-identity` + resource-server starter, `xs-security.json`, fail-closed par NIP/spółka, `CloudIdentityGuard`, approuter 23.4.0 + `mta.yaml`. Maven 230/230, OFFLINE JWT 10/10, approuter config PASS, UI5 76/13/3 PASS. [Dziennik](journal/2026-11-08-cap-07-btp-identity.md).
+- [x] **CAP-07.1 — Deployment readiness, LOCAL (2026-11-08):** HANA/HDI + `CloudPersistenceGuard` (ADR-0007), wariant UI5 `build:cf` (rap, Send OFF, bez testów), wąski redirect XSUAA, MTAR złożony (`mbt module-build`+`assemble`), specyfikacja SSO H01 A/B, runbook. Maven 236/236 + JAR, QUnit 77, OPA 13, approuter 7. [Dziennik](journal/2026-11-08-cap-07-1-deployment-readiness.md) · [Runbook](guides/BTP_FIRST_DEPLOYMENT_RUNBOOK.md).
+- [ ] **CAP-07B etap 1 (2026-11-08) — weryfikacja bez deployu:** Git zsynchronizowany z `main` (diagramy zachowane), regresja 236/77/13/7/7 PASS, poprawka testu approutera (CRLF), MTAR 67 MB poprawioną procedurą, H01 4/9/6 LIVE (MCP), API CF EU20 osiągalne, cf CLI 8.19.0 lokalnie; **BLOCKED: login CF właściciela + warunkowa zgoda na deploy (HANA tylko free)**. [Dziennik](journal/2026-11-08-cap-07b-btp-live-deployment.md).
+- [x] **CAP-07B etap 2 (2026-11-09) — pierwszy deploy LIVE identity-smoke:** XSUAA + approuter + CAP na CF eu20, negatywne testy LIVE 401/403 PASS, 4 defekty CF naprawione. HANA BLOCKED (brak `hdi-shared`/`hana-free`, tylko plan płatny). [Dziennik](journal/2026-11-08-cap-07b-btp-live-deployment.md#kontynuacja-2026-11-09--pierwszy-deploy-live-identity-smoke-zatwierdzony-przez-właściciela).
+- [ ] **CAP-07B — LIVE BTP:** entitlementy xsuaa/destination/HANA Cloud/hdi-shared (NOT VERIFIED), SapMachine 25, `mbt build` + deploy po zgodzie, role collection 5260002008/1000 + drugi użytkownik A/B, Destination `AINV_H01_UI_USER` wg wariantu A/B, testy runbooku §7, weryfikacja HANA (lock/CAS, outbox po restarcie). [Runbook](guides/BTP_FIRST_DEPLOYMENT_RUNBOOK.md).
+- [ ] AI/Scanner/Voice na CF: trasy approutera/Destinations zamiast bezpośrednich hostów `cfapps.us10-001` i OpenAI z przeglądarki (osobne zadanie).
+- [ ] **Model tuple NIP×CompanyCode:** jeden atrybut par zamiast dwóch list; obecnie fail closed dla ≥2×≥2.
+- [ ] CAP-04D nadal BLOCKED na odrębne bramki WRITE (preflight read-only CAP-07: binding/READ/`Z_AINV_KSF` OK; arrangement/ACTVT16/CSRF — admin).
+
+- [x] **CAP-06/UI5-09 — 2026-11-08, zakres lokalny + LIVE H01:** CAP startup/metadata/status READ na świeżej H2, 0 operacji; realny RemoteService READ H01 1/1 (4/9/6, keyed READ i typy). SAPUI5 z RAP LIVE i CAP runtime z lokalnym mock principalem: 10/10 testów przeglądarki. Naprawione OData4.01/count, H2 console OFF, filtry RAP (tolower/MaxLength/waluta). Maven186, QUnit72, OPA13 i oba buildy PASS. [Dziennik](journal/2026-11-08-cap-06-ui5-09.md).
+- [ ] **CAP-06 — bramka tożsamości:** IAS/XSUAA dependencies/binding, approuter i trusted taxpayerNips/companyCodes, role collections i test faktycznego business usera. Obecny lokalny mock principal nie zalicza LIVE IAS. [Plan administratora](guides/RAP_UI_LIVE_CONNECTION.md#cap-06--tożsamość-cap-i-plan-btp).
+- [ ] **UI5-09 — pozostałe bramki:** izolacja A/B H01 (dodatkowe zatwierdzone dane/user), pełny deploy gate UI DCL na czystym systemie i naprawa serializacji; Legacy `/sap` 503/flex FLP. CAP-04D BLOCKED, bez SAP WRITE/KSeF SEND. Szczegóły niżej są historią wcześniejszych sprintów.
+
 - [ ] **ABAP-08/UI5-08 — 2026-11-07: główny cel LIVE VERIFIED** (Business Role `ZBR_AINV_READ_1000`, READ 4/9/6, SAPUI5 lista z H01 przez `/rap-ui`, Send OFF); **scalone do `main` (`153c3f3`)**. Pozostaje: szczegóły/sort/filtr w UI, izolacja A/B (drugi user lub zgoda na fakturę spoza zakresu), pusty wiersz BUK w IAM App, eksport abapGit, ATC. Osobno: UI5 CLI v4 (odblokuje nowsze `@sap/ux-ui5-tooling`), host trasy Legacy `/sap`. [Dziennik](journal/2026-11-02-abap-08-ui5-08.md). Historia:
 - [ ] **ABAP-08/UI5-08 (2026-11-02), IN PROGRESS/BLOCKED:** ABAP-07 zintegrowane na `feature/abap-08-live-integration` (merge `160130c`); Maven 178/178, QUnit 69/69, OPA 13/13, oba buildy PASS (lokalnie/mock). Do zrobienia: Business Role z `ZAINV_BC_READ` (Read=Restricted, Write=No Access, NIP5260002008/BUK1000) i przypisanie business usera, ponowne logowanie MCP, business-user READ i macierz DCL, UI5 w trybie rap (lokalnie, Send OFF), eksport abapGit (puste DCL w diffie MCP), potem osobno CAP-04D (NOT READY). [Dziennik](journal/2026-11-02-abap-08-ui5-08.md). **2026-11-07:** binding UI LIVE VERIFIED, DCL „bez roli” LIVE VERIFIED (UI 0 vs Web API 4), Business Role **nie istnieje** (I_IAMBusinessRole) → do utworzenia przez administratora; regresja 178/69/13 PASS. [Kontynuacja](journal/2026-11-02-abap-08-ui5-08.md#kontynuacja-2026-11-07--logowanie-mcp-działa-business-role-nie-istnieje).
 
@@ -151,7 +169,7 @@ HTTP 202 nie oznacza przyjęcia faktury. Eksperyment na `feature/ksef-java-e2e-r
 
 ## Phase 6 — BTP & Production Hardening
 
-- [ ] Potwierdzenie entitlementów i konfiguracji SAP HANA Cloud; migracja i testy trwałości.
+- [ ] Potwierdzenie entitlementów i konfiguracji SAP HANA Cloud; migracja i testy trwałości (deklaracja HDI i guard gotowe — CAP-07.1/ADR-0007).
 - [ ] Przygotowanie deploymentu Cloud Foundry; wykonanie wdrożenia wyłącznie w autoryzowanym zakresie.
 - [ ] OAuth2/XSUAA lub IAS według konfiguracji; zarządzane sekrety, service bindings i Destination.
 - [ ] Restrykcyjny CORS, limity wejścia, bezpieczne błędy i autoryzacja API.

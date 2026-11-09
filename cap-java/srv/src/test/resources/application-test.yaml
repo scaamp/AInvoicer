@@ -44,6 +44,31 @@ cds:
         - name: operator-without-taxpayer-attribute
           password: test-no-nip
           roles: [KsefOperator]
+        - name: operator-without-company-attribute
+          password: test-no-cc
+          roles: [KsefOperator]
+          attributes:
+            taxpayerNips: ["1234567802"]
+        # CAP-07: dwie role (1234567802/1000 + 9876543210/2000) scalone w dwie listy — pary niejednoznaczne.
+        - name: operator-cross-scope
+          password: test-cross
+          roles: [KsefOperator]
+          attributes:
+            taxpayerNips: ["1234567802", "9876543210"]
+            companyCodes: ["1000", "2000"]
+        # CAP-07: jeden NIP i dwie spółki — iloczyn list jest dokładnie zbiorem przyznanych par.
+        - name: operator-one-nip-two-companies
+          password: test-one-nip
+          roles: [KsefOperator]
+          attributes:
+            taxpayerNips: ["1234567802"]
+            companyCodes: ["1000", "2000"]
+        - name: operator-malformed-scope
+          password: test-malformed
+          roles: [KsefOperator]
+          attributes:
+            taxpayerNips: ["invalid", ""]
+            companyCodes: ["1000"]
 ainv:
   sap-write:
     # Testy wywołują sweep() jawnie; tło nie może tworzyć zleceń w trakcie asercji innych testów.

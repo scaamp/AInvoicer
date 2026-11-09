@@ -1,0 +1,6 @@
+# Wynik buildu SAPUI5 kopiowany przez MTA (build-parameters) — nie commitujemy.
+resources/
+node_modules/
+# Lokalne bindingi/destinations z sekretami — nigdy w Git.
+default-env.json
+default-services.json

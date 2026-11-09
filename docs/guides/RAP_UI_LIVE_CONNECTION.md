@@ -1,16 +1,82 @@
 ---
 title: "RAP UI — połączenie LIVE z SAPUI5"
-date: 2026-10-30
+date: 2026-11-08
 type: guide
-status: zablokowany
+status: częściowo-zweryfikowany
 tags: [ainvoicer, rap, abap, sapui5, iam, odata, abap-06]
 ---
 
 # RAP UI — połączenie LIVE
 
+## CAP-07B — stan 2026-11-08 (etap 1)
+
+Ponowny odczyt LIVE przez MCP (developer ADT OAuth, business user z `ZBR_AINV_READ_1000`): `ZUI_AINV_INV_H_O4/0001` published, metadata 200, **4/9/6**, wszystkie rekordy CompanyCode 1000 / NIP 5260002008, bez zapisów KSeF od seeda. To **nie** jest SSO z CF: approuter, Destination `AINV_H01_UI_USER` i token exchange nie istnieją (brak deployu, agent bez sesji CF). Wdrażany UI5 (`dist-cf` w MTAR) nadal `dataMode=rap`, Send OFF. [Dziennik CAP-07B](../journal/2026-11-08-cap-07b-btp-live-deployment.md).
+
+## CAP-07.1 — wariant CF i SSO H01 (przygotowane, niewdrożone)
+
+Wdrażany UI5 pochodzi z `npm run build:cf` (`dist-cf`): `dataMode=rap` celowo, wszystkie capabilities OFF, `legacy.enabled=false` (zakładka SAP FI ukryta, brak wczesnych żądań `/sap`), `flexEnabled=false`, bez `test/` i `localService/`. Domyślny manifest developerski pozostaje `mock`. Ścieżki `/rap-ui/` i `/odata/v4/KsefService/` są sprawdzane testem względem `xs-app.json`. Destination `AINV_H01_UI_USER`: specyfikacja wariantów A/B w [runbooku §6.2](BTP_FIRST_DEPLOYMENT_RUNBOOK.md#62-approuter--h01-rap-ui-ainv_h01_ui_user-business-user-sso) — bez `HTML5.ForwardAuthToken`, bez Basic, z originem API H01. Zachowane funkcje AI/Scanner/Voice wołają z przeglądarki zewnętrzne hosty (`*.cfapps.us10-001…`, `api.openai.com`) — approuter ich nie routuje; na CF pozostają niedziałające do osobnego zadania. **LIVE SSO NOT EXECUTED.**
+
+## CAP-07 — routing BTP (przygotowany, niewdrożony)
+
+Approuter ([`approuter/xs-app.json`](../../approuter/xs-app.json)) mapuje `/rap-ui/*` na ścieżkę bindingu `ZUI_AINV_INV_H_O4/0001` przez Destination `AINV_H01_UI_USER` z propagacją business usera, a `/odata/v4/KsefService/*` na CAP z tokenem XSUAA. Manifest UI5 nie wymaga zmian (względne `/rap-ui/` i `/odata/v4/KsefService/`). Lokalny reentrance ticket pozostaje bez zmian. **Business-user SSO CF → H01 jest BLOCKED** — mechanizm propagacji musi potwierdzić administrator; nie zastępować go Basic Auth ani communication userem `AINV_H01`. JWT CAP nie daje dostępu do H01. Szczegóły: [BTP_IDENTITY_SETUP](BTP_IDENTITY_SETUP.md#8-business-user-sso-do-h01--blocked), [ADR-0006](../decisions/ADR-0006-btp-identity-xsuaa.md).
+
+## CAP-06.1 — bezpieczne lokalne ustawienia
+
+H2 console jest domyślnie OFF we wszystkich profilach; `/h2-console/` nie jest publiczną usługą. Preferuj narzędzia JDBC developerskie. Wyłącznie w izolowanym procesie lokalnym można jawnie uruchomić konsolę z `--spring.profiles.active=default,h2-console-local --server.address=127.0.0.1 --spring.h2.console.enabled=true`. Bez proxy, tunelu i forwarded; `web-allow-others=false`. CF/cloud/prod/production lub obecność VCAP blokują taki start. Dostęp konsoli jest ograniczony do adresu połączenia loopback, niezależnie od X-Forwarded-For; jej wyjątek CSRF nie obejmuje CAP.
+
+Domyślni mock users są OFF globalnie, nie tylko dla default. Konta lokalne wymagają jawnej ignorowanej konfiguracji i niepustego hasła; cf/cloud/prod/production wyłączają mock auth. Te ustawienia nie zastępują IAS/XSUAA i nie potwierdzają gotowości CF. Standardowe flagi KSeF/SAP WRITE i Send pozostają OFF.
+
+Runner `scripts/browser-test.mjs` z env `AINV_CAP_LOCAL_TEST_USER` / `AINV_CAP_LOCAL_TEST_PASSWORD` dodaje Basic tylko do GET/HEAD dokładnego loopback origin i `/odata/v4/KsefService/`. Każdy redirect (także do CAP) oraz pozostałe kanały mają Authorization usuwane. Logi są redagowane, screenshot przy aktywnym credentialu nie jest zapisywany. Nie używaj tu credentiali SAP ani produkcyjnych. Brak jednej z wymaganych zmiennych kończy test przed uruchomieniem browsera. `npm run test:runner` sprawdza te ograniczenia, również w realnym Chrome/CDP.
+
+Końcowe odczyty CAP/H01 i dual10/63 PASS. Smoke FLP nadal exit1: Legacy503, flex/LREP i MessageBroker preview. Szczegółowe wymagania niezależnej Destination Legacy i bramki **CAP-07 READY TO START / CAP-04D BLOCKED**: [audyt CAP-06.1](../journal/2026-11-08-cap-06-1-hardening.md). Poniższe wyniki opisują wcześniejszą sesję CAP-06.
+
+## CAP-06/UI5-09 — odczyt dwóch backendów, 2026-11-08
+
+**RAP LIVE + CAP uruchomiony lokalnie: PASS w teście przeglądarkowym z lokalnym mock principalem CAP. IAS/XSUAA: BLOCKED.** UI5 działa na8086, CAP na127.0.0.1:8080, mock regresyjny na8085. RAP korzysta z istniejącego reentrance ticket business usera; CAP z osobnej tożsamości lokalnej. Nie przenosimy cookie SAP do CAP ani do Destination systemowej.
+
+- UI i Web API metadata200, odczyt4/9/6. READ roli/przypisania potwierdza `ZBR_AINV_READ_1000` → `CB9980000000`; subject samej sesji proxy nie jest zwracany przez OData.
+- CAP `$metadata`, `InvoiceIntegrationStatus?$count=true` i `KsefOperations` zwracają200. Świeża H2 w pamięci:0 operacji. Anonimowy401, bez KsefOperator403, wbudowany privileged401 (wyłączony).
+- Test aplikacji:10/10,63 asercje — lista, otwierany dialog, wszystkie dzieci, UUID, wersja, numer/NIP/data/spółka/kwota, sort/count/top/skip i poprzednia strona. CAP401/403/network/timeout są **symulowane**, a RAP w tych przypadkach rzeczywisty.
+- UI V4 H01 nie wspiera `tolower()`. Zapytania serwerowe używają dopasowania z uwzględnieniem wielkości liter (tooltip w wyszukiwaniu). Zbyt długi tekst nie trafia do krótszych pól OR, np. numer faktury do NIP(10). Filtr kwoty wymaga jawnej waluty, także gdy kwotę poda AI.
+- CAP5.2 bez negocjacji odpowiada4.01 z `@count`; adapter ustawia `OData-MaxVersion: 4.0`, zachowując sprawdzanie kompletności historii `@odata.count`/`@odata.nextLink`.
+
+Powtarzalny test READ po uruchomieniu obu serwerów:
+
+```powershell
+# W katalogu sapui5/ainvoicer. Lokalna kopia webapp.rap.local musi zawierać bieżące źródła/test/live,
+# a wyłącznie jej manifest ma dataMode=rap oraz sendInvoice=false.
+# Użytkownik testowy CAP pochodzi z ignorowanej konfiguracji deweloperskiej, bez kont privileged.
+# Dwa poniższe env przekazać bez logowania ich wartości, nigdy nie używać tu credentiali SAP.
+$env:AINV_CAP_LOCAL_TEST_USER = '<jawny lokalny mock user CAP>'
+# AINV_CAP_LOCAL_TEST_PASSWORD dostarczyć do procesu bez publikowania wartości.
+node scripts/browser-test.mjs qunit http://localhost:8086/test/live/dualBackend.qunit.html 60000
+Remove-Item Env:AINV_CAP_LOCAL_TEST_USER, Env:AINV_CAP_LOCAL_TEST_PASSWORD
+```
+
+Runner przekazuje Basic wyłącznie do `/odata/v4/KsefService/` na tym samym loopback origin. Nie umieszcza credentiali w JavaScript aplikacji, RAP ani CDN. Strona testowa odmawia startu w `dataMode=mock` lub z Send ON. Nie należy jej dodawać do standardowego zestawu offline ani używać jako testu IAS. Zwykła karta przeglądarki nie dziedziczy uwierzytelnienia runnera: bez własnej sesji CAP wyświetli ostrzeżenie401 i zachowa dane RAP.
+
+CAP uruchomiono z wykonywalnego JAR-a na JDK25, profilem `default` i `--spring.config.additional-location=file:.local/cap06/application-local.yaml`. Ten plik jest ignorowany: jawny mock reader z zakresem5260002008/1000, losowe hasło lokalne, H2 `jdbc:h2:mem:cap06-read`, bind127.0.0.1, konsola H2 i sweeper OFF. W każdym przebiegu `ainv.ksef.enabled=false`, retry-after-rejection=false, sap-write.enabled=false. Nie używano plikowej bazy wcześniejszego E2E. Przed `mvn clean verify` zatrzymać ten JAR — Windows blokuje otwarty plik w target. Przed `npm ci` zatrzymać serwery korzystające z tego node_modules.
+
+`ui5-rap.local.yaml` i `webapp.rap.local` pozostają ignorowane, `@sap/ux-ui5-tooling=1.19.6` bez aktualizacji. Smoke FLP exit1: screenshot pokazuje4 faktury/Send OFF, ale Legacy `/sap` na historycznym hoście zwraca503; dodatkowo flex/MessageBroker podglądu. Ten wynik nie jest czystym PASS całej aplikacji. [Pełne dowody](../journal/2026-11-08-cap-06-ui5-09.md).
+
+## CAP-06 — tożsamość CAP i plan BTP
+
+**Do wykonania przez administratora i w osobnej implementacji deploymentu; żadnej usługi ani roli nie utworzono.** W procesie nie było VCAP_SERVICES/bindingu IAS/XSUAA. W JAR brak `cds-feature-identity` i resource-server startera; sam Spring Security oraz SAP java-security nie włączają walidacji tokenów platformy. Zależności i binding są wymagane łącznie przez [CAP Java Security](https://cap.cloud.sap/docs/java/security).
+
+1. Potwierdzić istniejące instancje/entitlementy i wybrać docelowy wariant: XSUAA z federacją IAS albo IAS z obsługiwanym mapowaniem ról/atrybutów CAP. Bez provisioning/deployu w tym sprincie. Do CAP dodać zgodny starter Cloud Foundry albo komplet `cds-feature-identity` + `resourceserver-security-spring-boot-starter` oraz istniejący starter Security; przypiąć autoryzowany binding. Na docelowym profilu mock auth OFF.
+2. Dla wariantu XSUAA przygotować deskryptor CDS/XSUAA z rolą/scope `KsefOperator` i wymaganymi wielowartościowymi atrybutami `taxpayerNips`, `companyCodes` typu string. Administrator tworzy role collection dla dokładnego uzgodnionego zakresu (referencyjnie5260002008/1000) i przypisuje właściwego użytkownika. Nie stosować wildcard ani atrybutów z request body/header/query. Dla IAS sprawdzić rzeczywistą reprezentację UserInfo; same custom claims nie dowodzą dostępności `$user.taxpayerNips`.
+3. Approuter uwierzytelnia business usera, przekazuje zweryfikowany token do CAP; niezależna trasa RAP zachowuje obsługiwane business-user SSO/DCL. Token CAP nie jest credentialem communication usera SAP. Wygenerować konfigurację routingu po ustaleniu usług/bindingów, bez Basic systemowego w UI.
+4. Powtórzyć macierz HTTP na faktycznych sesjach: anonimowy401, brak roli403, obcy NIP/spółka0, obcy klucz404, prawidłowy zakres tylko własne rekordy i count, brak/wadliwe claims fail closed. Dodatni test musi mieć zatwierdzoną historię procesu; pusta baza nie dowodzi izolacji. Obecnie tę macierz pokrywają testy H2/mock, nie LIVE IAS.
+
+Lokalna Destination `AINV_H01` z istniejącego `.env.live` ma LIVE READ PASS przez CAP. Minimalne ustawienia BTP Destination: Name=AINV_H01, Type=HTTP, URL=rzeczywisty origin H01, ProxyType=Internet, uwierzytelnienie communication usera zgodne z arrangement; sekrety zarządzane. URL nie zawiera pełnej ścieżki usługi — tę ustawia istniejący RemoteService `http.service`. BTP Destination Service/CF binding i sam communication arrangement w Fiori **nie były niezależnie odczytane**. Eksport zawiera `ZCS_AINV_H01`, ale nie dowodzi on aktualnego nadania ACTVT16.
+
+Izolacja A/B H01 nadal BLOCKED: wszystkie4 istniejące dokumenty mają jeden zakres. Plan bez wykonania: zatwierdzić drugiego business usera B oraz trzy odrębne dokumenty syntetyczne: dodatni dla NIP_B/BUK_B, krzyżowy NIP_A/BUK_B i krzyżowy NIP_B/BUK_A. Z istniejącym zakresem A umożliwia to test obu osi, dzieci/expand/kluczy/count. Nie utworzono danych ani nie nadano ról.
+
+## Historia wcześniejszych sprintów
+
 ## ABAP-08 — stan końcowy 2026-11-07: SAPUI5 → RAP LIVE VERIFIED
 
-Lista faktur z H01 widoczna w SAPUI5 przez `/rap-ui` (4 faktury; CAP wyłączony nie ukrywa danych; Send wyłączony). [Dziennik](journal/2026-11-02-abap-08-ui5-08.md#kontynuacja-2026-11-07-2--business-role-utworzona-business-user-read-pass-sapui5-live-pass).
+Lista faktur z H01 widoczna w SAPUI5 przez `/rap-ui` (4 faktury; CAP wyłączony nie ukrywa danych; Send wyłączony). [Dziennik](../journal/2026-11-02-abap-08-ui5-08.md#kontynuacja-2026-11-07-2--business-role-utworzona-business-user-read-pass-sapui5-live-pass).
 
 Jak uruchomić lokalnie (wymaga roli `ZBR_AINV_READ_1000` lub równoważnej):
 

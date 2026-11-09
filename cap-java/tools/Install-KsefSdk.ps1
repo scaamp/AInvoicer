@@ -13,7 +13,8 @@ $actualCommit = git -C $sourcePath rev-parse HEAD
 if ($LASTEXITCODE -ne 0 -or $actualCommit -ne $expectedCommit) { throw 'SDK_COMMIT_MISMATCH' }
 git -C $sourcePath diff --quiet HEAD
 if ($LASTEXITCODE -ne 0) { throw 'SDK_TRACKED_SOURCES_MODIFIED' }
-if (-not (Test-Path -LiteralPath (Join-Path $Jdk21 'bin/java.exe'))) { throw 'JDK21_NOT_FOUND' }
+$javaBinary = if ([System.Environment]::OSVersion.Platform -eq 'Win32NT') { 'bin/java.exe' } else { 'bin/java' }
+if (-not (Test-Path -LiteralPath (Join-Path $Jdk21 $javaBinary))) { throw 'JDK21_NOT_FOUND' }
 $previousJavaHome = $env:JAVA_HOME
 $previousRefName = $env:GITHUB_REF_NAME
 try {
@@ -22,7 +23,11 @@ try {
     $env:GITHUB_REF_NAME = 'v3.0.29'
     Push-Location -LiteralPath $sourcePath
     try {
-        & ./gradlew.bat :ksef-client:publishToMavenLocal --no-daemon
+        if ([System.Environment]::OSVersion.Platform -eq 'Win32NT') {
+            & ./gradlew.bat :ksef-client:publishToMavenLocal --no-daemon
+        } else {
+            & bash ./gradlew :ksef-client:publishToMavenLocal --no-daemon
+        }
         if ($LASTEXITCODE -ne 0) { throw 'SDK_BUILD_FAILED' }
     } finally { Pop-Location }
 } finally {
