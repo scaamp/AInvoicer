@@ -2,7 +2,7 @@ name: Offline security and smoke build
 on:
   pull_request:
   push:
-    branches: [main, 'feature/cap-07c-*']
+    branches: [main]
 permissions:
   contents: read
 concurrency:
