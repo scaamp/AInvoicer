@@ -60,6 +60,7 @@ public class SapKsefResultWriteLiveWriteTest {
     @Test void livePersistedResultEtagIdempotencyConflictsAndRace() throws Exception {
         UUID invoice = consentedInvoice();
         var before = header(invoice);
+        LiveWriteConsent.header(invoice, "", before, System.getenv());
         assertEquals("OUTBOUND", before.get("Direction"));
         assertEquals(invoice.toString(), String.valueOf(before.get("InvoiceUUID")).toLowerCase());
         assertEquals(System.getenv("AINV_H01_LIVE_WRITE_INVOICE_NUMBER"), before.get("InvoiceNumber"),
@@ -119,6 +120,7 @@ public class SapKsefResultWriteLiveWriteTest {
         UUID invoice = UUID.fromString(raw);
         requireConsent(invoice, "STALE");
         var header = header(invoice);
+        LiveWriteConsent.header(invoice, "STALE_", header, System.getenv());
         assertTrue(blankToNull(header.get("KsefNumber")) == null, "faktura STALE musi być dziewicza");
         Instant version = Instant.parse(KsefInvoiceSnapshotRegistry.headerVersion(header));
         var result = adapter.apply(new SapKsefResultCommand(invoice, UUID.randomUUID(),
@@ -134,6 +136,7 @@ public class SapKsefResultWriteLiveWriteTest {
         UUID invoice = UUID.fromString(raw);
         requireConsent(invoice, "RACE");
         var header = header(invoice);
+        LiveWriteConsent.header(invoice, "RACE_", header, System.getenv());
         assertNull(blankToNull(header.get("KsefNumber")), "faktura RACE musi być dziewicza");
         String nip = (String) header.get("SellerNip");
         String company = (String) header.get("CompanyCode");
@@ -160,6 +163,7 @@ public class SapKsefResultWriteLiveWriteTest {
     void liveActionOnlyPrincipalCannotUseStandardCrud() {
         UUID invoice = consentedInvoice();
         var header = header(invoice);
+        LiveWriteConsent.identity(invoice, "", header, System.getenv());
         assertEquals(System.getenv("AINV_H01_LIVE_WRITE_INVOICE_NUMBER"), header.get("InvoiceNumber"));
         // Idempotentna treść (to samo SellerName); poprawny wynik to odmowa. Zapis udany = błąd uprawnień SAP.
         var update = com.sap.cds.ql.Update.entity(SapInvoiceRemoteAdapter.HEADERS)
@@ -187,14 +191,7 @@ public class SapKsefResultWriteLiveWriteTest {
     }
 
     private void requireConsent(UUID invoice, String label) {
-        String consent = System.getenv("AINV_H01_LIVE_WRITE_CONSENT");
-        // Zgoda dotyczy konkretnych UUID: jedna zmienna może wymieniać kilka, rozdzielonych przecinkiem.
-        boolean granted = consent != null && java.util.Arrays.stream(consent.split(","))
-                .anyMatch(item -> item.trim().equalsIgnoreCase("APPLY_KSEF_RESULT:" + invoice));
-        if (!granted) {
-            throw new IllegalStateException("Brak jawnej zgody LIVE WRITE dla faktury " + label
-                    + ": AINV_H01_LIVE_WRITE_CONSENT=APPLY_KSEF_RESULT:<UUID>");
-        }
+        LiveWriteConsent.consent(invoice, System.getenv());
     }
 
     private Map<String, Object> header(UUID invoice) {

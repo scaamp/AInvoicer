@@ -29,7 +29,7 @@
     "serve-mock": "fiori run --config ./ui5-mock.yaml --port 8085",
     "test:unit": "node scripts/browser-test.mjs qunit http://localhost:8085/test/unit/unitTests.qunit.html",
     "test:opa": "node scripts/browser-test.mjs qunit http://localhost:8085/test/integration/opaTests.qunit.html",
-    "test:runner": "node --test scripts/local-cap-auth.test.mjs",
+    "test:runner": "node --test scripts/local-cap-auth.test.mjs scripts/cf-network.test.mjs",
     "test:cf-build": "node --test scripts/build-cf.test.mjs",
     "test": "npm run test:unit && npm run test:opa"
   },

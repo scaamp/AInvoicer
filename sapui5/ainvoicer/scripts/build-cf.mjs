@@ -8,7 +8,7 @@
 //   3. uruchamia standardowe `ui5 build` z ui5-cf.yaml do dist-cf/,
 //   4. twardo weryfikuje artefakt (verifyArtifact): brak testów/fixture, brak credentiali, rap + Send OFF
 //      także w Component-preload.js. Każde naruszenie = exit 1, bez częściowego wyniku.
-// Funkcje AI/Scanner/Voice/Legacy pozostają w źródłach; ich zewnętrzne hosty są raportowane jako ostrzeżenia.
+// Funkcje AI/Scanner/Voice/Legacy pozostają w źródłach; CF blokuje je konfiguracją oraz CSP connect-src self.
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -37,6 +37,7 @@ export function transformManifest(source) {
     cockpit.dataMode = "rap";
     delete cockpit.mock;
     cockpit.legacy = { enabled: false };
+    cockpit.externalServices = { ai: false, scanner: false, voice: false, tts: false };
     if (!cockpit.cap || cockpit.cap.serviceUrl !== CAP_SERVICE_URL) {
         throw new Error("manifest: cap.serviceUrl must be " + CAP_SERVICE_URL);
     }
@@ -128,9 +129,26 @@ export function verifyArtifact(dir) {
     if (Object.values(cockpit.capabilities || {}).some((value) => value !== false)) {
         errors.push("manifest.json: all capabilities must be false");
     }
+    if (JSON.stringify(cockpit.externalServices) !== JSON.stringify({ ai: false, scanner: false, voice: false, tts: false })) {
+        errors.push("manifest.json: externalServices must all be explicitly false");
+    }
+    if (!readFileSync(join(dir, "index.html"), "utf8").includes(
+            'http-equiv="Content-Security-Policy" content="connect-src \'self\'; form-action \'self\'; base-uri \'self\'; object-src \'none\'"')) {
+        errors.push("index.html: CF same-origin connection policy is required");
+    }
     const preload = join(dir, "Component-preload.js");
     if (existsSync(preload) && !/\\?"dataMode\\?"\s*:\s*\\?"rap\\?"/.test(readFileSync(preload, "utf8"))) {
         errors.push("Component-preload.js: embedded manifest is not dataMode=rap");
+    }
+    if (existsSync(preload)) {
+        const text = readFileSync(preload, "utf8");
+        const groups = [...text.matchAll(/\\?"externalServices\\?"\s*:\s*\{([^}]+)\}/g)];
+        if (!groups.length || groups.some(([, group]) =>
+                ["ai", "scanner", "voice", "tts"].some(name =>
+                    !new RegExp('\\\\?"' + name + '\\\\?"\\s*:\\s*false(?:\\s*[,}]|\\s*$)').test(group))
+                || /:\s*true/.test(group))) {
+            errors.push("Component-preload.js: externalServices must all be explicitly false");
+        }
     }
     return { errors, warnings: [...warnings].sort(), files: files.length };
 }
@@ -149,6 +167,10 @@ export function stageWebapp(webapp, stage) {
     const manifestPath = join(stage, "manifest.json");
     const manifest = transformManifest(JSON.parse(readFileSync(manifestPath, "utf8")));
     writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
+    // Druga bariera w przeglądarce: nawet pominięta bramka JS nie połączy się ze starym hostem AI.
+    const indexPath = join(stage, "index.html");
+    writeFileSync(indexPath, readFileSync(indexPath, "utf8").replace('<head>',
+        '<head>\n    <meta http-equiv="Content-Security-Policy" content="connect-src \'self\'; form-action \'self\'; base-uri \'self\'; object-src \'none\'">'));
     return manifest;
 }
 
@@ -166,7 +188,7 @@ function main() {
     }
     const report = verifyArtifact(dist);
     for (const host of report.warnings) {
-        console.warn("WARN external host referenced by preserved AI/Scanner/Voice code (not routed by approuter): " + host);
+        console.warn("INFO preserved external host (CF capabilities OFF, CSP blocks connections): " + host);
     }
     if (report.errors.length) {
         report.errors.forEach((error) => console.error("FAIL " + error));

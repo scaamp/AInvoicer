@@ -20,6 +20,8 @@ sap.ui.define([
     // Kokpit KSeF jest dołączony jako mixin; istniejące metody Legacy/AI/Scanner pozostają poniżej.
     return Controller.extend("ainvoicer.controller.Main", Object.assign({}, KsefCockpit, {
         onInit: function () {
+            var oConfig = this.getOwnerComponent().getManifestEntry("/sap.ui5/config/ksefCockpit") || {};
+            this.getView().setModel(new JSONModel(oConfig.externalServices || {}), "externalServices");
             // Inicjalizacja modelu
             var oFileModel = new JSONModel({
                 fileSelected: false,
@@ -50,6 +52,13 @@ sap.ui.define([
 
             // Nowy widok faktur KSeF (RAP nagłówki + operacje CAP); Legacy FI działa bez zmian.
             this._initKsefCockpit();
+        },
+
+        /** Jawna bramka przed odczytem pliku, mikrofonem i HTTP; brak konfiguracji = odmowa. */
+        _externalServiceEnabled: function (sName) {
+            var oComponent = this.getOwnerComponent();
+            var oConfig = oComponent && oComponent.getManifestEntry("/sap.ui5/config/ksefCockpit");
+            return !!(oConfig && oConfig.externalServices && oConfig.externalServices[sName] === true);
         },
 
         onSearch: function () {
@@ -92,6 +101,7 @@ sap.ui.define([
 
         // Wykonywanie poleceń AI
         onAiCommandExecute: function (oEvent) {
+            if (!this._externalServiceEnabled("ai")) { return; }
             var sQuery = oEvent.getParameter("query");
             if (!sQuery) {
                 return;
@@ -138,6 +148,7 @@ sap.ui.define([
 
         // Symulacja przetwarzania zapytania przez LLM
         _processAiQuery: function (sQuery, sContext, iIndex) {
+            if (!this._externalServiceEnabled("ai")) { return Promise.resolve(); }
             var that = this;
             var oHistoryModel = this.getView().getModel("history");
             var aConversations = oHistoryModel.getProperty("/conversations");
@@ -495,6 +506,7 @@ sap.ui.define([
         },
 
         onVoiceInput: function () {
+            if (!this._externalServiceEnabled("voice")) { return; }
             // MessageToast.show("Funkcja wprowadzania głosowego nie jest jeszcze dostępna.");
 
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -802,6 +814,7 @@ sap.ui.define([
         },
 
         handleFileChange: function (oEvent) {
+            if (!this._externalServiceEnabled("scanner")) { return; }
             var oFileModel = this.getView().getModel("file");
             var oFileUploader = this.byId("fileUploader");
 
@@ -815,6 +828,7 @@ sap.ui.define([
         },
 
         handleAnalyzeInvoice: function () {
+            if (!this._externalServiceEnabled("scanner")) { return; }
             var that = this;
             var oFileModel = this.getView().getModel("file");
             var oFileUploader = this.byId("fileUploader");
@@ -1022,6 +1036,7 @@ sap.ui.define([
         },
 
         _sendToNodeJs(fileData, fileType) {
+            if (!this._externalServiceEnabled("scanner")) { return Promise.resolve(); }
             var that = this;
             var oFileModel = this.getView().getModel("file");
 
@@ -1086,6 +1101,7 @@ sap.ui.define([
         },
 
         _sendToOpenAI: function (fileData, fileType) {
+            if (!this._externalServiceEnabled("scanner")) { return Promise.resolve(); }
             var that = this;
             var oFileModel = this.getView().getModel("file");
             const prompt = `
@@ -1341,6 +1357,7 @@ sap.ui.define([
         },
 
         onPlayTTS: function (text) {
+            if (!this._externalServiceEnabled("tts")) { return; }
             // fetch("http://127.0.0.1:4000/speech", {
             fetch("https://python-app-grouchy-platypus-jj.cfapps.us10-001.hana.ondemand.com/speech", {
                 method: "POST",

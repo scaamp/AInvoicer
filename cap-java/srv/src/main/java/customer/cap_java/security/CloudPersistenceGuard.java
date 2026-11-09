@@ -24,7 +24,7 @@ import org.springframework.core.env.Environment;
  * tryb {@code ainv.deployment.identity-smoke=true}: dopuszcza bazę nietrwałą wyłącznie do testu
  * logowania/ról, wymaga wyłączonego transportu KSeF, writebacku SAP i sweepera, a
  * {@link IdentitySmokeReadOnlyHandler} odrzuca każdą operację zapisującą historię. Tryb wymaga
- * osobnej zgody właściciela i nie jest ustawiony w żadnym deskryptorze.
+ * osobnej zgody właściciela na deploy; CAP-07C definiuje oddzielny generator deskryptora smoke.
  *
  * <p>Zależność od {@link CloudIdentityGuard} w konstruktorze ustala kolejność: najpierw tożsamość.
  */
@@ -42,6 +42,10 @@ public class CloudPersistenceGuard {
             return;
         }
         verify(databaseProduct(dataSource), identitySmoke, ksefEnabled, sapWriteEnabled, sweeperEnabled);
+        if (identitySmoke && "H2".equalsIgnoreCase(databaseProduct(dataSource))
+                && !"h2".equals(environment.getProperty("spring.sql.init.platform"))) {
+            throw new IllegalStateException("Identity smoke with H2 requires SPRING_SQL_INIT_PLATFORM=h2");
+        }
         if (identitySmoke) {
             log.warn("IDENTITY SMOKE MODE: non-durable database; KSeF send, SAP writeback and operation writes are disabled");
         }
@@ -53,16 +57,14 @@ public class CloudPersistenceGuard {
      */
     static void verify(String product, boolean identitySmoke, boolean ksefEnabled, boolean sapWriteEnabled,
             boolean sweeperEnabled) {
-        if (isHana(product)) {
-            return;
-        }
-        if (!identitySmoke) {
-            throw new IllegalStateException("Cloud runtime requires durable SAP HANA Cloud persistence (found database '"
-                    + product + "'); embedded or in-memory databases lose KSeF operation history on restart");
-        }
-        if (ksefEnabled || sapWriteEnabled || sweeperEnabled) {
+        // Smoke blokuje mutacje również po przypadkowym dodaniu bindingu HANA.
+        if (identitySmoke && (ksefEnabled || sapWriteEnabled || sweeperEnabled)) {
             throw new IllegalStateException("Identity smoke mode requires ainv.ksef.enabled=false, "
                     + "ainv.sap-write.enabled=false and ainv.sap-write.sweeper.enabled=false");
+        }
+        if (!isHana(product) && !identitySmoke) {
+            throw new IllegalStateException("Cloud runtime requires durable SAP HANA Cloud persistence (found database '"
+                    + product + "'); embedded or in-memory databases lose KSeF operation history on restart");
         }
     }
 

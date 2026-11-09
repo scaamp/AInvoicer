@@ -48,8 +48,8 @@ import com.sap.cloud.security.test.SecurityTest;
  * sam test dowodzi więc, że w takim trybie uprawniony operator nie utworzy historii procesu KSeF.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
-    "spring.sql.init.platform=h2", "cds.data-source.auto-config.enabled=false",
-    "spring.datasource.url=jdbc:h2:mem:xsuaa-jwt-contract;DB_CLOSE_DELAY=-1",
+    // Dokładnie konfiguracja smoke CF: bez własnego DataSource i wyłączenia auto-konfiguracji CAP.
+    "spring.sql.init.platform=h2",
     "ainv.sap-write.sweeper.enabled=false",
     // CAP-07.1: na chmurze H2 jest dozwolona wyłącznie w jawnym trybie identity-smoke (CloudPersistenceGuard).
     "ainv.deployment.identity-smoke=true"
@@ -103,6 +103,8 @@ class XsuaaJwtODataContractTest {
         assertEquals(401, get(null, "InvoiceIntegrationStatus").statusCode());
         assertEquals(401, get(null, "$metadata").statusCode());
         assertEquals(401, get("Bearer not-a-jwt", "InvoiceIntegrationStatus").statusCode());
+        assertEquals(401, get("Basic " + Base64.getEncoder().encodeToString("privileged:"
+            .getBytes(StandardCharsets.UTF_8)), "$metadata").statusCode());
         // Lokalne konta mock nie istnieją na profilu cf (także te z application-test.yaml).
         assertEquals(401, get("Basic " + Base64.getEncoder().encodeToString("operator-a:test-a"
             .getBytes(StandardCharsets.UTF_8)), "InvoiceIntegrationStatus").statusCode());
@@ -110,10 +112,11 @@ class XsuaaJwtODataContractTest {
 
     /** CAP-07B LIVE: strona startowa CAP pod "/" była anonimowo dostępna na CF i wypisywała kontrakt usługi. */
     @Test void cloudProfileExposesNoAnonymousIndexPage() throws Exception {
-        for (String path : new String[] {"/", "/$fiori-preview/KsefService/KsefOperations"}) {
+        for (String path : new String[] {"/", "/$fiori-preview/", "/$fiori-preview/KsefService/KsefOperations",
+                "/h2-console/", "/actuator/health", "/actuator/env", "/swagger-ui/", "/v3/api-docs"}) {
             var response = http.send(HttpRequest.newBuilder(java.net.URI.create("http://localhost:" + port + path))
                 .GET().build(), HttpResponse.BodyHandlers.ofString());
-            assertNotEquals(200, response.statusCode(), path);
+            assertTrue(Set.of(401, 403, 404).contains(response.statusCode()), path + ": " + response.statusCode());
             assertFalse(response.body().contains("KsefService"), path);
         }
     }

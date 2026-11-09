@@ -48,11 +48,12 @@
                         <Button
                             text="Analyze"
                             press="handleAnalyzeInvoice"
-                            enabled="{/fileSelected}"
+                            enabled="{= ${externalServices>/scanner} === true &amp;&amp; ${/fileSelected} }"
                             class="sapUiTinyMarginEnd"
                         />
                         <u:FileUploader
                             id="fileUploader"
+                            enabled="{externalServices>/scanner}"
                             name="invoiceFile"
                             uploadUrl="upload/"
                             tooltip="Select invoice file (PDF or image)"

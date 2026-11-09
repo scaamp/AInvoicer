@@ -539,6 +539,7 @@ sap.ui.define([
         },
 
         onKsefScan: function () {
+            if (!this._externalServiceEnabled("scanner")) { return; }
             // Istniejący skaner tworzy rekord SAP FI (ZC_FI_ACDOCA) — dialog pokazuje to jawnie.
             this.onAddInvoice();
         },

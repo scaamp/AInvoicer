@@ -1,12 +1,14 @@
 ---
 title: "BTP — runbook pierwszego kontrolowanego wdrożenia (CAP-07.1)"
-date: 2026-11-08
+date: 2026-11-09
 type: guide
-status: przygotowany-niewdrozony
+status: smoke-live-nowy-build-niewdrozony
 tags: [ainvoicer, btp, cloud-foundry, deployment, xsuaa, hana, approuter, sso, cap-07]
 ---
 
 # Runbook pierwszego wdrożenia na SAP BTP Cloud Foundry
+
+**Aktualizacja 2026-11-09 (CAP-07C):** poprzedni build identity-smoke działa w CF EU20, XSUAA/Destination i aplikacje istnieją; HANA nie jest dostępna. Nowy powtarzalny MTAR oraz fix publicznego indeksu pozostają niewdrożone. Build i późniejszy redeploy/rollback opisuje §3.1. Stany „nic nie wdrożono” niżej dotyczą historycznej sesji 2026-11-08; nie oznaczają dzisiejszego inventory.
 
 [Project Home](../README.md) · [ADR-0006 tożsamość](../decisions/ADR-0006-btp-identity-xsuaa.md) · [ADR-0007 trwałość](../decisions/ADR-0007-cap-persistence-hana-cloud.md) · [BTP Identity setup](BTP_IDENTITY_SETUP.md) · [RAP UI LIVE](RAP_UI_LIVE_CONNECTION.md) · [Dziennik CAP-07.1](../journal/2026-11-08-cap-07-1-deployment-readiness.md)
 
@@ -79,7 +81,33 @@ AINV_SAP_WRITE_SWEEPER_ENABLED: "false"
 SPRING_SQL_INIT_PLATFORM: h2
 ```
 
-Z tym kompletem: start 10 s, log `IDENTITY SMOKE MODE: non-durable database`; anonimowe `$metadata`/`InvoiceIntegrationStatus`/`KsefOperations` 401, fałszywy Bearer 401, Basic `privileged` 401, `/h2-console/` 401, anonimowy POST `requestSend` 403. Wariant MTA smoke generuje się poza repo (scratchpad): bez modułu `ainvoicer-db-deployer`, bez zasobu `ainvoicer-db` i bez `requires: ainvoicer-db` w `ainvoicer-srv`, z powyższymi env.
+Z tym kompletem startuje wariant smoke; brak `SPRING_SQL_INIT_PLATFORM=h2` jest teraz kontrolowaną odmową startu. Anonimowe OData401, akcje401/403, operator409 `AINV_IDENTITY_SMOKE_READ_ONLY`. Regresja spakowanego JAR-a używa dokładnie env z deskryptora, bez własnego DataSource.
+
+### 3.1 Powtarzalny MTAR identity-smoke (CAP-07C, bez deployu)
+
+Wymagane: JDK25, Maven≥3.9.14, Node22/24, npm, publiczny SDK MF3.0.29 w lokalnym Maven (instalacja przypiętym `cap-java/tools/Install-KsefSdk.ps1`, wymaga JDK21). Internet wyłącznie do pobrania zależności. `mbt`1.2.49 jest przypięty w `deploy/package-lock.json`; make i CLI CF nie są potrzebne do builda. Użyj czystego checkoutu/worktree, w którym JAR i node_modules nie są używane przez działające procesy.
+
+Z katalogu repo:
+
+```text
+npm ci --prefix deploy
+npm test --prefix deploy
+npm run build:btp:smoke --prefix deploy
+```
+
+Ostatnie polecenie wykonuje Maven `clean verify`, testy executable JAR-a z syntetycznym XSUAA, UI5 `npm ci`/build CF/test artefaktu, approuter `npm ci`/test konfiguracji i `mbt assemble`. Nie wykonuje żadnego polecenia CF, SAP ani KSeF. Dodatkowa regresja browser: standardowy build UI5, `test:runner`, QUnit i OPA jak w CI (potrzebny Chrome/Edge i lokalny mock server).
+
+Wynik: **`deploy/build/ainvoicer_0.7.2.mtar`** oraz `identity-smoke.mtad.yaml`. Generator parsuje źródłowy `mta.yaml`, kontroluje znany kontrakt, usuwa HDI/deployer i tworzy oddzielny deskryptor deploymentu. Pełny MTA HANA pozostaje bez zmian. Archiwum zawiera tylko dwa moduły (`ainvoicer-srv/data.zip` z jednym executable JAR oraz `ainvoicer-approuter/data.zip` z lockfile/config/UI5 CF), `META-INF/MANIFEST.MF` i `META-INF/mtad.yaml`. Bez HDI, testów UI5, fixture, node_modules i lokalnych credentiali. Zależności HANA w runtime JAR nie są bindingiem HANA ani planem usługi.
+
+Istniejące `ainvoicer-auth` i `ainvoicer-destination` są deklarowane jako **existing-service**. Ten MTAR ich nie tworzy ani nie aktualizuje; muszą istnieć w wybranym space z poprawną konfiguracją CAP-07B. Błąd bindingu nie może być naprawiany tworzeniem płatnej usługi. Nie zmieniono semantyki `deploy/btp-dev-eu20.mtaext` (wyłącznie prefiks hosta).
+
+Walidacja: dokładnie dwa moduły/zasoby, profilcf, smokeON, SEND/WRITE/sweeperOFF, platformh2, poprawne hosty i `~{srv-api/srv-url}`, whitelist env bez credentiali, brak HANA i źródeł w MTAR. Zmiana pojedynczej flagi na wartość niezgodną przerywa walidację. Testy obejmują niezmienność źródła i deterministyczną treść deskryptora. Nie obiecujemy byte-for-byte identycznego MTAR (timestampy ZIP/JAR).
+
+**Późniejszy deploy — wyłącznie po osobnej zgodzie:** właściciel sprawdza `cf target`, istniejące usługi/trasy i aktualny artefakt, zachowuje poprzedni zatwierdzony MTAR, następnie `cf deploy deploy/build/ainvoicer_0.7.2.mtar -e deploy/btp-dev-eu20.mtaext`. Dotyczy wyłącznie istniejących dwóch aplikacji, bez HANA i `myapp`. Osobna zgoda wymagana również na rollback/restart; build nie jest tą zgodą.
+
+Po deployu: sprawdzić brak publicznego indeksu CAP (`/`401/403/404), OData401 anonimowo, odrzucenie Bearer/Basic, biznesowy login/rola i SSO z §7. Zweryfikować UI5 capabilitiesOFF, CSP i brak wywołań AI. Poprawka indeksu z CAP-07B oraz zmiany CAP-07C są lokalne, dopóki tego nie wykonano.
+
+Rollback: po zgodzie ponownie wdrożyć poprzedni zachowany **smoke** MTAR z tym samym rozszerzeniem; nie usuwać usług, nie używać starszego pełnego MTAR wymagającego HDI. Poprzedni smoke ma znaną ekspozycję indeksu CAP i nie zawiera nowych blokad UI5 — świadoma ocena przy rollbacku. H2 jest nietrwała; nie istnieje migracja historii biznesowej w tym trybie. Pełne HANA→smoke nie jest wspieranym sposobem przechowania historii.
 
 ## 4. Wymagane instancje (tworzy `cf deploy` 🔒)
 
@@ -118,7 +146,7 @@ Szczegóły i zasada jednej pary NIP×spółka: [BTP_IDENTITY_SETUP §4–5](BTP
 
 ### 6.1 Approuter → CAP
 
-`ainvoicer-cap` jest zdefiniowana w env approutera w `mta.yaml` (`url: ~{srv-url}`, `forwardAuthToken: true`). To **jedyna** trasa z przekazaniem tokenu XSUAA (test `xs-app.test.mjs`).
+`ainvoicer-cap` jest zdefiniowana w env approutera w `mta.yaml` (`url: ~{srv-api/srv-url}`, `forwardAuthToken: true`). To **jedyna** trasa z przekazaniem tokenu XSUAA (test `xs-app.test.mjs`).
 
 ### 6.2 Approuter → H01 RAP UI: `AINV_H01_UI_USER` (business-user SSO)
 

@@ -25,6 +25,7 @@ test("CF manifest reads RAP deliberately, keeps every mutating capability OFF an
     assert.deepEqual(Object.values(cockpit.capabilities), Object.values(cockpit.capabilities).map(() => false));
     assert.equal(cockpit.mock, undefined, "no demo JSON paths");
     assert.deepEqual(cockpit.legacy, { enabled: false });
+    assert.deepEqual(cockpit.externalServices, { ai: false, scanner: false, voice: false, tts: false });
     assert.equal(manifest["sap.ui5"].flexEnabled, false);
     assert.equal(manifest["sap.ui5"].models[""].preload, false);
     assert.equal(manifest["sap.ui5"].models[""].settings.earlyRequests, false);
@@ -64,6 +65,7 @@ test("staging copies sources without test/ and localService/", () => {
         assert.equal(existsSync(join(stage, "test")), false);
         assert.equal(existsSync(join(stage, "localService")), false);
         assert.equal(JSON.parse(readFileSync(join(stage, "manifest.json"), "utf8"))["sap.ui5"].config.ksefCockpit.dataMode, "rap");
+        assert.match(readFileSync(join(stage, "index.html"), "utf8"), /connect-src 'self'/);
     } finally {
         rmSync(stage, { recursive: true, force: true });
     }
@@ -74,7 +76,7 @@ test("artifact verification rejects tests, fixtures, credentials and mock mode",
     try {
         const manifest = transformManifest(sourceManifest());
         writeFileSync(join(dir, "manifest.json"), JSON.stringify(manifest));
-        writeFileSync(join(dir, "index.html"), "<html></html>");
+        writeFileSync(join(dir, "index.html"), '<meta http-equiv="Content-Security-Policy" content="connect-src \'self\'; form-action \'self\'; base-uri \'self\'; object-src \'none\'">');
         assert.deepEqual(verifyArtifact(dir).errors, []);
 
         mkdirSync(join(dir, "test", "unit"), { recursive: true });
@@ -99,4 +101,17 @@ test("built dist-cf (if present) passes the same verification", { skip: !existsS
     const report = verifyArtifact(join(project, "dist-cf"));
     assert.deepEqual(report.errors, []);
     assert.ok(report.files > 10);
+});
+
+test("stale preload cannot re-enable voice or AI behind a safe manifest and CSP", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ainv-cf-preload-"));
+    try {
+        stageWebapp(join(project, "webapp"), dir);
+        for (const name of ["ai", "scanner", "voice", "tts"]) {
+            const manifest = transformManifest(sourceManifest());
+            manifest["sap.ui5"].config.ksefCockpit.externalServices[name] = true;
+            writeFileSync(join(dir, "Component-preload.js"), JSON.stringify(manifest));
+            assert.match(verifyArtifact(dir).errors.join("\n"), /Component-preload.js: externalServices/);
+        }
+    } finally { rmSync(dir, { recursive: true, force: true }); }
 });

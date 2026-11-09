@@ -60,6 +60,9 @@ target/
 *.db
 *.h2.db
 cap-java/.local/
+*.mtar
+sapui5/ainvoicer/dist-cf/
+approuter/resources/
 
 # Lokalne ustawienia Obsidian Vault
 docs/.obsidian/

@@ -12,6 +12,8 @@ AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijan
 
 ## Od czego zacząć
 
+- [CAP-07C — powtarzalny MTAR identity-smoke, regresja executable JAR CF, blokady AI/Scanner/Voice, CI i CAP-04D offline](journal/2026-11-09-cap-07c-autonomous-hardening.md).
+
 - [CAP-07B etap 1 — weryfikacja przed LIVE BTP: regresja PASS, MTAR 67 MB, H01 4/9/6; deploy BLOCKED (login CF + zgoda właściciela)](journal/2026-11-08-cap-07b-btp-live-deployment.md).
 - [CAP-07.1 — gotowość wdrożenia CF: HANA/HDI fail-closed, UI5 build CF, MTAR, SSO H01 (LOCAL PASS, LIVE NOT EXECUTED)](journal/2026-11-08-cap-07-1-deployment-readiness.md) · [Runbook pierwszego wdrożenia](guides/BTP_FIRST_DEPLOYMENT_RUNBOOK.md) · [ADR-0007](decisions/ADR-0007-cap-persistence-hana-cloud.md).
 - [CAP-07 — BTP Identity: XSUAA, approuter, fail-closed par NIP/spółka (OFFLINE PASS, LIVE BLOCKED)](journal/2026-11-08-cap-07-btp-identity.md) · [ADR-0006](decisions/ADR-0006-btp-identity-xsuaa.md) · [Przewodnik: BTP Identity setup](guides/BTP_IDENTITY_SETUP.md).

@@ -1,12 +1,16 @@
 ---
 title: "BTP Identity — XSUAA, approuter i zakres NIP/CompanyCode (CAP-07)"
-date: 2026-11-08
+date: 2026-11-09
 type: guide
-status: przygotowany-niewdrozony
+status: identity-smoke-live-business-user-niezweryfikowany
 tags: [ainvoicer, btp, xsuaa, ias, approuter, cap-java, security, cap-07]
 ---
 
 # BTP Identity — konfiguracja dla właściciela środowiska
+
+**Aktualizacja CAP-07C (2026-11-09):** istniejące XSUAA `ainvoicer-auth`, Destination Service i obie aplikacje są uruchomione w CF EU20 (własny READ inventory). Dotychczasowy deploy to identity-smoke; logowanie business usera, Role Collection, Destination `AINV_H01_UI_USER` i SSO H01 nadal **NOT VERIFIED**. Starsze opisy „nic nie wdrożono” poniżej dotyczą wcześniejszej sesji CAP-07. Powtarzalny niewdrożony MTAR i procedura redeploy/rollback: [runbook §3.1](BTP_FIRST_DEPLOYMENT_RUNBOOK.md#31-powtarzalny-mtar-identity-smoke-cap-07c-bez-deployu). Smoke wykorzystuje istniejące bindingi, nie aktualizuje konfiguracji XSUAA. Macierz tras, JWT i ograniczenia: [CAP-07C](../journal/2026-11-09-cap-07c-autonomous-hardening.md#macierz-publicznych-tras).
+
+Po powrocie właściciela: osobna zgoda na redeploy → przypisanie `KsefOperator` do właściwego originu IdP ze statyczną parą NIP/spółka → konfiguracja `AINV_H01_UI_USER` (bez Basic/communication usera i bez `HTML5.ForwardAuthToken`) → sprawdzenie rzeczywistego business usera w H01 i A/B. Nie włączać AI/Scanner/Voice ani transportów przez zmianę flag. Te działania nie zostały wykonane w CAP-07C.
 
 [Project Home](../README.md) · [ADR-0006](../decisions/ADR-0006-btp-identity-xsuaa.md) · [Dziennik CAP-07](../journal/2026-11-08-cap-07-btp-identity.md) · [RAP UI LIVE](RAP_UI_LIVE_CONNECTION.md)
 

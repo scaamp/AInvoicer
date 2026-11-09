@@ -1,6 +1,6 @@
 ---
 title: "AInvoicer — aktualny stan"
-date: 2026-11-08
+date: 2026-11-09
 type: status
 status: w-trakcie
 tags: [ainvoicer, cap-java, status]
@@ -13,6 +13,10 @@ tags: [ainvoicer, cap-java, status]
 [Project Home](README.md) · [Roadmapa](ROADMAP.md) · [Workflow abapGit](guides/ABAPGIT_WORKFLOW.md) · [Model RAP faktur](guides/ABAP_RAP_INVOICE_MODEL.md) · [Dziennik próby tworzenia ABAP FS](journal/2026-10-25-abapfs-create-probe.md) · [Dziennik kompozycji RAP](journal/2026-10-24-abap-rap-composition.md) · [Dziennik pierwszego eksportu](journal/2026-10-24-abapgit-rap-initial-export.md) · [Dziennik bootstrapu](journal/2026-10-23-cap-java-bootstrap.md) · [Weryfikacja Phase 1](journal/2026-10-24-cap-java-bootstrap-verification.md) · [Model KsefOperations](journal/2026-10-24-ksef-operations-model.md) · [Usługa i CRUD OData](journal/2026-10-24-ksef-service-definition.md) · [Walidacja i autoryzacja KsefOperations](journal/2026-10-24-ksef-operations-validation-authorization.md)
 
 ## Current Phase
+
+**CAP-07C (2026-11-09), LOCAL PASS:** powtarzalny `npm run build:btp:smoke --prefix deploy` → MTAR 67 295 265 B (bez HDI i nowych usług); Maven 243/243, executable JAR CF 8/8, QUnit 79 testów/446 asercji, OPA 13/80, runner 4/4, CF artefakt 8/8 i approuter 8/8. AI/Scanner/Voice/TTS w CF OFF + CSP; harness CAP-04D chroni seed i wymaga nowego fixture, consent oraz NIP/spółki. CI zaimplementowane i zweryfikowane lokalnie; zdalny wynik na moment wpisu **NOT EXECUTED**, nie PASS. [Dowody/komendy/ograniczenia](journal/2026-11-09-cap-07c-autonomous-hardening.md). Własny LIVE READ CF: obie aplikacje 1/1 i XSUAA/Destination, brak HANA; obecny CAP `/` 200 (fix niewdrożony), metadata/H2/health 401. **CF redeploy, business-user SSO, SAP WRITE i KSeF SEND NOT EXECUTED.** Następny etap: CAP-07B.2, zgoda na redeploy → Role Collection → Destination/SSO i A/B; CAP-04D nadal osobna bramka.
+
+### Historia CAP-07B
 
 **CAP-07B LIVE BTP — etap 1 (2026-11-08): BLOCKED na logowaniu CF właściciela i warunkowej zgodzie na deploy; nic nie wdrożono.** Branch `feature/cap-07b-live-btp` z CAP-07.1 `c9a8345` + merge `main` `552fdb9` (`docs/architecture/` i 2 SVG zachowane, konflikt tylko w `docs/README.md`). Inventory BTP: API `cf-eu20-001` osiągalne (CC v3 3.233.0), portable **cf 8.19.0** zainstalowany lokalnie, ale `Not logged in` → subaccount, entitlementy (xsuaa, destination, HANA Cloud free, hdi-shared), quota CF i SapMachine 25 **NOT VERIFIED**; `btp` CLI niezainstalowany (EULA właściciela). Konto free tier (nie trial) → HANA wyłącznie w planie bezpłatnym, inaczej STOP.
 

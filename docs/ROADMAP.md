@@ -1,12 +1,16 @@
 ---
 title: "AInvoicer — plan rozwoju"
-date: 2026-11-08
+date: 2026-11-09
 type: roadmap
 status: aktywny
 tags: [ainvoicer, roadmap, cap-java, ksef]
 ---
 
 # Plan rozwoju
+
+- [x] **CAP-07C lokalna implementacja:** generator bezpiecznego MTAR smoke, guardy/testy executable JAR-a CF, fail-closed usług zewnętrznych UI5, CI offline i mocniejszy consent CAP-04D. Dokładne wyniki regresji/publikacji: [dziennik](journal/2026-11-09-cap-07c-autonomous-hardening.md).
+- [ ] **CAP-07B.2 — LIVE Business User SSO Acceptance:** osobno zatwierdzony redeploy nowego smoke → poprawny IdP/Role Collection → `AINV_H01_UI_USER` → principal H01 i izolacja A/B. Brak HANA free/HDI nadal blokuje trwały workflow; bez płatnych usług.
+- [ ] **CAP-04D — SAP Write Contract LIVE:** dedykowana nowa faktura `AINV-CAP04D-*`, dokładna zgoda/zakres i potwierdzony principal/ACTVT16/CSRF/ETag. Istniejące4 seed chronione; brak LIVE WRITE w CAP-07C.
 
 [Project Home](README.md) · [Aktualny stan i dowody](STATUS.md) · [Decyzja architektoniczna](decisions/ADR-0001-cap-java-ksef-architecture.md)
 

@@ -1,6 +1,6 @@
 ---
 title: "SAP — dostęp zapisu communication user, polityka odczytu DCL i plan integralności XML"
-date: 2026-11-08
+date: 2026-11-09
 type: guide
 status: propozycja
 tags: [ainvoicer, abap, rap, authorization, dcl, communication-user, integrity]
@@ -97,6 +97,19 @@ Jeżeli któregoś z negatywnych testów nie da się wykonać, wynik pozostaje `
 **Unikalność numeru KSeF.** Prosty UNIQUE na `KsefNumber` w całej aplikacji byłby błędny: ten sam numer legalnie występuje jako dokument sprzedawcy (OUTBOUND) i nabywcy (INBOUND), także w jednym CAP/SAP przy rozliczeniach wewnątrzgrupowych; numery korekt są odrębne, ale odwołują się do pierwotnego; różne systemy SAP mogą odwoływać się do tego samego numeru. Wdrożono jedynie unikalność `(environment, ksefNumber)` w `SapResultWrites`, bo ta tabela dotyczy wyłącznie zapisu wyniku w fakturze sprzedażowej SAP — numer KSeF może trafić do jednej takiej faktury na środowisko. Dla INBOUND i korekt unikalność należy zaprojektować osobno (np. `(environment, taxpayerNip, ksefNumber, sapSystem)`).
 
 ## 5. CAP-04D — gotowość po Fix 2
+
+### Aktualizacja CAP-07C (2026-11-09, wyłącznie offline)
+
+Zwykły `mvn clean verify` wyklucza tagi `live-sap,live-sap-write,live-ksef`. Harness WRITE wymaga dodatkowo jawnej flagi env, zgody `APPLY_KSEF_RESULT:<UUID>`, pasującego numeru **`AINV-CAP04D-*`**, `AINV_H01_LIVE_WRITE_TAXPAYER_NIP` i `AINV_H01_LIVE_WRITE_COMPANY_CODE`. `LiveWriteConsent` odrzuca cztery historyczne UUID seed niezależnie od numeru i zgody; każda nowa faktura musi być OUTBOUND i bez numeru KSeF. Kontrola jest przed pierwszym HTTP WRITE. STALE/RACE wymagają własnych `..._STALE_INVOICE_NUMBER` / `..._RACE_INVOICE_NUMBER` i zgody dla każdego UUID. Te bramki mają testy offline.
+
+**Procedura dla właściciela, niewykonana:**
+
+1. Osobno zatwierdzić CAP-04D, principal/arrangement `ZCS_AINV_H01`, ACTVT16 wyłącznie dla konkretnej pary i dedykowany nowy dokument; nie używać istniejących4 seed. READ/CSRF/ETag w tym samym kontekście muszą być potwierdzone; agent nie nadaje praw i nie tworzy dokumentu.
+2. Właściciel dostarcza Destination `AINV_H01` przez bezpieczny lokalny binding, bez sekretów w Git/logach. Odczytem weryfikuje UUID/numer/NIP/spółkę/OUTBOUND i brak wyniku. Ustawić `AINV_H01_LIVE_WRITE_INVOICE_UUID`, `..._INVOICE_NUMBER`, `..._TAXPAYER_NIP`, `..._COMPANY_CODE` i zgodę dla UUID. Opcjonalne STALE/RACE/CRUD pozostawić nieustawione przy pierwszej próbie.
+3. Dopiero po tej zgodzie ustawić lokalnie `AINV_H01_LIVE_WRITE=true` i uruchomić z `cap-java`: `mvn test '-Dtest=SapKsefResultWriteLiveWriteTest' '-Dainv.excludedGroups=none' '-Dcds.cds.skipVersionCheck=true'`. To polecenie wykonuje rzeczywiste SAP POST; nie należy do CI/smoke i nie zostało uruchomione w CAP-07C.
+4. Zachować niezależny READ po commit, wynik APPLIED/ALREADY_APPLIED oraz brak zmian poza zatwierdzonym dokumentem; wyczyścić flagi/consent po teście. Kolejne warianty wymagają własnych dedykowanych dokumentów i zgód. CRUD_DENIAL może wykonać PATCH i wymaga dodatkowej jawnej zgody oraz znanego kodu autoryzacji.
+
+Adapter przekazuje CAS w `ExpectedLocalLastChangedAt` (precyzja100ns), bo `ApplyKsefResult` jest statyczną akcją kolekcji, nie aktualizacją instancji z If-Match. Mock HTTP potwierdza CSRF i payload. Po timeout nie występuje ukryty HTTP retry; outbox odtwarza identyczne idempotentne zlecenie z niezmiennym WriteRequestId i oczekiwaną wersją, a SAP rozstrzyga ALREADY_APPLIED/konflikt. Nieznany/niespójny wynik200 nie uruchamia automatycznego retry. To nie jest zgoda na ponowną wysyłkę faktury do KSeF. Szczegóły i ograniczenia LIVE: [CAP-07C](../journal/2026-11-09-cap-07c-autonomous-hardening.md#cap-04d--wynik-przeglądu-offline).
 
 **IMPLEMENTED / NOT LIVE TESTED.** Wszystkie poniższe polecenia LIVE są planem po osobnej zgodzie, nie historią wykonania. Domyślne `enabled=false` oraz wykluczenie tagów `live-sap,live-sap-write` pozostają. KSeF nie jest wywoływany. Test LIVE sprawdza bezpośrednio CAP RemoteService → RAP Action, nie dowodzi istnienia producenta potwierdzonych ACCEPTED ani pełnego E2E KSeF.
 

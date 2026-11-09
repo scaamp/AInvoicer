@@ -17,6 +17,7 @@
                 expandable="true"
                 expanded="false"
                 headerText="AI Assistant"
+                visible="{externalServices>/ai}"
             >
                 <headerToolbar>
                     <Toolbar>
@@ -91,6 +92,7 @@
                             icon="sap-icon://microphone"
                             tooltip="Voice Input"
                             press="onVoiceInput"
+                            enabled="{externalServices>/voice}"
                             class="sapUiTinyMarginBegin"
                         />
                     </FlexBox>

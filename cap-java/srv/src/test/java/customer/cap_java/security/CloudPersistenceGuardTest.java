@@ -25,8 +25,7 @@ class CloudPersistenceGuardTest {
     private static Path defaultEnv;
 
     private static final String[] LOCAL_DB = {
-        "spring.main.web-application-type=none", "spring.sql.init.platform=h2",
-        "cds.data-source.auto-config.enabled=false", "spring.datasource.url=jdbc:h2:mem:persistence-guard;DB_CLOSE_DELAY=-1",
+        "spring.main.web-application-type=none",
         "ainv.sap-write.sweeper.enabled=false"
     };
 
@@ -83,9 +82,19 @@ class CloudPersistenceGuardTest {
     }
 
     @Test void explicitIdentitySmokeStartsReadOnly() {
-        try (ConfigurableApplicationContext context = start("ainv.deployment.identity-smoke=true")) {
+        try (ConfigurableApplicationContext context = start("ainv.deployment.identity-smoke=true", "spring.sql.init.platform=h2")) {
             assertNotNull(context.getBean(IdentitySmokeReadOnlyHandler.class));
         }
+    }
+
+    @Test void missingH2PlatformFailsWithDeploymentDiagnostic() {
+        String failure = startFailure("ainv.deployment.identity-smoke=true");
+        assertTrue(failure.contains("requires SPRING_SQL_INIT_PLATFORM=h2"), failure);
+    }
+
+    @Test void smokeWithXsuaaCannotEnableMockAuthentication() {
+        assertTrue(startFailure("ainv.deployment.identity-smoke=true", "cds.security.mock.enabled=true")
+                .contains("requires cds.security.mock.enabled=false"));
     }
 
     @Test void localRuntimeHasNoSmokeHandlerAndNoPersistenceRule() {
@@ -102,5 +111,10 @@ class CloudPersistenceGuardTest {
         assertThrows(IllegalStateException.class, () -> CloudPersistenceGuard.verify("PostgreSQL", false, false, false, false));
         assertThrows(IllegalStateException.class, () -> CloudPersistenceGuard.verify(null, false, false, false, false));
         assertDoesNotThrow(() -> CloudPersistenceGuard.verify("H2", true, false, false, false));
+        for (String product : new String[]{"HDB", "SAP HANA", "H2"}) {
+            assertThrows(IllegalStateException.class, () -> CloudPersistenceGuard.verify(product, true, true, false, false));
+            assertThrows(IllegalStateException.class, () -> CloudPersistenceGuard.verify(product, true, false, true, false));
+            assertThrows(IllegalStateException.class, () -> CloudPersistenceGuard.verify(product, true, false, false, true));
+        }
     }
 }

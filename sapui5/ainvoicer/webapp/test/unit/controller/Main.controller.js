@@ -8,6 +8,34 @@ sap.ui.define([
 
 	QUnit.module("Main Controller");
 
+	QUnit.test("CF refuses every external AI/Scanner/Voice entry point before network or file access", function (assert) {
+		var controller = new Controller();
+		controller.getOwnerComponent = function () { return { getManifestEntry: function () {
+			return { externalServices: { ai: false, scanner: false, voice: false, tts: false } };
+		} }; };
+		controller.getView = function () { throw new Error("disabled handler must not read invoice or file models"); };
+		var originalFetch = window.fetch;
+		window.fetch = function () { assert.ok(false, "external HTTP must never be attempted"); throw new Error("HTTP denied"); };
+		return Promise.resolve().then(function () {
+			controller.onAiCommandExecute(); controller.onVoiceInput(); controller.onPlayTTS("invoice");
+			controller.handleFileChange(); controller.handleAnalyzeInvoice(); controller.onKsefScan();
+			return Promise.all([controller._processAiQuery("invoice", "search", 0),
+				controller._sendToNodeJs("invoice", "image/png"), controller._sendToOpenAI("invoice", "image/png")]);
+		}).then(function () { assert.ok(true, "all external paths refused"); })
+			.finally(function () { window.fetch = originalFetch; controller.destroy(); });
+	});
+
+	QUnit.test("external services require explicit true; local opt-in is preserved", function (assert) {
+		var controller = new Controller();
+		var config = {};
+		controller.getOwnerComponent = function () { return { getManifestEntry: function () { return config; } }; };
+		assert.strictEqual(controller._externalServiceEnabled("ai"), false);
+		config.externalServices = { ai: "true", scanner: true };
+		assert.strictEqual(controller._externalServiceEnabled("ai"), false);
+		assert.strictEqual(controller._externalServiceEnabled("scanner"), true);
+		controller.destroy();
+	});
+
 	QUnit.test("I should test the Main controller", function (assert) {
 		// onInit wymaga widoku i komponentu — pełną inicjalizację sprawdzają testy OPA.
 		var oAppController = new Controller();
