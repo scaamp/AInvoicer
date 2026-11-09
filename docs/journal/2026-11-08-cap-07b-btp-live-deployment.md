@@ -141,3 +141,23 @@ Brak POST, brak nadań, brak wyboru faktury. **CAP-04D: BLOCKED** (arrangement/A
 ## Next Step
 
 Owner actions (szczegóły w raporcie końcowym sesji i runbooku §1–§2, §11): (1) `cf login --sso` lokalnie przez zainstalowany CLI i target `dev-v2xzij9s_dev`/`dev`; (2) odczyt Entitlements w cockpicie (xsuaa, destination, HANA Cloud free, hdi-shared); (3) warunkowa zgoda na `cf deploy` zakresu z runbooku §4. Potem agent: inventory read-only → deploy → testy runbooku §7.
+
+## Kontynuacja 2026-11-09 — inventory CF po zalogowaniu właściciela (read-only)
+
+Właściciel zalogował się `cf login --sso` we własnym terminalu. Nazwa `dev-v2xzij9s_dev` z cockpitu to nazwa instancji środowiska CF, **nie** nazwa org (`Organization ... not found`). Agent wykonał wyłącznie odczyty (bez `cf env`/service keys):
+
+| Element | Wynik (LIVE, odczyt) |
+| --- | --- |
+| Org / space | `National Center for Cryptography_dev-v2xzij9s` (GUID `f72a9117-…`) / `dev` (GUID `2e8316e6-…`) |
+| Quota | `FREE_QUOTA`: 4 GB pamięci, 20 instancji, 10 tras; **`paid service plans: allowed`** |
+| Istniejące | aplikacja `myapp` (128M, nie ruszać), usługi `dev` (abap/free = H01), `default_aicore` (aicore/free) |
+| `xsuaa` / `application` | **AVAILABLE, free** |
+| `destination` / `lite` | **AVAILABLE, free** |
+| `hana` / `hdi-shared` | **BRAK w marketplace** (entitlement „SAP HANA Schemas & HDI Containers” nieprzypisany) |
+| `hana-cloud` | tylko `hana` i `relational-data-lake` — **paid**; `hana-free` **BRAK** |
+| `postgresql-db` | `standard`/`premium` — paid (poza architekturą ADR-0007) |
+| `identity` / `application` | free (nieużywane; nie łączyć z wariantem SSO A) |
+| Buildpacki | `sap_java_buildpack_jakarta` **2.76.0** (+2.73/2.72), `nodejs_buildpack` 1.9.6; SapMachine 25 w 2.76 — TO VERIFY przy stagingu |
+| Pamięć dla AInvoicer | wolne ~3,9 GB ≥ 1,5 GB (srv 1024M + approuter 256M + deployer 256M) |
+
+Skutek: deploy MTA w obecnej postaci **nie przejdzie** (brak `hana`/`hdi-shared`), a jedyny dostępny plan HANA jest płatny. Plan płatny nalicza opłaty od utworzenia do usunięcia instancji (storage/backup także po zatrzymaniu) — nie ma sposobu na „płatny plan bez płacenia”. Ścieżka bezkosztowa: przypisanie entitlementów free tier `hana-cloud`/`hana-free` (+ `tools`) i `hana`/`hdi-shared` — dostępność `hana-free` w EU20 **TO VERIFY** w Entitlements. Bez niej: identity-smoke (osobna zgoda). Nic nie utworzono.

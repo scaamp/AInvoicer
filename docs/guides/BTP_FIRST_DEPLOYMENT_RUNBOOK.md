@@ -40,7 +40,7 @@ CLI (wykonuje właściciel; same odczyty): `cf login` → `cf target`, `cf marke
 **Logowanie dla agenta (CAP-07B):** właściciel we **własnym** terminalu (nie w czacie, bez przekazywania passcode):
 
 ```powershell
-& "$env:USERPROFILE\tools\cf8\x\cf.exe" login -a https://api.cf.eu20-001.hana.ondemand.com --sso -o dev-v2xzij9s_dev -s dev
+& "$env:USERPROFILE\tools\cf8\x\cf.exe" login -a https://api.cf.eu20-001.hana.ondemand.com --sso -o "National Center for Cryptography_dev-v2xzij9s" -s dev
 ```
 
 Passcode z przeglądarki trafia wyłącznie do CLI; sesja zapisuje się w `%USERPROFILE%\.cf\config.json` (zawiera tokeny — nie wysyłać, nie commitować). Potem agent wykonuje tylko odczyty: `cf target`, `cf org <org>` (quota), `cf space dev`, `cf services`, `cf apps`, `cf marketplace` (+ `-e xsuaa`, `-e destination`, `-e hana`, `-e hana-cloud`), `cf buildpacks`, `cf curl /v3/service_plans?...` — bez `cf service-key`/`cf env` (sekrety). Wylogowanie po sprincie: `cf logout`.
@@ -60,6 +60,8 @@ Passcode z przeglądarki trafia wyłącznie do CLI; sesja zapisuje się w `%USER
 Brak instancji xsuaa/destination/HANA w subaccount nie przesądza o entitlementach — sprawdź *Entitlements*. W free tier SAP HANA Cloud ma osobny plan bezpłatny z ograniczeniami (**TO VERIFY** w Entitlements: SAP HANA Cloud oraz SAP HANA Schemas & HDI Containers).
 
 Cockpit → Subaccount → **Entitlements** → *Configure Entitlements* — tylko odczyt; dodanie entitlementu 🔒.
+
+**Inventory CF 2026-11-09 (odczyt po zalogowaniu właściciela):** org `National Center for Cryptography_dev-v2xzij9s` (nazwa `dev-v2xzij9s_dev` w cockpicie to nazwa instancji środowiska, nie org), space `dev`, `FREE_QUOTA` 4 GB, `paid service plans: allowed`. `xsuaa/application` i `destination/lite` — free, AVAILABLE. **Brak `hana`/`hdi-shared`**; `hana-cloud` tylko `hana` i `relational-data-lake` (paid), **brak `hana-free`**. `sap_java_buildpack_jakarta` 2.76.0. Szczegóły: [dziennik CAP-07B](../journal/2026-11-08-cap-07b-btp-live-deployment.md#kontynuacja-2026-11-09--inventory-cf-po-zalogowaniu-właściciela-read-only).
 
 **Bramka kosztowa (CAP-07B):** konto jest free tier, nie trial — plan płatny w tym koncie nalicza opłaty. Deploy dopuszczalny wyłącznie, gdy SAP HANA Cloud ma przypisany plan **bezpłatny** (free tier; nazwa w marketplace TO VERIFY, np. `hana-cloud`/`hana-free`) oraz `hana`/`hdi-shared`. Instancję HANA Cloud tworzy właściciel w *SAP HANA Cloud Central* (hasło `DBADMIN` ustala wyłącznie on; agent go nie zna i nie przekazuje w `cf create-service -c`). Brak planu bezpłatnego → STOP, decyzja: plan płatny (osobna zgoda z kwotą) albo identity-smoke (§3).
 
