@@ -78,7 +78,7 @@ Katalog [`approuter/`](../../approuter/): `@sap/approuter` **23.4.0** (Node `^22
 | `/resources/*` | `https://ui5.sap.com` (biblioteki UI5) | brak — publiczne pliki |
 | `/*` | statyczny build SAPUI5 (`resources/`) | `xsuaa` |
 
-Sesja approutera: `SESSION_TIMEOUT=15` min, wylogowanie `/do/logout`. Legacy `/sap` i usługi AI Node/Python **nie są** routowane (osobne zadanie). Build MTA uruchamia `npm run build:cf` i kopiuje `sapui5/ainvoicer/dist-cf` do `approuter/resources` (katalog ignorowany). Wariant CF (CAP-07.1): `dataMode=rap`, wszystkie capabilities OFF, Legacy OFF, flex OFF, bez `test/` i `localService/`, weryfikowany automatycznie. Redirect XSUAA wyłącznie na host approutera (`${org}-${space}-ainvoicer-approuter`). Trasy `/sap/*`, `/test-resources/*` i inne usługi CAP nie trafiają do backendu (statyczne 404).
+Sesja approutera: `SESSION_TIMEOUT=15` min, wylogowanie `/do/logout`. Legacy `/sap` i usługi AI Node/Python **nie są** routowane (osobne zadanie). Build MTA uruchamia `npm run build:cf` i kopiuje `sapui5/ainvoicer/dist-cf` do `approuter/resources` (katalog ignorowany). Wariant CF (CAP-07.1): `dataMode=rap`, wszystkie capabilities OFF, Legacy OFF, flex OFF, bez `test/` i `localService/`, weryfikowany automatycznie. Redirect XSUAA wyłącznie na host approutera (`${ainv-host-prefix}-approuter`; dev: `ainvoicer-v2xzij9s-approuter` z `deploy/btp-dev-eu20.mtaext` — bez `${org}`, bo nazwa org zawiera spacje). Trasy `/sap/*`, `/test-resources/*` i inne usługi CAP nie trafiają do backendu (statyczne 404).
 
 ## 7. Destinations
 

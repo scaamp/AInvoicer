@@ -85,7 +85,7 @@ Z tym kompletem: start 10 s, log `IDENTITY SMOKE MODE: non-durable database`; an
 
 | Instancja | Typ | Źródło konfiguracji |
 | --- | --- | --- |
-| `ainvoicer-auth` | xsuaa/application | `cap-java/xs-security.json` + `xsappname: ainvoicer-${org}-${space}`, redirect tylko na host approutera |
+| `ainvoicer-auth` | xsuaa/application | `cap-java/xs-security.json` + `xsappname: ainvoicer-${space}` (bez `${org}`: nazwa org ma spacje), redirect tylko na host `${ainv-host-prefix}-approuter`; prefiks dla dev: `deploy/btp-dev-eu20.mtaext` (`ainvoicer-v2xzij9s`) |
 | `ainvoicer-destination` | destination/lite | puste; Destinations dodaje administrator (§5–6) |
 | `ainvoicer-db` | hana/hdi-shared | wymaga instancji HANA Cloud zmapowanej do org/space (HANA Cloud Central → Instance Mapping) |
 | aplikacje | `ainvoicer-srv`, `ainvoicer-approuter`, `ainvoicer-db-deployer` (task, kończy się) | `mta.yaml` |
@@ -108,7 +108,7 @@ Deploy (wymaga pluginu MultiApps `cf install-plugin multiapps`): `cf deploy mtar
 ## 5. XSUAA i rola KsefOperator (po deployu 🔒)
 
 1. Security → Role Collections → New: `AInvoicer KSeF Operator 5260002008-1000`.
-2. Dodaj rolę z szablonu `KsefOperator` aplikacji `ainvoicer-<org>-<space>`: atrybuty **Static** `taxpayerNips=5260002008`, `companyCodes=1000` (dokładnie jedna para; bez wartości z IdP i bez unrestricted).
+2. Dodaj rolę z szablonu `KsefOperator` aplikacji `ainvoicer-<space>` (dev: `ainvoicer-dev`): atrybuty **Static** `taxpayerNips=5260002008`, `companyCodes=1000` (dokładnie jedna para; bez wartości z IdP i bez unrestricted).
 3. Przypisz kolekcję do business usera A (Security → Users, **ten IdP, którego używa approuter**). Drugi użytkownik B z inną parą — do testu izolacji.
 4. Użytkownik bez kolekcji = kontrolny przypadek 403.
 

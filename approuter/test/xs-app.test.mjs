@@ -72,8 +72,21 @@ test('MTA: token użytkownika przekazywany tylko do CAP; brak sekretów; usługi
 
 test('MTA: XSUAA redirect tylko na host approutera, bez wildcard na współdzieloną domenę', () => {
   assert.doesNotMatch(mta, /https:\/\/\*\./);
-  assert.match(mta, /host: \$\{org\}-\$\{space\}-ainvoicer-approuter/);
-  assert.match(mta, /redirect-uris:\s+- https:\/\/\$\{org\}-\$\{space\}-ainvoicer-approuter\.\$\{default-domain\}\/\*\*/);
+  assert.match(mta, /host: \$\{ainv-host-prefix\}-approuter/);
+  assert.match(mta, /redirect-uris:\s+- https:\/\/\$\{ainv-host-prefix\}-approuter\.\$\{default-domain\}\/\*\*/);
+});
+
+test('MTA: hosty, redirect i xsappname nie zależą od nazwy org (spacje/podkreślenia w BTP)', () => {
+  // CAP-07B: org "National Center for Cryptography_dev-v2xzij9s" dawałby nieprawidłowy host i redirect URI.
+  assert.doesNotMatch(mta, /^[^#\n]*\$\{org\}/m, '${org} poza komentarzem jest zabronione');
+  assert.match(mta, /ainv-host-prefix: ainvoicer-\$\{space\}/);
+  assert.match(mta, /host: \$\{ainv-host-prefix\}-srv/);
+  assert.match(mta, /xsappname: ainvoicer-\$\{space\}/);
+  const ext = readFileSync(join(root, '..', 'deploy', 'btp-dev-eu20.mtaext'), 'utf8');
+  assert.match(ext, /extends: ainvoicer/);
+  assert.match(ext, /ainv-host-prefix: ainvoicer-v2xzij9s/);
+  assert.match(ext, /ainv-host-prefix: [a-z0-9-]+\r?\n/, 'host: tylko małe litery, cyfry i myślniki');
+  assert.doesNotMatch(ext, /identity-smoke|IDENTITY_SMOKE|clientsecret|password/i, 'rozszerzenie bez trybu smoke i sekretów');
 });
 
 test('MTA: approuter pakuje wariant UI5 CF (rap, bez testów), bez node_modules i testów konfiguracji', () => {

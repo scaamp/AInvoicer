@@ -10,6 +10,11 @@ description: AInvoicer — SAPUI5 + CAP Java (KSeF integration) + SAP RAP UI, si
 
 parameters:
   enable-parallel-deployments: true
+  # Prefiks hostów tras CF (approuter, srv). NIE z ${org}: nazwa org w BTP może zawierać spacje i podkreślenia
+  # (CAP-07B: "National Center for Cryptography_dev-v2xzij9s"), niedozwolone w hostach i redirect URI XSUAA.
+  # Host na współdzielonej domenie CF musi być unikalny globalnie — nadpisz rozszerzeniem per środowisko
+  # (deploy/*.mtaext, `cf deploy … -e`). Wartość domyślna wyłącznie dla nowych środowisk.
+  ainv-host-prefix: ainvoicer-${space}
 
 build-parameters:
   before-all:
@@ -38,6 +43,7 @@ modules:
       instances: 1
       # Bez sprawdzania HTTP: endpointy CAP wymagają tokenu.
       health-check-type: port
+      host: ${ainv-host-prefix}-srv
     properties:
       SPRING_PROFILES_ACTIVE: cf
       # Wzorzec zgodny z `cds add mta` (cds-dk 10.2.0). TO VERIFY: SapMachine 25 w buildpacku danego landscape.
@@ -87,7 +93,7 @@ modules:
       disk-quota: 512M
       instances: 1
       # Ten sam host co redirect-uris XSUAA poniżej (bez wildcard na współdzieloną domenę CF).
-      host: ${org}-${space}-ainvoicer-approuter
+      host: ${ainv-host-prefix}-approuter
       keep-existing-routes: true
     properties:
       SESSION_TIMEOUT: 15
@@ -113,13 +119,14 @@ resources:
       service-plan: application
       path: ./cap-java/xs-security.json
       config:
-        xsappname: ainvoicer-${org}-${space}
+        # Unikalny w obrębie subaccount; bez ${org} (spacje są niedozwolone w xsappname).
+        xsappname: ainvoicer-${space}
         tenant-mode: dedicated
         oauth2-configuration:
           # Wyłącznie host approutera. Wildcard *.${default-domain} dopuszczałby dowolną aplikację na
           # współdzielonej domenie CF jako cel przekierowania OAuth.
           redirect-uris:
-            - https://${org}-${space}-ainvoicer-approuter.${default-domain}/**
+            - https://${ainv-host-prefix}-approuter.${default-domain}/**
 
   # Destination Service plan lite: AINV_H01 (CAP -> Web API, communication user) i AINV_H01_UI_USER
   # (approuter -> RAP UI, propagacja business usera). Obie konfiguruje administrator; brak sekretów w repo.
