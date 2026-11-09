@@ -71,6 +71,16 @@ Decyzja: [ADR-0007](../decisions/ADR-0007-cap-persistence-hana-cloud.md) — **S
 
 Opcja zapasowa **identity-smoke** (tylko gdy HANA niedostępna, 🔒 osobna zgoda): env `AINV_DEPLOYMENT_IDENTITY_SMOKE=true` na `ainvoicer-srv` oraz usunięcie zasobu `ainvoicer-db` i modułu deployera z kopii deskryptora (lub extension descriptor). Aplikacja wtedy startuje na H2 w pamięci tylko przy KSeF/writeback/sweeper OFF i odrzuca `requestSend` oraz zapisy `KsefOperations` kodem `AINV_IDENTITY_SMOKE_READ_ONLY` (409). Tryb nie jest ustawiony w żadnym pliku repo (pilnuje test approutera).
 
+**Weryfikacja CAP-07B (2026-11-09, lokalny JAR jak na CF: profil `cf`, syntetyczny binding XSUAA, flagi jako env):** samo `AINV_DEPLOYMENT_IDENTITY_SMOKE=true` **nie wystarcza** — (1) bez `AINV_SAP_WRITE_SWEEPER_ENABLED=false` start jest odrzucany (zamierzone), (2) bez `SPRING_SQL_INIT_PLATFORM=h2` H2 w profilu `cf` jest pusta (schemat jest tylko w `schema-h2.sql`, ładowanym przez `sql.init.platform: h2` profilu `default`) i aplikacja kończy się zaraz po starcie: `Table "CUSTOMER_CAP_JAVA_SAPRESULTWRITES" not found`. Testy JWT tego nie wykrywały, bo ustawiają bazę własnymi właściwościami. Komplet env wariantu smoke na `ainvoicer-srv`:
+
+```yaml
+AINV_DEPLOYMENT_IDENTITY_SMOKE: "true"
+AINV_SAP_WRITE_SWEEPER_ENABLED: "false"
+SPRING_SQL_INIT_PLATFORM: h2
+```
+
+Z tym kompletem: start 10 s, log `IDENTITY SMOKE MODE: non-durable database`; anonimowe `$metadata`/`InvoiceIntegrationStatus`/`KsefOperations` 401, fałszywy Bearer 401, Basic `privileged` 401, `/h2-console/` 401, anonimowy POST `requestSend` 403. Wariant MTA smoke generuje się poza repo (scratchpad): bez modułu `ainvoicer-db-deployer`, bez zasobu `ainvoicer-db` i bez `requires: ainvoicer-db` w `ainvoicer-srv`, z powyższymi env.
+
 ## 4. Wymagane instancje (tworzy `cf deploy` 🔒)
 
 | Instancja | Typ | Źródło konfiguracji |
