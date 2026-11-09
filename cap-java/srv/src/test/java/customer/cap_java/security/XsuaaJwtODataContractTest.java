@@ -22,6 +22,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
@@ -64,6 +65,7 @@ class XsuaaJwtODataContractTest {
 
     @LocalServerPort int port;
     @Autowired PersistenceService db;
+    @Autowired ApplicationContext applicationContext;
     private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper json = new ObjectMapper();
     private String invoice;
@@ -98,6 +100,20 @@ class XsuaaJwtODataContractTest {
     }
 
     // ---- Uwierzytelnienie: 401 bez wiarygodnego tokenu -------------------------------------------
+
+    /** INT-01: obecność INBOUND w JAR nie może uruchamiać pobierania ani publikować nowego API. */
+    @Test void inboundCoreStaysInactiveAndPrivateInCloudSmoke() throws Exception {
+        for (String name : applicationContext.getBeanDefinitionNames()) {
+            Class<?> type = applicationContext.getType(name, false);
+            assertFalse(type != null && type.getPackageName().startsWith("customer.cap_java.ksef.inbound"),
+                "Inbound must remain unwired in identity-smoke: " + name);
+        }
+        var metadata = get("Bearer " + operator(NIP_A, "1000").createToken().getTokenValue(), "$metadata");
+        assertEquals(200, metadata.statusCode());
+        for (String internal : new String[] {"Inbound", "SyncCheckpoint", "RetrievedInvoice"}) {
+            assertFalse(metadata.body().contains(internal), internal + " must not be exposed through OData");
+        }
+    }
 
     @Test void missingMalformedOrMockCredentialsAreRejected() throws Exception {
         assertEquals(401, get(null, "InvoiceIntegrationStatus").statusCode());
