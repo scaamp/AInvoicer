@@ -108,6 +108,16 @@ class XsuaaJwtODataContractTest {
             .getBytes(StandardCharsets.UTF_8)), "InvoiceIntegrationStatus").statusCode());
     }
 
+    /** CAP-07B LIVE: strona startowa CAP pod "/" była anonimowo dostępna na CF i wypisywała kontrakt usługi. */
+    @Test void cloudProfileExposesNoAnonymousIndexPage() throws Exception {
+        for (String path : new String[] {"/", "/$fiori-preview/KsefService/KsefOperations"}) {
+            var response = http.send(HttpRequest.newBuilder(java.net.URI.create("http://localhost:" + port + path))
+                .GET().build(), HttpResponse.BodyHandlers.ofString());
+            assertNotEquals(200, response.statusCode(), path);
+            assertFalse(response.body().contains("KsefService"), path);
+        }
+    }
+
     @Test void expiredTokenIsRejected() throws Exception {
         String token = operator(NIP_A, "1000").withExpiration(Instant.now().minusSeconds(3600)).createToken().getTokenValue();
         assertEquals(401, get("Bearer " + token, "InvoiceIntegrationStatus").statusCode());

@@ -90,3 +90,7 @@ logging:
 ---
 spring.config.activate.on-profile: cf | cloud | prod | production
 cds.security.mock.enabled: false
+# CAP-07B LIVE: domyślna strona startowa CAP pod "/" była anonimowo dostępna na CF (HTTP 200) i wypisywała
+# usługę, encje i linki podglądu. Bez danych, ale niepotrzebne ujawnienie kontraktu — wyłączone na chmurze.
+cds.index-page.enabled: false
+cds.odata-v4.fiori-preview.enabled: false

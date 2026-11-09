@@ -52,7 +52,9 @@ test('brak trasy proxy do Web API H01 i do konsoli H2', () => {
 });
 
 test('MTA: token użytkownika przekazywany tylko do CAP; brak sekretów; usługi jawnie zadeklarowane', () => {
-  assert.match(mta, /name: ainvoicer-cap\s+url: ~\{srv-url\}\s+forwardAuthToken: true/);
+  // CAP-07B LIVE: w properties modułu nierozwiązane ~{srv-url} trafiało do approutera dosłownie (crash).
+  assert.match(mta, /name: ainvoicer-cap\s+(#[^\n]*\n\s+)*url: ~\{srv-api\/srv-url\}\s+forwardAuthToken: true/);
+  assert.doesNotMatch(mta, /url: ~\{srv-url\}/);
   assert.equal([...mta.matchAll(/forwardAuthToken: true/g)].length, 1, 'token XSUAA wyłącznie do CAP');
   assert.match(mta, /service: xsuaa\s+service-plan: application/);
   assert.match(mta, /path: \.\/cap-java\/xs-security\.json/);

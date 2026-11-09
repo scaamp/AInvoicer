@@ -99,7 +99,9 @@ modules:
       SESSION_TIMEOUT: 15
       destinations:
         - name: ainvoicer-cap
-          url: ~{srv-url}
+          # W properties modułu referencja MUSI mieć nazwę provides (~{srv-api/…}); samo ~{srv-url} działa
+          # tylko w properties pod `requires` — CAP-07B LIVE: approuter dostał dosłowne "~{srv-url}" i crash.
+          url: ~{srv-api/srv-url}
           forwardAuthToken: true
         - name: ui5
           url: https://ui5.sap.com

@@ -166,3 +166,42 @@ Skutek: deploy MTA w obecnej postaci **nie przejdzie** (brak `hana`/`hdi-shared`
 
 - Właściciel utworzył w cockpicie instancję `hana-cloud` w planie **`hana` (paid)** — kreator nie oferował `hana-free`. Agent odczytał `create in progress` od 16:50 UTC; po informacji o kosztach właściciel ją **usunął** (`cf service hana-cloud` → `not found`; w space tylko `dev` i `default_aicore`). Ewentualne naliczenie za kilka godzin — do sprawdzenia przez właściciela w *Costs and Usage*.
 - **Defekt trybu identity-smoke wykryty przed deployem** (lokalny JAR z MTAR, profil `cf`, syntetyczny XSUAA, flagi jako env): bez `SPRING_SQL_INIT_PLATFORM=h2` H2 jest pusta i aplikacja kończy się zaraz po starcie (`CUSTOMER_CAP_JAVA_SAPRESULTWRITES not found`). Kontrola negatywna: bez `AINV_SAP_WRITE_SWEEPER_ENABLED=false` start odrzucony przez `CloudPersistenceGuard` (zamierzone). Z kompletem env: start PASS, anonim/fałszywy Bearer/Basic 401, `/h2-console/` 401, anonimowy `requestSend` 403 (LOCAL, syntetyczny binding). Runbook §3 uzupełniony; kod bez zmian. Luka testowa: brak testu startu `cf` + smoke bez własnego `spring.datasource`/`sql.init` (kolejny krok).
+
+## Kontynuacja 2026-11-09 — PIERWSZY DEPLOY LIVE (identity-smoke, zatwierdzony przez właściciela)
+
+**Zgoda właściciela (2026-11-09):** org `National Center for Cryptography_dev-v2xzij9s` / space `dev`; xsuaa/application `ainvoicer-auth` + destination/lite `ainvoicer-destination` (free); `ainvoicer-srv` 1024M + `ainvoicer-approuter` 256M; bez HANA/HDI, bez `myapp`; plugin `multiapps`. Koszt 0.
+
+Wykonanie: plugin `multiapps` 3.12.0; MTAR smoke złożony w scratchpad z artefaktów zweryfikowanego MTAR 0.7.1 (deskryptor bez `ainvoicer-db`/deployera, env smoke z runbooka §3) + `cf deploy … -e deploy/btp-dev-eu20.mtaext`.
+
+### Defekty wykryte dopiero na prawdziwym CF (naprawione w repo)
+
+| # | Defekt | Objaw LIVE | Poprawka |
+| --- | --- | --- | --- |
+| L1 | Hosty/redirect/xsappname z `${org}` | nazwa org ze spacjami → nieprawidłowe hosty i redirect XSUAA (wykryte przed deployem z inventory) | parametr `ainv-host-prefix` (domyślnie `ainvoicer-${space}`), `xsappname: ainvoicer-${space}`, jawny host srv, `deploy/btp-dev-eu20.mtaext` (`ainvoicer-v2xzij9s`, trasy sprawdzone `cf check-route`) |
+| L2 | `url: ~{srv-url}` w properties modułu approutera | approuter crash ×4: `environment-destinations/url: URI must be absolute` (dosłowne `~{srv-url}` w env `destinations`) | `url: ~{srv-api/srv-url}`; test approutera pilnuje formy |
+| L3 | Strona startowa CAP `/` anonimowo 200 na CF | lista usługi/encji/linków podglądu (bez danych) | profil chmurowy: `cds.index-page.enabled: false`, `cds.odata-v4.fiori-preview.enabled: false`; test `cloudProfileExposesNoAnonymousIndexPage` — **w repo, jeszcze niewdrożone** |
+| L4 | identity-smoke bez `SPRING_SQL_INIT_PLATFORM=h2` | pusta H2 → stop po starcie (wykryte lokalnie przed deployem) | env wariantu smoke (runbook §3) |
+
+Pierwsza operacja MTA (`bce1bb57…`) zakończyła się błędem L2 i została przerwana (`-a abort`); druga: **Process finished**.
+
+### Wyniki LIVE (CF `cf-eu20-001`, bez logowania użytkownika)
+
+| Test | Wynik | Kategoria |
+| --- | --- | --- |
+| `cf apps` | `ainvoicer-srv` started 1/1 (`ainvoicer-v2xzij9s-srv…`), `ainvoicer-approuter` started 1/1 (`ainvoicer-v2xzij9s-approuter…`); `myapp` nietknięta | LIVE |
+| `cf services` | `ainvoicer-auth` xsuaa/application → oba moduły; `ainvoicer-destination` destination/lite → oba; brak HANA | LIVE |
+| Buildpack | `sap_java_buildpack_jakarta` 2.76 + `JBP_CONFIG_SAP_MACHINE_JRE {version: 25.+}` — staging i start PASS (SapMachine 25 dostępny) | LIVE |
+| Start CAP | `Started Application in ~5,4 s`, log `IDENTITY SMOKE MODE: non-durable database …` (2 starty) | LIVE |
+| CAP bezpośrednio: anonim `$metadata`/`InvoiceIntegrationStatus`/`KsefOperations` | **401** | LIVE |
+| CAP: śmieciowy Bearer / sfałszowany RS256 z obcym `jku` i scope `KsefOperator` / `alg=none` / wygasły | **401** ×4 | LIVE |
+| CAP: Basic `privileged` | **401** (brak kont mock na CF) | LIVE |
+| CAP: anonimowy POST `requestSend` / sfałszowany Bearer | **403** (CSRF przed uwierzytelnieniem) / **401** | LIVE |
+| CAP: `/h2-console/`, `/actuator/health`, `/$fiori-preview/…` | **401** | LIVE |
+| CAP: `/` | **200 — strona startowa (L3)**, bez danych | LIVE (poprawka niewdrożona) |
+| Approuter `/` → `/index.html` | 302 → 200 **strona przekierowania XSUAA** (709 B): `authentication.eu20.hana.ondemand.com/oauth/authorize`, `redirect_uri=…ainvoicer-v2xzij9s-approuter…/login/callback`; bez treści aplikacji | LIVE |
+| Approuter XHR `/odata/v4/KsefService/…`, `/rap-ui/Invoices`, `/sap/opu/…` | **401** ×3 | LIVE |
+| Approuter `/resources/sap-ui-version.json` | 200 (publiczny CDN UI5, zgodnie z `xs-app.json`) | LIVE |
+| Cookies | `JSESSIONID`, `__VCAP_ID__`: `HttpOnly; Secure` | LIVE |
+| Testy repo po poprawkach | approuter 8/8; `XsuaaJwtODataContractTest` 12/12 (+1), `CloudIdentityGuardTest` 4/4, `CloudPersistenceGuardTest` 5/5, `XsSecurityDescriptorTest` 1/1, `UnconfiguredAuthenticationODataTest` 2/2 | LOCAL |
+
+**Nadal BLOCKED (wymaga właściciela):** logowanie business usera, role collection `KsefOperator` (atrybuty 5260002008/1000), Destination `AINV_H01_UI_USER` (sekrety z service key ABAP tylko w cockpicie), SSO H01, A/B, HANA/restart. SAP WRITE i KSeF SEND **NOT EXECUTED**.
