@@ -143,6 +143,14 @@
                                 </MultiComboBox>
                             </fb:control>
                         </fb:FilterGroupItem>
+                        <fb:FilterGroupItem name="ParseStatus" label="{i18n>inboxFilterParseStatus}" groupName="Inbox" visibleInFilterBar="true">
+                            <fb:control>
+                                <MultiComboBox id="inboxParseFilter" selectedKeys="{inbox>/filters/parseStatuses}"
+                                    items="{ path: 'inbox>/valueLists/parse', templateShareable: false }">
+                                    <core:Item key="{inbox>key}" text="{inbox>text}" />
+                                </MultiComboBox>
+                            </fb:control>
+                        </fb:FilterGroupItem>
                         <fb:FilterGroupItem name="IntegrityStatus" label="{i18n>inboxFilterIntegrityStatus}" groupName="Inbox" visibleInFilterBar="true">
                             <fb:control>
                                 <MultiComboBox

@@ -200,8 +200,8 @@ sap.ui.define([
         if (!oRow) {
             return "None";
         }
-        if (oRow.integrityStatus === "MISMATCH" || oRow.integrityStatus === "CONFLICT"
-                || oRow.ingestionStatus === "DOWNLOAD_FAILED" || oRow.parseStatus === "INVALID") {
+        if (oRow.integrityStatus === "MISMATCH" || oRow.integrityStatus === "CONFLICT" || oRow.integrityStatus === "FAILED"
+                || ["DOWNLOAD_FAILED", "STORAGE_FAILED", "QUARANTINED"].indexOf(oRow.ingestionStatus) >= 0 || oRow.parseStatus === "INVALID") {
             return "Error";
         }
         return oRow.parseStatus === "UNSUPPORTED_SCHEMA" || oRow.incomplete ? "Warning" : "None";

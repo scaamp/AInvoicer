@@ -110,6 +110,7 @@ sap.ui.define([
             }
             return {
                 ingestion: list("ingestionStatus"),
+                parse: list("parseStatus"),
                 integrity: list("integrityStatus"),
                 sap: list("sapPostingStatus"),
                 environments: [{ key: "", text: this._text("inboxFilterEnvironmentAll") }].concat(

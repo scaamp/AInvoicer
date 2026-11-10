@@ -149,11 +149,23 @@ try {
     // Opcjonalny principal mock CAP wyłącznie do lokalnego testu dwóch backendów.
     // Nagłówek nie trafia do RAP, UI5 CDN, plików strony ani logu. IAS/XSUAA testujemy osobno.
     let interceptionFailed = false;
-    if (capAuth) {
+    const cancelLocalAuth = process.env.AINV_CAP_LOCAL_CANCEL_AUTH === "true";
+    if (cancelLocalAuth) {
+        const target = new URL(url);
+        if (target.protocol !== "http:" || !["localhost", "127.0.0.1", "[::1]"].includes(target.hostname)
+                || target.username || target.password) { throw new Error("Auth cancellation requires loopback HTTP"); }
+    }
+    if (capAuth || cancelLocalAuth) {
         cdp.on((msg) => {
+            if (msg.method === "Fetch.authRequired") {
+                // Lokalny Basic mock może otworzyć niewidoczny dialog Chrome i zatrzymać fetch.
+                // Anulowanie challenge zachowuje realną odpowiedź401, bez podawania jakichkolwiek credentiali.
+                cdp.send("Fetch.continueWithAuth", { requestId: msg.params.requestId,
+                    authChallengeResponse: { response: "CancelAuth" } }).catch(() => { interceptionFailed = true; });
+            }
             if (msg.method === "Fetch.requestPaused") {
                 Promise.resolve().then(() => cdp.send("Fetch.continueRequest", {
-                    requestId: msg.params.requestId, headers: capAuth.headers(msg.params)
+                    requestId: msg.params.requestId, ...(capAuth ? { headers: capAuth.headers(msg.params) } : {})
                 })).catch(() => {
                     interceptionFailed = true;
                     cdp.send("Fetch.failRequest", { requestId: msg.params.requestId, errorReason: "BlockedByClient" }).catch(() => {});
@@ -161,7 +173,7 @@ try {
             }
         });
         // Wszystkie kanały i kolejne kroki redirectu, aby przeglądarka nie odziedziczyła Authorization.
-        await cdp.send("Fetch.enable", { patterns: [{ urlPattern: "*", requestStage: "Request" }] });
+        await cdp.send("Fetch.enable", { patterns: [{ urlPattern: "*", requestStage: "Request" }], handleAuthRequests: true });
     }
     await cdp.send("Page.navigate", { url });
 

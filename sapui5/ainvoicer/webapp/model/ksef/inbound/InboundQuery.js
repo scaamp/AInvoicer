@@ -14,6 +14,7 @@ sap.ui.define([
     var STATUS_VALUE = /^[A-Z][A-Z0-9_]{0,39}$/;
     var STATUS_FILTERS = Object.freeze({
         ingestionStatuses: "ingestionStatus",
+        parseStatuses: "parseStatus",
         integrityStatuses: "integrityStatus",
         sapPostingStatuses: "sapPostingStatus"
     });
@@ -29,6 +30,7 @@ sap.ui.define([
             acquisitionDateFrom: null,
             acquisitionDateTo: null,
             ingestionStatuses: [],
+            parseStatuses: [],
             integrityStatuses: [],
             sapPostingStatuses: [],
             environment: ""
@@ -215,9 +217,9 @@ sap.ui.define([
     }
 
     /**
-     * Opcje zapytania OData V4 dla KsefService.InboundInvoiceOverview (kontrakt roboczy, niezweryfikowany LIVE).
+     * Opcje zapytania OData V4 dla KsefService.InboundInvoiceOverview (INT-02, lokalnie zweryfikowany HTTP).
      * Wymaga znormalizowanych filtrów. Funkcje: contains/tolower/startswith — standard OData V4.0;
-     * obsługę `tolower` w CAP Java potwierdzić w INT-02 testem integracyjnym.
+     * Funkcje potwierdzono w INT-02 rzeczywistymi testami HTTP na CAP Java 5.2/H2.
      * @returns {object} mapa opcji systemowych (wartości niezakodowane)
      */
     function toODataQuery(oFilters, oSort, iSkip, iTop) {

@@ -24,6 +24,19 @@ import pl.akmf.ksef.sdk.client.model.auth.TokenInfo;
 class KsefInboundConfigurationTest {
     @TempDir Path directory;
 
+    @Test void readModelDoesNotRequireSynchronizationAuthOrDocumentStore() {
+        new ApplicationContextRunner().withUserConfiguration(KsefInboundReadConfiguration.class)
+            .withBean(PersistenceService.class, () -> mock(PersistenceService.class))
+            .withBean(CdsRuntime.class, () -> mock(CdsRuntime.class))
+            .run(app -> {
+                assertNull(app.getStartupFailure());
+                assertNotNull(app.getBean(customer.cap_java.ksef.inbound.persistence.CqnInboundOverviewRepository.class));
+                assertTrue(app.getBeansOfType(InboundSynchronization.class).isEmpty());
+                assertTrue(app.getBeansOfType(KsefInboundAccess.class).isEmpty());
+                assertTrue(app.getBeansOfType(KsefDocumentStore.class).isEmpty());
+            });
+    }
+
     private ApplicationContextRunner context(KsefDocumentStore store) {
         return new ApplicationContextRunner().withUserConfiguration(KsefInboundConfiguration.class)
                 .withBean(KsefDocumentStore.class, () -> store);

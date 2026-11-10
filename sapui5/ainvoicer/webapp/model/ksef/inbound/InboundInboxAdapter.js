@@ -9,7 +9,7 @@ sap.ui.define([
 
     var ErrorCode = Object.freeze({
         DISABLED: "DISABLED",                 // funkcja wyłączona konfiguracją (np. CF bez backendu) — bez HTTP
-        BACKEND_MISSING: "BACKEND_MISSING",   // tryb cap bez skonfigurowanej encji (INT-02 jeszcze nie wykonane)
+        BACKEND_MISSING: "BACKEND_MISSING",   // tryb cap bez skonfigurowanej encji (brak konfiguracji)
         VALIDATION: "VALIDATION",             // błędne filtry — odrzucone przed HTTP
         HTTP: "HTTP",
         TIMEOUT: "TIMEOUT",

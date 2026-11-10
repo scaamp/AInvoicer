@@ -20,8 +20,8 @@ sap.ui.define([
         assert.strictEqual(InboundFormatter.integrityState("CONFLICT"), "Error");
         assert.strictEqual(InboundFormatter.integrityState("VERIFIED"), "Success");
         assert.strictEqual(InboundFormatter.parseState("UNSUPPORTED_SCHEMA"), "Warning");
-        assert.strictEqual(InboundFormatter.ingestionState("QUARANTINED"), "None");
-        assert.strictEqual(InboundFormatter.ingestionIcon("QUARANTINED"), "");
+        assert.strictEqual(InboundFormatter.ingestionState("QUARANTINED"), "Error");
+        assert.strictEqual(InboundFormatter.ingestionIcon("QUARANTINED"), "sap-icon://error");
         assert.strictEqual(InboundFormatter.sapState("NOT_POSTED"), "None");
         assert.strictEqual(InboundFormatter.integrityState("constructor"), "None", "no prototype lookup");
         assert.strictEqual(InboundFormatter.parseIcon("__proto__"), "");

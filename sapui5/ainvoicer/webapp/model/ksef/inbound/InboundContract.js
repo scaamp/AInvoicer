@@ -5,8 +5,8 @@ sap.ui.define([], function () {
      * Frontendowy kontrakt KSeF Inbox (UI5-10) — faktury zakupowe ODEBRANE z KSeF, które mogą jeszcze
      * nie istnieć w SAP. To inna domena niż zakładka PURCHASE kokpitu (faktury z modelu SAP RAP).
      *
-     * Kontrakt jest ROBOCZY: odpowiada planowanemu read-only CAP OData `KsefService.InboundInvoiceOverview`
-     * (KSEF-IN-02 / INT-02). Endpoint jeszcze nie istnieje — w repo działa wyłącznie provider mock.
+     * Jawny read-only CAP OData `KsefService.InboundInvoiceOverview` jest lokalnie zweryfikowany w INT-02.
+     * Edm.Decimal jest negocjowany jako tekst (IEEE754Compatible=true), CompanyCode nie jest polem dokumentu.
      * Wszystkie pola poza `id` są opcjonalne; UI obsługuje `null`/brak jawnie i niczego nie zgaduje.
      */
 
@@ -20,12 +20,16 @@ sap.ui.define([], function () {
      * Wartość spoza słownika jest wyświetlana dosłownie ze stanem neutralnym ("None").
      */
     var IngestionStatus = Object.freeze({
+        PENDING: { state: "Information", icon: "sap-icon://pending" },
+        QUARANTINED: { state: "Error", icon: "sap-icon://error" },
+        STORAGE_FAILED: { state: "Error", icon: "sap-icon://error" },
         DISCOVERED: { state: "Information", icon: "sap-icon://search" },      // tylko metadane, XML jeszcze nie pobrany
         STORED: { state: "Success", icon: "sap-icon://download" },              // XML pobrany i trwale zapisany w CAP
         DOWNLOAD_FAILED: { state: "Error", icon: "sap-icon://error" }           // pobranie nieudane (backend ponowi wg polityki)
     });
 
     var ParseStatus = Object.freeze({
+        NOT_PARSED: { state: "Information", icon: "sap-icon://pending" },
         PENDING: { state: "Information", icon: "sap-icon://pending" },
         PARSED: { state: "Success", icon: "sap-icon://accept" },
         UNSUPPORTED_SCHEMA: { state: "Warning", icon: "sap-icon://message-warning" }, // np. FA(2) — zapisany, nieprzetworzony
@@ -33,6 +37,7 @@ sap.ui.define([], function () {
     });
 
     var IntegrityStatus = Object.freeze({
+        FAILED: { state: "Error", icon: "sap-icon://error" },
         PENDING: { state: "Information", icon: "sap-icon://pending" },
         VERIFIED: { state: "Success", icon: "sap-icon://shield" },               // SHA-256 bajtów = invoiceHash z metadanych
         MISMATCH: { state: "Error", icon: "sap-icon://error" },                  // skrót niezgodny z metadanymi
@@ -71,8 +76,8 @@ sap.ui.define([], function () {
 
     /** Maksymalne długości tekstów wejściowych filtrów i pól DTO (zgodne z KSEF_INBOUND_ARCHITECTURE §12). */
     var MaxLength = Object.freeze({
-        invoiceNumber: 256, ksefNumber: 64, sellerNip: 10, sellerName: 512, buyerIdentifierValue: 50,
-        buyerName: 512, currency: 3, status: 40, formCode: 20, invoiceType: 10
+        invoiceNumber: 256, ksefNumber: 64, sellerNip: 10, sellerName: 512, buyerIdentifierValue: 256,
+        buyerName: 512, currency: 3, status: 32, formCode: 64, invoiceType: 32
     });
 
     /**

@@ -1,7 +1,24 @@
 using { customer.cap_java as db } from '../db/schema';
+using { customer.cap_java as inbound } from '../db/inbound';
 
 @requires: 'authenticated-user'
 service KsefService {
+  /** INT-02: jawny read model. Grant BUYER/TEST jest dokładany przez handler przed wykonaniem CQN. */
+  @restrict: [{ grant: 'READ', to: 'KsefOperator' }]
+  @readonly
+  @cds.query.limit: { default: 20, max: 100 }
+  entity InboundInvoiceOverview as projection on inbound.KsefInboundDocuments {
+    key ID as id,
+    environment, ksefNumber, invoiceNumber, issueDate, acquisitionDate,
+    sellerNip, sellerName, buyerIdentifierType, buyerIdentifierValue,
+    null as buyerName : String(512),
+    currency, grossAmount, invoiceType, formSystemCode as formCode,
+    ingestionStatus, parseStatus, integrityStatus, sapPostingStatus,
+    case when ingestionStatus = 'STORED' and integrityStatus = 'VERIFIED'
+      and xmlStorageRef is not null and parseStatus in ('PARSED', 'UNSUPPORTED_SCHEMA')
+      then true else false end as xmlAvailable : Boolean
+  };
+
   @(restrict: [
     { grant: 'CREATE', to: 'KsefOperator', where: (taxpayerNip = $user.taxpayerNips and companyCode = $user.companyCodes) },
     { grant: 'READ', to: 'KsefOperator', where: (taxpayerNip = $user.taxpayerNips and companyCode = $user.companyCodes) }

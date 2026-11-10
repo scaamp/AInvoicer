@@ -68,9 +68,9 @@ export function transformManifest(source) {
 export const INBOX_CAPABILITIES = ["viewXml", "checkDuplicate", "linkSapDocument", "approveAndPost"];
 
 /**
- * UI5-10: KSeF Inbox w CF. Backend read-only (KsefService.InboundInvoiceOverview) jeszcze nie istnieje, więc
+ * UI5-10: KSeF Inbox w CF. Backend read-only istnieje lokalnie (INT-02); bramki trwałości/SSO nadal otwarte, więc
  * wariant CF jest WYŁĄCZONY (dataMode=disabled): bez ścieżki mock, bez encji CAP, bez żadnego HTTP.
- * Włączenie po INT-02 wymaga świadomej zmiany tej funkcji i testów — nie przełącznika w manifeście.
+ * Włączenie po akceptacji CF wymaga świadomej zmiany tej funkcji i testów — nie przełącznika w manifeście.
  */
 function transformInboxConfig(config) {
     const inbox = config.ksefInbox;
