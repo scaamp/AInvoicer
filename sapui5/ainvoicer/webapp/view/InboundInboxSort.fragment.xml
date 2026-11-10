@@ -1,0 +1,23 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+>
+    <!-- Sortowanie KSeF Inbox: wyłącznie pola z listy białej InboundContract.SortableFields.
+         W trybie CAP przekazywane jako $orderby (z remisem po id), w mock emulowane identycznie. -->
+    <ViewSettingsDialog
+        id="inboxSortDialog"
+        title="{i18n>inboxSort}"
+        confirm=".onSortConfirm"
+    >
+        <sortItems>
+            <ViewSettingsItem id="inboxSortItem-acquisitionDate" key="acquisitionDate" text="{i18n>inboxSort_acquisitionDate}" />
+            <ViewSettingsItem id="inboxSortItem-issueDate" key="issueDate" text="{i18n>inboxSort_issueDate}" />
+            <ViewSettingsItem id="inboxSortItem-invoiceNumber" key="invoiceNumber" text="{i18n>inboxSort_invoiceNumber}" />
+            <ViewSettingsItem id="inboxSortItem-ksefNumber" key="ksefNumber" text="{i18n>inboxSort_ksefNumber}" />
+            <ViewSettingsItem id="inboxSortItem-sellerNip" key="sellerNip" text="{i18n>inboxSort_sellerNip}" />
+            <ViewSettingsItem id="inboxSortItem-sellerName" key="sellerName" text="{i18n>inboxSort_sellerName}" />
+            <ViewSettingsItem id="inboxSortItem-grossAmount" key="grossAmount" text="{i18n>inboxSort_grossAmount}" />
+            <ViewSettingsItem id="inboxSortItem-currency" key="currency" text="{i18n>inboxSort_currency}" />
+        </sortItems>
+    </ViewSettingsDialog>
+</core:FragmentDefinition>
