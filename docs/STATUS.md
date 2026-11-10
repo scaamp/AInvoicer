@@ -21,7 +21,12 @@ spółka wyłącznie jako kontekst użytkownika. Odczyt niezależny od synchroni
 Końcowy Maven **368/368 PASS**, QUnit **112/112 (659)**, OPA **21/21 (150)**,
 CF build13, runner4, AppRouter8, deploy4 oraz rzeczywisty UI5→CAP16/73 PASS (A/B, 401/403/404, outage/restart).
 JWT/OData29/29 obejmuje tenant i limit100 rekordów; status publikacji/CI: [dziennik INT-02](journal/2026-11-10-int-02-inbound-fullstack.md).
-[PR #6](https://github.com/scaamp/AInvoicer/pull/6) OPEN jako stacked do IN-02 (PR #5 OPEN), kod `bb3b8d5` wypchnięty.
+[PR #5](https://github.com/scaamp/AInvoicer/pull/5) i [PR #6](https://github.com/scaamp/AInvoicer/pull/6)
+**MERGED do main** po zleceniu właściciela: kolejno `3e7420d` i `21c2e48` (merge commits, historia zachowana).
+**CI SUCCESS dla efc6a91**: [Ubuntu24.04 run42897303774](https://github.com/scaamp/AInvoicer/actions/runs/42897303774),
+włącznie z Maven368, QUnit112, OPA21 i realnym UI5→CAP16/73. Drzewo merge `21c2e48` jest identyczne
+z przetestowanym INT-02; `D:\AInvoicer` przełączono na main i zaktualizowano przez `git pull --ff-only`.
+Automatyczny CI po merge/późniejszym commicie dokumentacyjnym ma własny wynik w Actions.
 MTAR67 511 817B + CF JAR8/8 PASS, bez wdrożenia; bieżące [GitHub checks](https://github.com/scaamp/AInvoicer/pull/6/checks).
 [Kontrakt/runbook](guides/INT_02_INBOUND_FULLSTACK.md) · [Security review](audits/2026-11-10-int-02-security-review.md).
 Bez deployu, zmian BTP/H01 i LIVE KSeF; trwałość HANA/storage oraz SSO A/B pozostają odrębnymi bramkami.

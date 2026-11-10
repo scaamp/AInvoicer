@@ -152,7 +152,7 @@ Implementacja, dokumentacja i pełna lokalna regresja gotowe. Kod wypchnięty, P
 i mergeable przy kontrolnym odczycie. Przy publikacji dokumentacji trwał GitHub CI;
 bieżący wynik dla każdego HEAD jest w checks PR. Nie wykonano auto-merge ani zmian BTP.
 
-Właściciel: review PR #5, potem INT-02 (po merge #5 można zmienić base INT-02 na main).
+Stan PR opisany powyżej dotyczy momentu publikacji. Wynik późniejszego merge opisano poniżej.
 W osobnym zakresie BTP Cockpit: potwierdzić entitlementy HANA/HDI, durable storage i SSO/Role Collections
 A/B oraz Destination użytkownika; zmiany kosztowe/aktywacja wymagają osobnego zlecenia.
 W H01: kontynuować osobno bramki DCL/principal i autorytatywne przypisanie dokumentu do spółki;
@@ -161,3 +161,28 @@ INT-02 nie wymaga SAP WRITE ani nowych IAM zmian. Nie nadawać KSeF InvoiceRead 
 Następny sprint: trwałość INBOUND na docelowej bazie/storage + SSO A/B i globalny budżet API,
 następnie kontrolowany import syntetycznych danych KSeF TEST po osobnej autoryzacji.
 XML download, księgowanie i CompanyCode mapping pozostają oddzielnymi kontraktami.
+
+## Kontynuacja — merge do main i głównego worktree
+
+2026-11-10, po zleceniu właściciela „możemy to mergować do main i głównego worktree?”:
+
+- Ponownie sprawdzono GitHub, heads, CI i review obu PR. Brak review threads/requests changes;
+  oba PR były OPEN/mergeable. IN-02/5659e18: CI run42879497576 SUCCESS.
+  INT-02/efc6a91: **CI run42897303774 SUCCESS**, wszystkie kroki, w tym rzeczywiste HTTP/UI5 E2E.
+- `git merge-tree --write-tree` przed merge potwierdził brak konfliktów i drzewo
+  `dc57847ffcce8f6446e1c7661d43dc837eaa5562`, identyczne z efc6a91.
+- PR #5 scalono metodą merge z kontrolą expected head5659e18:
+  `3e7420db5ed91b5e17b77b367286a08011853730`.
+- PR #6 przestawiono z feature/ksef-in-02-persistence na main, ponownie potwierdzono mergeable
+  i identyczne drzewo. Merge z kontrolą expected headefc6a91:
+  `21c2e488d9a8c0fc57fac98598f02af054e44f66`.
+- Czysty `D:\AInvoicer` przełączono z feature/cap-07c-autonomous-hardening na main;
+  `git pull --ff-only origin main` wykonał fast-forward z0297b87 do21c2e48.
+  Lokalny HEAD/main i origin/main były zgodne; porównanie tree ponownie potwierdziło dokładną
+  zgodność z przetestowaną integracją. Nie usunięto branchy ani worktree i nie zmieniano ich plików.
+- `git diff --check` PASS. Zaktualizowano wyłącznie STATUS/ROADMAP i ten wpis o wynik merge;
+  nie uruchamiano ponownie lokalnej regresji przy identycznym drzewie kodu. Automatyczny CI main
+  po merge i commicie dokumentacyjnym jest osobnym przebiegiem, nie deklaracją kolejnego PASS.
+
+Nie wykonano deployu CF, zmian BTP/H01, SAP WRITE, synchronizacji ani SEND KSeF.
+Następny krok pozostaje taki jak wyżej: trwałość oraz SSO A/B w osobno zatwierdzonym zakresie.
