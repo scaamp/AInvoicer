@@ -134,6 +134,14 @@ apostrof, daty, statusy, sort numeryczny, null, wiele grantów i jednoczesne ses
 - Anonimowy Basic mock uruchamiał niewidoczny challenge Chrome, opóźniając fetch do timeout.
   Runner CDP anuluje challenge na jawnym opt-in loopback, zachowując realną odpowiedź401.
   Testy bezpieczeństwa istniejącego runnera ponownie4/4 PASS.
+- CI97391e1/run42896083489: Maven368 i MTAR PASS na Ubuntu26.04, potem runner Chrome zgłosił
+  `DevTools endpoint not reachable` (2/4 runner FAIL). Przyczyna wewnętrzna Chrome nie była widoczna,
+  bo stderr był ignorowany; nie uznano tego za PASS QUnit/OPA/E2E. `ubuntu-latest` wskazało nowy obraz26.04.
+  Przypięto kontrolowany baseline `ubuntu-24.04`, dodano ograniczoną diagnostykę stderr/exit i czas30s
+  oraz przeniesiono istniejący runner security przed kosztowny build. Bez no-sandbox i bez zmian CSP/auth.
+  Lokalne testy runnera po tej zmianie4/4 PASS; wynik kolejnego CI w checks PR.
+  [Oficjalny obraz Ubuntu24](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md)
+  zawiera odsyłacz do ogłoszenia migracji ubuntu-latest na26.04 w listopadzie2026.
 - Lokalny restart UI nie jest dowodem trwałości bazy CF; harness ponownie seeduje syntetyczne H2.
 - Zastane74 npm advisories UI5 tooling pozostają; bez nowych zależności, nie są częścią statycznego CF.
   Szczegóły ograniczeń: [security review](../audits/2026-11-10-int-02-security-review.md).

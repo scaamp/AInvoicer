@@ -57,14 +57,24 @@ const profileDir = mkdtempSync(join(tmpdir(), "ainvoicer-cdp-"));
 const browser = spawn(browserPath, [
     "--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
     "--window-size=1600,1000", `--remote-debugging-port=${port}`, `--user-data-dir=${profileDir}`, "about:blank"
-], { stdio: "ignore" });
+], { stdio: ["ignore", "ignore", "pipe"] });
+let browserDiagnostics = "";
+let browserLaunchError = "";
+browser.stderr.setEncoding("utf8");
+browser.stderr.on("data", chunk => { browserDiagnostics = (browserDiagnostics + chunk).slice(-4000); });
+browser.on("error", error => { browserLaunchError = error.message; });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function cdpTarget() {
-    for (let i = 0; i < 50; i++) {
+    // CI bywa wolniejsze od lokalnego desktopu; awaria procesu ma konkretną diagnostykę, nie ślepy timeout.
+    for (let i = 0; i < 150; i++) {
+        if (browserLaunchError || browser.exitCode !== null) {
+            throw new Error("ENVIRONMENT: browser failed to start: " + (browserLaunchError || browser.exitCode)
+                + "\n" + browserDiagnostics);
+        }
         try {
-            const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
+            const list = await (await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(1000) })).json();
             const page = list.find((t) => t.type === "page");
             if (page) {
                 return page.webSocketDebuggerUrl;
@@ -74,7 +84,7 @@ async function cdpTarget() {
         }
         await sleep(200);
     }
-    throw new Error("ENVIRONMENT: DevTools endpoint not reachable");
+    throw new Error("ENVIRONMENT: DevTools endpoint not reachable\n" + browserDiagnostics);
 }
 
 function connect(wsUrl) {

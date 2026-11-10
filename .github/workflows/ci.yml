@@ -10,7 +10,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   offline:
-    runs-on: ubuntu-latest
+    # Pin obrazu: ubuntu-latest przeszedł na26.04; kontrolowany baseline toolingu UI5/Chrome.
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       AINV_KSEF_ENABLED: 'false'
@@ -24,6 +25,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      # Weryfikacja Chrome/CDP przed kosztownym buildem SDK/CAP; testy nadal sprawdzają CSP i redirecty.
+      - name: Browser security runner preflight
+        run: |
+          npm ci --prefix sapui5/ainvoicer
+          npm run test:runner --prefix sapui5/ainvoicer
       - uses: actions/setup-java@v4
         id: java21
         with:
@@ -57,11 +63,10 @@ jobs:
       # W środku: Maven clean verify (CDS/JWT/startup/writeback mock), UI5 CF i AppRouter.
       - name: Build and validate undeployed identity-smoke MTAR
         run: npm run build:btp:smoke --prefix deploy
-      - name: UI5 development build and browser runner security
+      - name: UI5 development build
         working-directory: sapui5/ainvoicer
         run: |
           npm run build
-          npm run test:runner
       - name: QUnit and OPA with local mock server
         working-directory: sapui5/ainvoicer
         shell: bash
