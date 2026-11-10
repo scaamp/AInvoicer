@@ -12,6 +12,8 @@ AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijan
 
 ## Od czego zacząć
 
+- [CAP-07B.2 — XSUAA, business-user SSO, Destination i RAP H01: konfiguracja LIVE, architektura, testy i luki bezpieczeństwa](guides/CAP_07B_2_BTP_IDENTITY_SSO_LIVE.md) — **FUNCTIONAL PASS / SECURITY ACCEPTANCE PENDING** (2026-11-10).
+
 - [INT-02 — KSeF Inbox Full-Stack: integracja, testy i publikacja](journal/2026-11-10-int-02-inbound-fullstack.md) · [Kontrakt i runner HTTP/UI5](guides/INT_02_INBOUND_FULLSTACK.md) · [Security review](audits/2026-11-10-int-02-security-review.md).
 - [KSEF-IN-02 — staging, checkpoint CAS, lease i recovery](journal/2026-11-10-ksef-in-02.md) · [Persystencja](guides/KSEF_INBOUND_PERSISTENCE.md).
 - [UI5-10 — ekran KSeF Inbox](journal/2026-11-10-ui5-10-inbound-inbox.md) · [Przewodnik UI5](guides/KSEF_INBOX_UI5.md).

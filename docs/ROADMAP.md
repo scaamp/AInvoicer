@@ -16,7 +16,8 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
 - [ ] **INBOUND następny etap:** trwały provider/HANA, ograniczenia globalnego budżetu API, SSO A/B oraz autorytatywne mapowanie do CompanyCode; aktywacja CF i LIVE KSeF osobno zatwierdzana.
 
 - [x] **CAP-07C — LOCAL + CI PASS:** generator bezpiecznego MTAR smoke, guardy/testy executable JAR-a CF, fail-closed usług zewnętrznych UI5, CI offline i mocniejszy consent CAP-04D. [PR #2](https://github.com/scaamp/AInvoicer/pull/2), [Ubuntu CI PASS](https://github.com/scaamp/AInvoicer/actions/runs/42671257855) dla kodu `ca3739a`; bez merge/deploy/SAP WRITE/KSeF SEND. Dokładne wyniki regresji/publikacji: [dziennik](journal/2026-11-09-cap-07c-autonomous-hardening.md).
-- [ ] **CAP-07B.2 — LIVE Business User SSO Acceptance:** osobno zatwierdzony redeploy nowego smoke → poprawny IdP/Role Collection → `AINV_H01_UI_USER` → principal H01 i izolacja A/B. Brak HANA free/HDI nadal blokuje trwały workflow; bez płatnych usług.
+- [x] **CAP-07B.2 — funkcjonalne LIVE SSO (2026-11-10):** XSUAA, rola/Role Collection, `AINV_H01_UI_USER` (`OAuth2UserTokenExchange`), CAP GET i RAP READ 4 faktury z CF, także w odrębnej sesji — **FUNCTIONAL PASS**. [As-built / runbook / dowody](guides/CAP_07B_2_BTP_IDENTITY_SSO_LIVE.md).
+- [ ] **CAP-07B.2 — SECURITY ACCEPTANCE:** autorytatywny principal H01 dla konkretnego RAP GET, użytkownik B bez admin/developer, testy 401/403/DCL i izolacji A/B; bez nowego deployu i bez HANA free/HDI nadal blokującej trwały workflow.
 - [ ] **CAP-04D — SAP Write Contract LIVE:** dedykowana nowa faktura `AINV-CAP04D-*`, dokładna zgoda/zakres i potwierdzony principal/ACTVT16/CSRF/ETag. Istniejące4 seed chronione; brak LIVE WRITE w CAP-07C.
 
 [Project Home](README.md) · [Aktualny stan i dowody](STATUS.md) · [Decyzja architektoniczna](decisions/ADR-0001-cap-java-ksef-architecture.md)

@@ -14,6 +14,19 @@ tags: [ainvoicer, cap-java, status]
 
 ## Current Phase
 
+**CAP-07B.2 LIVE (2026-11-10) — FUNCTIONAL PASS / SECURITY ACCEPTANCE PENDING.**
+W subaccount CF EU20: XSUAA `ainvoicer-auth` (2 bindingi), dedykowana rola
+`KsefOperator_5260002008_1000` i Role Collection przypisana użytkownikowi,
+Destination `AINV_H01_UI_USER` z `OAuth2UserTokenExchange`. Approuter/CAP GET działa
+(`InvoiceIntegrationStatus` = pusta kolekcja smoke), RAP `$metadata` i UI5 odczytują
+4 syntetyczne faktury (2 zakupowe, 2 sprzedażowe) także po nowym logowaniu w osobnej
+przeglądarce. H01 `ZBR_AINV_READ_1000` ma READ Restricted dla NIP 5260002008/BUK 1000,
+Write No Access. `Bad credentials` / HTTP500 usunięto przez uzupełnienie Client Secret
+w Destination z service key ABAP; zielony Check Connection **nie** testował OAuth.
+**Otwarte:** bezpośredni principal RAP, A/B i negatywna macierz LIVE, redeploy nowszego
+smoke CAP-07C/INT-02; bez HANA, SAP WRITE i KSeF SEND. Szczegóły:
+[CAP-07B.2 LIVE — architektura, konfiguracja i dowody](guides/CAP_07B_2_BTP_IDENTITY_SSO_LIVE.md).
+
 **INT-02 (2026-11-10), lokalna integracja INBOUND:** osobny worktree `D:\AInvoicer-int-02`,
 branch `feature/int-02-inbound-fullstack`; historia KSEF-IN-02 i UI5-10 zachowana dwoma merge commitami.
 Jawny read-only OData, grant-safe CQN przed count/paging, scope 1 NIP/1 CompanyCode + BUYER/TEST,
