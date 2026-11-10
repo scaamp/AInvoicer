@@ -45,6 +45,11 @@ cds:
 ainv:
   ksef:
     enabled: false
+    inbound:
+      # Wiring wyłącznie po jawnym opt-in lokalnym; brak schedulera i automatycznego startu na CF.
+      enabled: false
+      environment: TEST
+      initial-from: ""
     nip: ${AINV_KSEF_NIP:}
     token: ${AINV_KSEF_TOKEN:}
     test-xades: false
