@@ -54,6 +54,11 @@ sap.ui.define([
             this._initKsefCockpit();
         },
 
+        /** UI5-10: przejście do KSeF Inbox (osobny widok/route; stan kokpitu pozostaje w buforowanym widoku). */
+        onNavToKsefInbox: function () {
+            this.getOwnerComponent().getRouter().navTo("RouteInboundInbox");
+        },
+
         /** Jawna bramka przed odczytem pliku, mikrofonem i HTTP; brak konfiguracji = odmowa. */
         _externalServiceEnabled: function (sName) {
             var oComponent = this.getOwnerComponent();

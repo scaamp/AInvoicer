@@ -8,6 +8,7 @@ import java.util.UUID;
 public record InboundInvoiceOverview(UUID id, String environment, String ksefNumber, String invoiceNumber,
         LocalDate issueDate, Instant acquisitionDate, String sellerNip, String sellerName,
         String buyerIdentifierType, String buyerIdentifierValue, String currency, String grossAmount,
+        String buyerName, String invoiceType, String formCode,
         String ingestionStatus, String parseStatus, String integrityStatus, String sapPostingStatus,
         boolean xmlAvailable) {
 }

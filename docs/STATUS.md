@@ -1,6 +1,6 @@
 ---
 title: "AInvoicer — aktualny stan"
-date: 2026-11-09
+date: 2026-11-10
 type: status
 status: w-trakcie
 tags: [ainvoicer, cap-java, status]
@@ -13,6 +13,20 @@ tags: [ainvoicer, cap-java, status]
 [Project Home](README.md) · [Roadmapa](ROADMAP.md) · [Workflow abapGit](guides/ABAPGIT_WORKFLOW.md) · [Model RAP faktur](guides/ABAP_RAP_INVOICE_MODEL.md) · [Dziennik próby tworzenia ABAP FS](journal/2026-10-25-abapfs-create-probe.md) · [Dziennik kompozycji RAP](journal/2026-10-24-abap-rap-composition.md) · [Dziennik pierwszego eksportu](journal/2026-10-24-abapgit-rap-initial-export.md) · [Dziennik bootstrapu](journal/2026-10-23-cap-java-bootstrap.md) · [Weryfikacja Phase 1](journal/2026-10-24-cap-java-bootstrap-verification.md) · [Model KsefOperations](journal/2026-10-24-ksef-operations-model.md) · [Usługa i CRUD OData](journal/2026-10-24-ksef-service-definition.md) · [Walidacja i autoryzacja KsefOperations](journal/2026-10-24-ksef-operations-validation-authorization.md)
 
 ## Current Phase
+
+**INT-02 (2026-11-10), lokalna integracja INBOUND:** osobny worktree `D:\AInvoicer-int-02`,
+branch `feature/int-02-inbound-fullstack`; historia KSEF-IN-02 i UI5-10 zachowana dwoma merge commitami.
+Jawny read-only OData, grant-safe CQN przed count/paging, scope 1 NIP/1 CompanyCode + BUYER/TEST,
+spółka wyłącznie jako kontekst użytkownika. Odczyt niezależny od synchronizacji; CF Inbox disabled.
+Końcowy Maven **368/368 PASS**, QUnit **112/112 (659)**, OPA **21/21 (150)**,
+CF build13, runner4, AppRouter8, deploy4 oraz rzeczywisty UI5→CAP16/73 PASS (A/B, 401/403/404, outage/restart).
+JWT/OData29/29 obejmuje tenant i limit100 rekordów; status publikacji/CI: [dziennik INT-02](journal/2026-11-10-int-02-inbound-fullstack.md).
+[PR #6](https://github.com/scaamp/AInvoicer/pull/6) OPEN jako stacked do IN-02 (PR #5 OPEN), kod `bb3b8d5` wypchnięty.
+MTAR67 511 817B + CF JAR8/8 PASS, bez wdrożenia; bieżące [GitHub checks](https://github.com/scaamp/AInvoicer/pull/6/checks).
+[Kontrakt/runbook](guides/INT_02_INBOUND_FULLSTACK.md) · [Security review](audits/2026-11-10-int-02-security-review.md).
+Bez deployu, zmian BTP/H01 i LIVE KSeF; trwałość HANA/storage oraz SSO A/B pozostają odrębnymi bramkami.
+
+### Poprzedni stan — INT-01
 
 **INT-01 (2026-11-09), LOCAL + CI PASS dla kodu `18ca64e`:** worktree `D:\AInvoicer-int-01`, merge CAP-07C `e850a69` + KSEF-IN-01 `344a67b` bez konfliktów, historia zachowana. **321/321 Maven** (77 INBOUND + 243 CAP-07C + 1 test izolacji), CF JAR 8/8, QUnit 79/446, OPA 13/80, runner 4/4, UI5 CF 8/8, AppRouter 8/8, deploy 4/4; MTAR **67 366 302 B**, niewdrożony. INBOUND bez beanów/schedulera/endpointów i zmian DB; security review bez blokera integracyjnego. [PR #3](https://github.com/scaamp/AInvoicer/pull/3) OPEN, mergeable przy odczycie; [Ubuntu CI PASS](https://github.com/scaamp/AInvoicer/actions/runs/42685746135). Zmiany dokumentacyjne po tym run mają własne [bieżące checks](https://github.com/scaamp/AInvoicer/pull/3/checks); dokładne SHA/wyniki w [dzienniku](journal/2026-11-09-int-01-branch-integration.md). [Audyt PR #1 i plan merge](audits/2026-11-09-int-01-integration-review.md). Bez merge main, CF deploy, SAP WRITE i LIVE KSeF. Następne: owner review, CAP-07B.2 (SSO) i KSEF-IN-02 (trwały staging/checkpoint).
 

@@ -1,0 +1,34 @@
+specVersion: "3.1"
+metadata:
+  name: ainvoicer
+type: application
+resources:
+  configuration:
+    paths:
+      webapp: build/inbox-webapp
+server:
+  customMiddleware:
+    - name: fiori-tools-proxy
+      afterMiddleware: compression
+      configuration:
+        ignoreCertError: false
+        ui5:
+          path: [/resources, /test-resources]
+          url: https://ui5.sap.com
+        backend:
+          - path: /odata
+            url: http://127.0.0.1:8092
+    - name: sap-fe-mockserver
+      beforeMiddleware: csp
+      configuration:
+        mountPath: /
+        services:
+          - urlPath: /sap/opu/odata4/sap/zui_fi_acdoca_o4/srvd/sap/zui_fi_acdoca_o4/0001
+            metadataPath: ./webapp/localService/mainService/metadata.xml
+            mockdataPath: ./webapp/localService/mainService/data
+            generateMockData: true
+          - urlPath: /rap-ui
+            metadataPath: ./webapp/localService/rapUi/metadata.xml
+            mockdataPath: ./webapp/localService/rapUi/data
+            generateMockData: false
+        annotations: []

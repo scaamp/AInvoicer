@@ -105,6 +105,25 @@
           "downloadUpo": false,
           "checkDuplicate": false
         }
+      },
+      "ksefInbox": {
+        "dataMode": "mock",
+        "pageSize": 20,
+        "environments": ["TEST", "DEMO"],
+        "mock": {
+          "invoicesPath": "ainvoicer/localService/ksef/inbound/InboundInvoices.json"
+        },
+        "cap": {
+          "serviceUrl": "/odata/v4/KsefService/",
+          "entitySet": null,
+          "readTimeoutMs": 15000
+        },
+        "capabilities": {
+          "viewXml": false,
+          "checkDuplicate": false,
+          "linkSapDocument": false,
+          "approveAndPost": false
+        }
       }
     },
     "models": {
@@ -154,6 +173,13 @@
       },
       "routes": [
         {
+          "name": "RouteInboundInbox",
+          "pattern": "ksef-inbox",
+          "target": [
+            "TargetInboundInbox"
+          ]
+        },
+        {
           "name": "RouteMain",
           "pattern": ":?query:",
           "target": [
@@ -164,7 +190,13 @@
       "targets": {
         "TargetMain": {
           "id": "Main",
-          "name": "Main"
+          "name": "Main",
+          "level": 1
+        },
+        "TargetInboundInbox": {
+          "id": "InboundInbox",
+          "name": "InboundInbox",
+          "level": 2
         }
       }
     },

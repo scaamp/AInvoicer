@@ -31,7 +31,10 @@
     "test:opa": "node scripts/browser-test.mjs qunit http://localhost:8085/test/integration/opaTests.qunit.html",
     "test:runner": "node --test scripts/local-cap-auth.test.mjs scripts/cf-network.test.mjs",
     "test:cf-build": "node --test scripts/build-cf.test.mjs",
-    "test": "npm run test:unit && npm run test:opa"
+    "test": "npm run test:unit && npm run test:opa",
+    "serve:inbox": "node scripts/prepare-inbox-local.mjs && fiori run --config ./ui5-inbox.yaml --port 8087",
+    "test:inbox": "node scripts/browser-test.mjs qunit http://localhost:8087/test/integration/inboundCap.qunit.html",
+    "test:inbox:e2e": "node scripts/inbox-e2e.mjs"
   },
   "sapuxLayer": "CUSTOMER_BASE"
 }

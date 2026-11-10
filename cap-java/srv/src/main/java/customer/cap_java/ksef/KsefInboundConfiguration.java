@@ -8,10 +8,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.env.Environment;
-
-import com.sap.cds.services.persistence.PersistenceService;
-import com.sap.cds.services.runtime.CdsRuntime;
 
 import customer.cap_java.ksef.fa3.Fa3SchemaValidator;
 import customer.cap_java.ksef.inbound.*;
@@ -19,9 +17,10 @@ import customer.cap_java.ksef.inbound.persistence.*;
 import customer.cap_java.ksef.inbound.sync.*;
 import pl.akmf.ksef.sdk.client.interfaces.KSeFClient;
 
-/** Opcjonalny wiring lokalnego backendu INBOUND. Domyślnie brak beanów i brak jakichkolwiek wywołań. */
+/** Opcjonalny wiring synchronizacji INBOUND. Odczyt stagingu jest rejestrowany osobno, bez HTTP do KSeF. */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnProperty(name = "ainv.ksef.inbound.enabled", havingValue = "true")
+@Import(KsefInboundReadConfiguration.class)
 public class KsefInboundConfiguration {
     private final KsefTaxpayerContext context;
     private final OffsetDateTime initialFrom;
@@ -52,9 +51,6 @@ public class KsefInboundConfiguration {
         this.initialFrom = OffsetDateTime.parse(initialFrom);
     }
 
-    @Bean InboundPersistence inboundPersistence(PersistenceService db, CdsRuntime runtime) {
-        return new InboundPersistence(db, runtime);
-    }
     @Bean CqnSyncCheckpointRepository inboundCheckpoints(InboundPersistence persistence) {
         return new CqnSyncCheckpointRepository(persistence);
     }
@@ -63,9 +59,6 @@ public class KsefInboundConfiguration {
     }
     @Bean CqnInboundSyncLeaseRepository inboundLeases(InboundPersistence persistence, Clock clock) {
         return new CqnInboundSyncLeaseRepository(persistence, clock);
-    }
-    @Bean CqnInboundOverviewRepository inboundOverview(InboundPersistence persistence) {
-        return new CqnInboundOverviewRepository(persistence);
     }
     @Bean KsefInboundAccess inboundAccess(KsefAuthentication authentication) {
         return new KsefInboundAccess(authentication, context);

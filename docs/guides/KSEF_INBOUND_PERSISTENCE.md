@@ -8,6 +8,12 @@ tags: [ainvoicer, ksef, inbound, cap-java, persistence, recovery, security]
 
 # Staging INBOUND i synchronizacja
 
+> **INT-02, 2026-11-10:** publiczny read-only `InboundInvoiceOverview` jest zaimplementowany.
+> Obowiązujący kontrakt, autoryzacja, typy i lokalne testy HTTP/UI5: [przewodnik INT-02](INT_02_INBOUND_FULLSTACK.md).
+> Sekcje opisujące planowany endpoint i wspólne wyłączenie wszystkich beanów są historycznym stanem sprintu źródłowego.
+> Synchronizacja pozostaje OFF, a build CF nadal wyłącza Inbox.
+
+
 [Architektura IN-01](KSEF_INBOUND_ARCHITECTURE.md) · [Dziennik IN-02](../journal/2026-11-10-ksef-in-02.md) · [ADR-0005](../decisions/ADR-0005-rap-business-status-cap-integration-status.md)
 
 Fundament backendowy przetestowany offline: CAP CQN, lokalna H2 i syntetyczny SDK/XML.

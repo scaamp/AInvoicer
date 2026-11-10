@@ -40,6 +40,7 @@ public final class CqnInboundOverviewRepository {
                 text(row, "sellerNip"), text(row, "sellerName"), text(row, "buyerIdentifierType"),
                 text(row, "buyerIdentifierValue"), text(row, "currency"),
                 amount == null ? null : new BigDecimal(amount.toString()).toPlainString(),
+                null, text(row, "invoiceType"), text(row, "formSystemCode"),
                 text(row, "ingestionStatus"), text(row, "parseStatus"), text(row, "integrityStatus"),
                 text(row, "sapPostingStatus"), CqnInboundDocumentRepository.isStored(row));
     }

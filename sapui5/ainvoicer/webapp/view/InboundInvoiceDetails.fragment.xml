@@ -1,0 +1,252 @@
+<core:FragmentDefinition
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:form="sap.ui.layout.form"
+>
+    <!-- Szczegóły faktury odebranej z KSeF (model "inboxDetails"). Tylko odczyt.
+         Brak fikcyjnego numeru dokumentu SAP i brak PDF generowanego z niepełnych metadanych. -->
+    <Dialog
+        id="inboxDetailsDialog"
+        title="{ parts: ['i18n>inboxDetailsTitle', 'inboxDetails>/invoice/invoiceNumber'], formatter: '.formatMessage' }"
+        contentWidth="52rem"
+        resizable="true"
+        draggable="true"
+        busy="{inboxDetails>/busy}"
+        busyIndicatorDelay="300"
+        afterClose=".onDetailsAfterClose"
+        ariaDescribedBy="inboxDetailsReadOnlyNote"
+    >
+        <content>
+            <VBox class="sapUiSmallMargin" renderType="Bare">
+                <MessageStrip
+                    id="inboxDetailsDemoStrip"
+                    type="Warning"
+                    showIcon="true"
+                    visible="{inbox>/demo}"
+                    text="{i18n>inboxDetailsDemoNotice}"
+                    class="sapUiTinyMarginBottom"
+                />
+                <MessageStrip
+                    id="inboxDetailsErrorStrip"
+                    type="Error"
+                    showIcon="true"
+                    visible="{= !!${inboxDetails>/error} }"
+                    text="{inboxDetails>/error}"
+                    class="sapUiTinyMarginBottom"
+                />
+                <MessageStrip
+                    id="inboxDetailsConflictStrip"
+                    type="Error"
+                    showIcon="true"
+                    visible="{= ${inboxDetails>/invoice/integrityStatus} === 'CONFLICT' || ${inboxDetails>/invoice/integrityStatus} === 'MISMATCH' }"
+                    text="{i18n>inboxDetailsIntegrityProblem}"
+                    class="sapUiTinyMarginBottom"
+                />
+                <MessageStrip
+                    id="inboxDetailsSchemaStrip"
+                    type="Warning"
+                    showIcon="true"
+                    visible="{= ${inboxDetails>/invoice/parseStatus} === 'UNSUPPORTED_SCHEMA' }"
+                    text="{i18n>inboxDetailsUnsupportedSchema}"
+                    class="sapUiTinyMarginBottom"
+                />
+                <MessageStrip
+                    id="inboxDetailsIssuesStrip"
+                    type="Warning"
+                    showIcon="true"
+                    visible="{= !!${inboxDetails>/invoice/incomplete} }"
+                    text="{ path: 'inboxDetails>/invoice/issues', formatter: '.formatter.issuesText' }"
+                    class="sapUiTinyMarginBottom"
+                />
+
+                <form:SimpleForm
+                    id="inboxDetailsDocumentForm"
+                    editable="false"
+                    layout="ColumnLayout"
+                    columnsM="2"
+                    columnsL="2"
+                    columnsXL="2"
+                    title="{i18n>inboxDetailsDocument}"
+                >
+                    <form:content>
+                        <Label text="{i18n>inboxColInvoiceNumber}" />
+                        <Text id="inboxDetailsInvoiceNumber" text="{ path: 'inboxDetails>/invoice/invoiceNumber', formatter: '.formatter.orDash' }" />
+                        <Label text="{i18n>inboxColKsefNumber}" labelFor="inboxDetailsKsefNumber" />
+                        <!-- Pełny numer w polu tylko do odczytu (zaznaczalny) + kopiowanie; dwa pola formularza w jednej linii. -->
+                        <Input
+                            id="inboxDetailsKsefNumber"
+                            value="{inboxDetails>/invoice/ksefNumber}"
+                            editable="false"
+                        >
+                            <layoutData>
+                                <form:ColumnElementData cellsSmall="10" cellsLarge="10" />
+                            </layoutData>
+                        </Input>
+                        <Button
+                            id="inboxDetailsCopyButton"
+                            icon="sap-icon://copy"
+                            type="Transparent"
+                            tooltip="{i18n>inboxCopyKsefNumber}"
+                            press=".onCopyKsefNumber"
+                            enabled="{= !!${inboxDetails>/invoice/ksefNumber} }"
+                        >
+                            <layoutData>
+                                <form:ColumnElementData cellsSmall="2" cellsLarge="2" />
+                            </layoutData>
+                        </Button>
+                        <Label text="{i18n>inboxDetailsEnvironment}" />
+                        <ObjectStatus
+                            text="{ path: 'inboxDetails>/invoice/environment', formatter: '.formatter.orDash' }"
+                            state="{ path: 'inboxDetails>/invoice/environment', formatter: '.formatter.environmentState' }"
+                        />
+                        <Label text="{i18n>inboxDetailsInvoiceType}" />
+                        <Text text="{ parts: ['inboxDetails>/invoice/invoiceType', 'inboxDetails>/invoice/formCode'], formatter: '.formatter.typeAndForm' }" />
+                        <Label text="{i18n>inboxColIssueDate}" />
+                        <Text text="{ path: 'inboxDetails>/invoice/issueDate', formatter: '.formatter.date' }" />
+                        <Label text="{i18n>inboxColAcquisitionDate}" />
+                        <Text text="{ path: 'inboxDetails>/invoice/acquisitionDate', formatter: '.formatter.dateTime' }" />
+                        <Label text="{i18n>inboxColGrossAmount}" />
+                        <ObjectNumber
+                            id="inboxDetailsGrossAmount"
+                            number="{ parts: ['inboxDetails>/invoice/grossAmount', 'inboxDetails>/invoice/currency', 'inboxDetails>/invoice/grossAmountValid'], formatter: '.formatter.amount' }"
+                            unit="{inboxDetails>/invoice/currency}"
+                            emphasized="true"
+                        />
+                    </form:content>
+                </form:SimpleForm>
+
+                <form:SimpleForm
+                    id="inboxDetailsPartiesForm"
+                    editable="false"
+                    layout="ColumnLayout"
+                    columnsM="2"
+                    columnsL="2"
+                    columnsXL="2"
+                    title="{i18n>inboxDetailsParties}"
+                >
+                    <form:content>
+                        <core:Title text="{i18n>inboxDetailsSeller}" />
+                        <Label text="{i18n>inboxDetailsName}" />
+                        <Text text="{ path: 'inboxDetails>/invoice/sellerName', formatter: '.formatter.orDash' }" />
+                        <Label text="{i18n>inboxDetailsIdentifier}" />
+                        <Text id="inboxDetailsSellerNip" text="{ path: 'inboxDetails>/invoice/sellerNip', formatter: '.formatter.sellerNip' }" />
+                        <core:Title text="{i18n>inboxDetailsBuyer}" />
+                        <Label text="{i18n>inboxDetailsName}" />
+                        <Text text="{ path: 'inboxDetails>/invoice/buyerName', formatter: '.formatter.orDash' }" />
+                        <Label text="{i18n>inboxDetailsIdentifier}" />
+                        <Text id="inboxDetailsBuyerIdentifier" text="{ parts: ['inboxDetails>/invoice/buyerIdentifierType', 'inboxDetails>/invoice/buyerIdentifierValue'], formatter: '.formatter.buyerIdentifier' }" />
+                    </form:content>
+                </form:SimpleForm>
+
+                <form:SimpleForm
+                    id="inboxDetailsProcessingForm"
+                    editable="false"
+                    layout="ColumnLayout"
+                    columnsM="2"
+                    columnsL="2"
+                    columnsXL="2"
+                    title="{i18n>inboxDetailsProcessing}"
+                >
+                    <form:content>
+                        <Label text="{i18n>inboxColIngestion}" />
+                        <ObjectStatus
+                            id="inboxDetailsIngestion"
+                            text="{ path: 'inboxDetails>/invoice/ingestionStatus', formatter: '.formatter.ingestionText' }"
+                            state="{ path: 'inboxDetails>/invoice/ingestionStatus', formatter: '.formatter.ingestionState' }"
+                            icon="{ path: 'inboxDetails>/invoice/ingestionStatus', formatter: '.formatter.ingestionIcon' }"
+                        />
+                        <Label text="{i18n>inboxDetailsXmlStored}" />
+                        <Text text="{ path: 'inboxDetails>/invoice/xmlAvailable', formatter: '.formatter.yesNo' }" />
+                        <Label text="{i18n>inboxDetailsParse}" />
+                        <ObjectStatus
+                            id="inboxDetailsParse"
+                            text="{ path: 'inboxDetails>/invoice/parseStatus', formatter: '.formatter.parseText' }"
+                            state="{ path: 'inboxDetails>/invoice/parseStatus', formatter: '.formatter.parseState' }"
+                            icon="{ path: 'inboxDetails>/invoice/parseStatus', formatter: '.formatter.parseIcon' }"
+                        />
+                        <Label text="{i18n>inboxDetailsIntegrity}" />
+                        <ObjectStatus
+                            id="inboxDetailsIntegrity"
+                            text="{ path: 'inboxDetails>/invoice/integrityStatus', formatter: '.formatter.integrityText' }"
+                            state="{ path: 'inboxDetails>/invoice/integrityStatus', formatter: '.formatter.integrityState' }"
+                            icon="{ path: 'inboxDetails>/invoice/integrityStatus', formatter: '.formatter.integrityIcon' }"
+                        />
+                        <Label text="{i18n>inboxColSap}" />
+                        <ObjectStatus
+                            id="inboxDetailsSap"
+                            text="{ path: 'inboxDetails>/invoice/sapPostingStatus', formatter: '.formatter.sapText' }"
+                            state="{ path: 'inboxDetails>/invoice/sapPostingStatus', formatter: '.formatter.sapState' }"
+                            icon="{ path: 'inboxDetails>/invoice/sapPostingStatus', formatter: '.formatter.sapIcon' }"
+                        />
+                        <Label text="{i18n>inboxDetailsSapDocument}" />
+                        <Text id="inboxDetailsSapDocument" text="{i18n>inboxDetailsSapDocumentNone}" />
+                    </form:content>
+                </form:SimpleForm>
+
+                <!-- Struktura przyszłych funkcji: widoczna, ale nieaktywna, dopóki backend nie ma kontraktu. -->
+                <Panel
+                    id="inboxDetailsFuturePanel"
+                    headerText="{i18n>inboxDetailsFuture}"
+                    expandable="true"
+                    expanded="true"
+                    class="sapUiTinyMarginTop"
+                >
+                    <VBox renderType="Bare">
+                        <Text id="inboxDetailsReadOnlyNote" text="{i18n>inboxDetailsFutureNote}" class="sapUiTinyMarginBottom" />
+                        <OverflowToolbar id="inboxDetailsFutureToolbar" style="Clear">
+                            <Button
+                                id="inboxViewXmlButton"
+                                text="{i18n>inboxActionViewXml}"
+                                icon="sap-icon://source-code"
+                                enabled="{inbox>/actions/viewXml/enabled}"
+                                tooltip="{inbox>/actions/viewXml/reason}"
+                                press=".onFutureAction"
+                            >
+                                <customData><core:CustomData key="action" value="viewXml" /></customData>
+                            </Button>
+                            <Button
+                                id="inboxCheckDuplicateButton"
+                                text="{i18n>inboxActionCheckDuplicate}"
+                                icon="sap-icon://copy"
+                                enabled="{inbox>/actions/checkDuplicate/enabled}"
+                                tooltip="{inbox>/actions/checkDuplicate/reason}"
+                                press=".onFutureAction"
+                            >
+                                <customData><core:CustomData key="action" value="checkDuplicate" /></customData>
+                            </Button>
+                            <Button
+                                id="inboxLinkSapDocumentButton"
+                                text="{i18n>inboxActionLinkSapDocument}"
+                                icon="sap-icon://chain-link"
+                                enabled="{inbox>/actions/linkSapDocument/enabled}"
+                                tooltip="{inbox>/actions/linkSapDocument/reason}"
+                                press=".onFutureAction"
+                            >
+                                <customData><core:CustomData key="action" value="linkSapDocument" /></customData>
+                            </Button>
+                            <Button
+                                id="inboxApproveAndPostButton"
+                                text="{i18n>inboxActionApproveAndPost}"
+                                icon="sap-icon://accept"
+                                enabled="{inbox>/actions/approveAndPost/enabled}"
+                                tooltip="{inbox>/actions/approveAndPost/reason}"
+                                press=".onFutureAction"
+                            >
+                                <customData><core:CustomData key="action" value="approveAndPost" /></customData>
+                            </Button>
+                        </OverflowToolbar>
+                        <Text text="{i18n>inboxDetailsNoPdf}" class="sapUiTinyMarginTop" />
+                    </VBox>
+                </Panel>
+            </VBox>
+        </content>
+        <endButton>
+            <Button
+                id="inboxDetailsCloseButton"
+                text="{i18n>inboxClose}"
+                type="Emphasized"
+                press=".onDetailsClose"
+            />
+        </endButton>
+    </Dialog>
+</core:FragmentDefinition>

@@ -1,0 +1,358 @@
+<mvc:View
+    controllerName="ainvoicer.controller.InboundInbox"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:core="sap.ui.core"
+    xmlns:fb="sap.ui.comp.filterbar"
+    height="100%"
+>
+    <!-- KSeF Inbox (UI5-10): faktury zakupowe odebrane z KSeF (staging CAP), tylko odczyt.
+         Inna domena niż zakładka PURCHASE kokpitu (faktury z SAP RAP). -->
+    <Page
+        id="inboxPage"
+        title="{i18n>inboxTitle}"
+        showNavButton="true"
+        navButtonPress=".onNavBack"
+        navButtonTooltip="{i18n>inboxBack}"
+    >
+        <headerContent>
+            <ObjectStatus
+                id="inboxModeBadge"
+                text="{= ${inbox>/demo} ? ${i18n>inboxBadgeDemo} : ${inbox>/available} ? ${i18n>inboxBadgeReadOnly} : ${i18n>inboxBadgeUnavailable} }"
+                state="{= ${inbox>/demo} ? 'Warning' : ${inbox>/available} ? 'Information' : 'None' }"
+                icon="{= ${inbox>/demo} ? 'sap-icon://lab' : 'sap-icon://locked' }"
+                inverted="true"
+            />
+        </headerContent>
+        <content>
+            <!-- Wariant bez backendu (np. Cloud Foundry): brak danych i brak HTTP, bez przejścia na mock. -->
+            <IllustratedMessage
+                id="inboxUnavailable"
+                visible="{= !${inbox>/available} }"
+                illustrationType="sapIllus-Connection"
+                title="{i18n>inboxUnavailableTitle}"
+                description="{i18n>inboxUnavailableText}"
+                enableVerticalResponsiveness="true"
+            >
+                <additionalContent>
+                    <Button
+                        id="inboxUnavailableBackButton"
+                        text="{i18n>inboxBack}"
+                        icon="sap-icon://nav-back"
+                        press=".onNavBack"
+                    />
+                </additionalContent>
+            </IllustratedMessage>
+
+            <VBox
+                id="inboxContent"
+                visible="{inbox>/available}"
+                renderType="Bare"
+            >
+                <MessageStrip
+                    id="inboxDemoStrip"
+                    type="Warning"
+                    showIcon="true"
+                    visible="{inbox>/demo}"
+                    text="{i18n>inboxDemoNotice}"
+                    class="sapUiSmallMarginBeginEnd sapUiTinyMarginTop"
+                />
+                <MessageStrip
+                    id="inboxScopeStrip"
+                    type="Information"
+                    showIcon="true"
+                    text="{i18n>inboxScopeNotice}"
+                    class="sapUiSmallMarginBeginEnd sapUiTinyMarginTop"
+                />
+
+                <!-- Na telefonie filtry zwinięte, by lista była widoczna od razu; desktop: rozwinięte. -->
+                <Panel
+                    id="inboxFilterPanel"
+                    expandable="true"
+                    expanded="{= !${device>/system/phone} }"
+                    headerText="{i18n>inboxFilters}"
+                    class="sapUiNoContentPadding"
+                >
+                <fb:FilterBar
+                    id="inboxFilterBar"
+                    useToolbar="false"
+                    showClearOnFB="true"
+                    showFilterConfiguration="false"
+                    search=".onSearch"
+                    clear=".onClearFilters"
+                    class="sapUiSmallMarginBeginEnd"
+                >
+                    <fb:filterGroupItems>
+                        <fb:FilterGroupItem name="InvoiceNumber" label="{i18n>inboxFilterInvoiceNumber}" groupName="Inbox" visibleInFilterBar="true">
+                            <fb:control>
+                                <Input
+                                    id="inboxInvoiceNumberFilter"
+                                    value="{inbox>/filters/invoiceNumber}"
+                                    maxLength="256"
+                                    placeholder="{i18n>inboxFilterInvoiceNumberPlaceholder}"
+                                    submit=".onSearch"
+                                />
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                        <fb:FilterGroupItem name="KsefNumber" label="{i18n>inboxFilterKsefNumber}" groupName="Inbox" visibleInFilterBar="true">
+                            <fb:control>
+                                <Input
+                                    id="inboxKsefNumberFilter"
+                                    value="{inbox>/filters/ksefNumber}"
+                                    maxLength="64"
+                                    placeholder="{i18n>inboxFilterKsefNumberPlaceholder}"
+                                    submit=".onSearch"
+                                />
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                        <fb:FilterGroupItem name="SellerNip" label="{i18n>inboxFilterSellerNip}" groupName="Inbox" visibleInFilterBar="true">
+                            <fb:control>
+                                <Input
+                                    id="inboxSellerNipFilter"
+                                    value="{inbox>/filters/sellerNip}"
+                                    maxLength="13"
+                                    placeholder="{i18n>inboxFilterSellerNipPlaceholder}"
+                                    submit=".onSearch"
+                                />
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                        <fb:FilterGroupItem name="AcquisitionDate" label="{i18n>inboxFilterAcquisitionDate}" groupName="Inbox" visibleInFilterBar="true">
+                            <fb:control>
+                                <DateRangeSelection
+                                    id="inboxAcquisitionDateFilter"
+                                    change=".onAcquisitionDateChange"
+                                />
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                        <fb:FilterGroupItem name="IssueDate" label="{i18n>inboxFilterIssueDate}" groupName="Inbox" visibleInFilterBar="true">
+                            <fb:control>
+                                <DateRangeSelection
+                                    id="inboxIssueDateFilter"
+                                    change=".onIssueDateChange"
+                                />
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                        <fb:FilterGroupItem name="IngestionStatus" label="{i18n>inboxFilterIngestionStatus}" groupName="Inbox" visibleInFilterBar="true">
+                            <fb:control>
+                                <MultiComboBox
+                                    id="inboxIngestionFilter"
+                                    selectedKeys="{inbox>/filters/ingestionStatuses}"
+                                    items="{ path: 'inbox>/valueLists/ingestion', templateShareable: false }"
+                                >
+                                    <core:Item key="{inbox>key}" text="{inbox>text}" />
+                                </MultiComboBox>
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                        <fb:FilterGroupItem name="ParseStatus" label="{i18n>inboxFilterParseStatus}" groupName="Inbox" visibleInFilterBar="true">
+                            <fb:control>
+                                <MultiComboBox id="inboxParseFilter" selectedKeys="{inbox>/filters/parseStatuses}"
+                                    items="{ path: 'inbox>/valueLists/parse', templateShareable: false }">
+                                    <core:Item key="{inbox>key}" text="{inbox>text}" />
+                                </MultiComboBox>
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                        <fb:FilterGroupItem name="IntegrityStatus" label="{i18n>inboxFilterIntegrityStatus}" groupName="Inbox" visibleInFilterBar="true">
+                            <fb:control>
+                                <MultiComboBox
+                                    id="inboxIntegrityFilter"
+                                    selectedKeys="{inbox>/filters/integrityStatuses}"
+                                    items="{ path: 'inbox>/valueLists/integrity', templateShareable: false }"
+                                >
+                                    <core:Item key="{inbox>key}" text="{inbox>text}" />
+                                </MultiComboBox>
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                        <fb:FilterGroupItem name="SapPostingStatus" label="{i18n>inboxFilterSapStatus}" groupName="Inbox" visibleInFilterBar="true">
+                            <fb:control>
+                                <MultiComboBox
+                                    id="inboxSapFilter"
+                                    selectedKeys="{inbox>/filters/sapPostingStatuses}"
+                                    items="{ path: 'inbox>/valueLists/sap', templateShareable: false }"
+                                >
+                                    <core:Item key="{inbox>key}" text="{inbox>text}" />
+                                </MultiComboBox>
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                        <fb:FilterGroupItem name="Environment" label="{i18n>inboxFilterEnvironment}" groupName="Inbox" visibleInFilterBar="true">
+                            <fb:control>
+                                <Select
+                                    id="inboxEnvironmentFilter"
+                                    selectedKey="{inbox>/filters/environment}"
+                                    items="{ path: 'inbox>/valueLists/environments', templateShareable: false }"
+                                    forceSelection="false"
+                                >
+                                    <core:Item key="{inbox>key}" text="{inbox>text}" />
+                                </Select>
+                            </fb:control>
+                        </fb:FilterGroupItem>
+                    </fb:filterGroupItems>
+                </fb:FilterBar>
+                </Panel>
+
+                <MessageStrip
+                    id="inboxErrorStrip"
+                    type="Error"
+                    showIcon="true"
+                    showCloseButton="true"
+                    text="{inbox>/error}"
+                    visible="{= !!${inbox>/error} }"
+                    close=".onErrorClose"
+                    class="sapUiSmallMarginBeginEnd sapUiTinyMarginTop"
+                />
+                <MessageStrip
+                    id="inboxRejectedStrip"
+                    type="Warning"
+                    showIcon="true"
+                    text="{ parts: ['i18n>inboxRejectedRows', 'inbox>/rejected'], formatter: '.formatMessage' }"
+                    visible="{= ${inbox>/rejected} > 0 }"
+                    class="sapUiSmallMarginBeginEnd sapUiTinyMarginTop"
+                />
+
+                <Table
+                    id="inboxTable"
+                    items="{ path: 'inbox>/rows', templateShareable: false }"
+                    busy="{inbox>/busy}"
+                    busyIndicatorDelay="0"
+                    sticky="ColumnHeaders,HeaderToolbar"
+                    popinLayout="GridSmall"
+                    itemPress=".onItemPress"
+                    ariaLabelledBy="inboxTableTitle"
+                    class="sapUiSmallMarginTop"
+                    width="auto"
+                >
+                    <headerToolbar>
+                        <OverflowToolbar id="inboxToolbar">
+                            <Title
+                                id="inboxTableTitle"
+                                level="H2"
+                                text="{ parts: ['i18n>inboxTableTitle', 'inbox>/rows/length', 'inbox>/count'], formatter: '.formatMessage' }"
+                            />
+                            <ToolbarSpacer />
+                            <Button
+                                id="inboxSortButton"
+                                icon="sap-icon://sort"
+                                type="Transparent"
+                                text="{i18n>inboxSort}"
+                                tooltip="{i18n>inboxSort}"
+                                press=".onOpenSort"
+                                enabled="{= !${inbox>/busy} }"
+                            />
+                            <Button
+                                id="inboxRefreshButton"
+                                icon="sap-icon://refresh"
+                                type="Transparent"
+                                text="{i18n>inboxRefresh}"
+                                tooltip="{i18n>inboxRefreshTooltip}"
+                                press=".onRefresh"
+                                enabled="{= !${inbox>/busy} }"
+                            />
+                        </OverflowToolbar>
+                    </headerToolbar>
+                    <noData>
+                        <IllustratedMessage
+                            id="inboxNoData"
+                            illustrationType="{inbox>/empty/illustration}"
+                            illustrationSize="Spot"
+                            title="{inbox>/empty/title}"
+                            description="{inbox>/empty/description}"
+                            enableVerticalResponsiveness="true"
+                        />
+                    </noData>
+                    <columns>
+                        <Column id="inboxColInvoiceNumber">
+                            <Text text="{i18n>inboxColInvoiceNumber}" />
+                        </Column>
+                        <Column id="inboxColKsefNumber" width="12rem" minScreenWidth="Tablet" demandPopin="true">
+                            <Text text="{i18n>inboxColKsefNumber}" />
+                        </Column>
+                        <Column id="inboxColSeller" minScreenWidth="Tablet" demandPopin="true">
+                            <Text text="{i18n>inboxColSeller}" />
+                        </Column>
+                        <Column id="inboxColIssueDate" width="7rem" minScreenWidth="Desktop" demandPopin="true">
+                            <Text text="{i18n>inboxColIssueDate}" />
+                        </Column>
+                        <Column id="inboxColAcquisitionDate" width="10rem" minScreenWidth="Desktop" demandPopin="true">
+                            <Text text="{i18n>inboxColAcquisitionDate}" />
+                        </Column>
+                        <Column id="inboxColGrossAmount" width="11rem" hAlign="End">
+                            <Text text="{i18n>inboxColGrossAmount}" />
+                        </Column>
+                        <Column id="inboxColCurrency" width="4.5rem" minScreenWidth="Desktop" demandPopin="true">
+                            <Text text="{i18n>inboxColCurrency}" />
+                        </Column>
+                        <Column id="inboxColIngestion" width="9rem" minScreenWidth="Tablet" demandPopin="true">
+                            <Text text="{i18n>inboxColIngestion}" />
+                        </Column>
+                        <Column id="inboxColValidation" width="10rem" minScreenWidth="Tablet" demandPopin="true">
+                            <Text text="{i18n>inboxColValidation}" />
+                        </Column>
+                        <Column id="inboxColSap" width="8rem" minScreenWidth="Tablet" demandPopin="true">
+                            <Text text="{i18n>inboxColSap}" />
+                        </Column>
+                    </columns>
+                    <items>
+                        <ColumnListItem
+                            type="Navigation"
+                            highlight="{ parts: ['inbox>ingestionStatus', 'inbox>parseStatus', 'inbox>integrityStatus', 'inbox>incomplete'], formatter: '.formatter.rowHighlight' }"
+                        >
+                            <cells>
+                                <Text text="{ path: 'inbox>invoiceNumber', formatter: '.formatter.orDash' }" wrapping="true" maxLines="2" tooltip="{inbox>invoiceNumber}" />
+                                <Text text="{ path: 'inbox>ksefNumber', formatter: '.formatter.ksefShort' }" wrapping="false" tooltip="{inbox>ksefNumber}" />
+                                <ObjectIdentifier
+                                    title="{ path: 'inbox>sellerName', formatter: '.formatter.orDash' }"
+                                    text="{ path: 'inbox>sellerNip', formatter: '.formatter.sellerNip' }"
+                                />
+                                <Text text="{ path: 'inbox>issueDate', formatter: '.formatter.date' }" wrapping="false" />
+                                <Text text="{ path: 'inbox>acquisitionDate', formatter: '.formatter.dateTime' }" wrapping="false" />
+                                <ObjectNumber
+                                    number="{ parts: ['inbox>grossAmount', 'inbox>currency', 'inbox>grossAmountValid'], formatter: '.formatter.amount' }"
+                                    state="{= ${inbox>grossAmount} &amp;&amp; !${inbox>grossAmountValid} ? 'Warning' : 'None' }"
+                                    textAlign="End"
+                                />
+                                <Text text="{ path: 'inbox>currency', formatter: '.formatter.orDash' }" wrapping="false" />
+                                <ObjectStatus
+                                    text="{ path: 'inbox>ingestionStatus', formatter: '.formatter.ingestionText' }"
+                                    state="{ path: 'inbox>ingestionStatus', formatter: '.formatter.ingestionState' }"
+                                    icon="{ path: 'inbox>ingestionStatus', formatter: '.formatter.ingestionIcon' }"
+                                />
+                                <VBox renderType="Bare">
+                                    <ObjectStatus
+                                        text="{ path: 'inbox>parseStatus', formatter: '.formatter.parseText' }"
+                                        state="{ path: 'inbox>parseStatus', formatter: '.formatter.parseState' }"
+                                        icon="{ path: 'inbox>parseStatus', formatter: '.formatter.parseIcon' }"
+                                    />
+                                    <ObjectStatus
+                                        text="{ path: 'inbox>integrityStatus', formatter: '.formatter.integrityText' }"
+                                        state="{ path: 'inbox>integrityStatus', formatter: '.formatter.integrityState' }"
+                                        icon="{ path: 'inbox>integrityStatus', formatter: '.formatter.integrityIcon' }"
+                                    />
+                                </VBox>
+                                <ObjectStatus
+                                    text="{ path: 'inbox>sapPostingStatus', formatter: '.formatter.sapText' }"
+                                    state="{ path: 'inbox>sapPostingStatus', formatter: '.formatter.sapState' }"
+                                    icon="{ path: 'inbox>sapPostingStatus', formatter: '.formatter.sapIcon' }"
+                                />
+                            </cells>
+                        </ColumnListItem>
+                    </items>
+                </Table>
+
+                <!-- Progressive loading: kolejna strona doklejana do listy (serwerowe $skip/$top w trybie CAP). -->
+                <FlexBox
+                    id="inboxLoadMoreBar"
+                    justifyContent="Center"
+                    visible="{inbox>/hasMore}"
+                    class="sapUiSmallMarginTopBottom"
+                >
+                    <Button
+                        id="inboxLoadMoreButton"
+                        text="{ parts: ['i18n>inboxLoadMore', 'inbox>/rows/length', 'inbox>/count'], formatter: '.formatMessage' }"
+                        icon="sap-icon://drill-down"
+                        press=".onLoadMore"
+                        enabled="{= !${inbox>/busy} }"
+                    />
+                </FlexBox>
+            </VBox>
+        </content>
+    </Page>
+</mvc:View>

@@ -57,14 +57,24 @@ const profileDir = mkdtempSync(join(tmpdir(), "ainvoicer-cdp-"));
 const browser = spawn(browserPath, [
     "--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
     "--window-size=1600,1000", `--remote-debugging-port=${port}`, `--user-data-dir=${profileDir}`, "about:blank"
-], { stdio: "ignore" });
+], { stdio: ["ignore", "ignore", "pipe"] });
+let browserDiagnostics = "";
+let browserLaunchError = "";
+browser.stderr.setEncoding("utf8");
+browser.stderr.on("data", chunk => { browserDiagnostics = (browserDiagnostics + chunk).slice(-4000); });
+browser.on("error", error => { browserLaunchError = error.message; });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function cdpTarget() {
-    for (let i = 0; i < 50; i++) {
+    // CI bywa wolniejsze od lokalnego desktopu; awaria procesu ma konkretną diagnostykę, nie ślepy timeout.
+    for (let i = 0; i < 150; i++) {
+        if (browserLaunchError || browser.exitCode !== null) {
+            throw new Error("ENVIRONMENT: browser failed to start: " + (browserLaunchError || browser.exitCode)
+                + "\n" + browserDiagnostics);
+        }
         try {
-            const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
+            const list = await (await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(1000) })).json();
             const page = list.find((t) => t.type === "page");
             if (page) {
                 return page.webSocketDebuggerUrl;
@@ -74,7 +84,7 @@ async function cdpTarget() {
         }
         await sleep(200);
     }
-    throw new Error("ENVIRONMENT: DevTools endpoint not reachable");
+    throw new Error("ENVIRONMENT: DevTools endpoint not reachable\n" + browserDiagnostics);
 }
 
 function connect(wsUrl) {
@@ -149,11 +159,23 @@ try {
     // Opcjonalny principal mock CAP wyłącznie do lokalnego testu dwóch backendów.
     // Nagłówek nie trafia do RAP, UI5 CDN, plików strony ani logu. IAS/XSUAA testujemy osobno.
     let interceptionFailed = false;
-    if (capAuth) {
+    const cancelLocalAuth = process.env.AINV_CAP_LOCAL_CANCEL_AUTH === "true";
+    if (cancelLocalAuth) {
+        const target = new URL(url);
+        if (target.protocol !== "http:" || !["localhost", "127.0.0.1", "[::1]"].includes(target.hostname)
+                || target.username || target.password) { throw new Error("Auth cancellation requires loopback HTTP"); }
+    }
+    if (capAuth || cancelLocalAuth) {
         cdp.on((msg) => {
+            if (msg.method === "Fetch.authRequired") {
+                // Lokalny Basic mock może otworzyć niewidoczny dialog Chrome i zatrzymać fetch.
+                // Anulowanie challenge zachowuje realną odpowiedź401, bez podawania jakichkolwiek credentiali.
+                cdp.send("Fetch.continueWithAuth", { requestId: msg.params.requestId,
+                    authChallengeResponse: { response: "CancelAuth" } }).catch(() => { interceptionFailed = true; });
+            }
             if (msg.method === "Fetch.requestPaused") {
                 Promise.resolve().then(() => cdp.send("Fetch.continueRequest", {
-                    requestId: msg.params.requestId, headers: capAuth.headers(msg.params)
+                    requestId: msg.params.requestId, ...(capAuth ? { headers: capAuth.headers(msg.params) } : {})
                 })).catch(() => {
                     interceptionFailed = true;
                     cdp.send("Fetch.failRequest", { requestId: msg.params.requestId, errorReason: "BlockedByClient" }).catch(() => {});
@@ -161,7 +183,7 @@ try {
             }
         });
         // Wszystkie kanały i kolejne kroki redirectu, aby przeglądarka nie odziedziczyła Authorization.
-        await cdp.send("Fetch.enable", { patterns: [{ urlPattern: "*", requestStage: "Request" }] });
+        await cdp.send("Fetch.enable", { patterns: [{ urlPattern: "*", requestStage: "Request" }], handleAuthRequests: true });
     }
     await cdp.send("Page.navigate", { url });
 
