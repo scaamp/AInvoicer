@@ -1,6 +1,6 @@
 ---
 title: "AInvoicer — plan rozwoju"
-date: 2026-11-09
+date: 2026-11-10
 type: roadmap
 status: aktywny
 tags: [ainvoicer, roadmap, cap-java, ksef]
@@ -10,7 +10,10 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
 
 - [x] **KSEF-IN-01 — rdzeń offline:** metadata/XML przez SDK 3.0.29, bezpieczny parser FA(3), deduplikacja, planer HWM i kontrakt checkpointów; 77 nowych testów, brak LIVE/DB/schedulera. [Dziennik](journal/2026-11-09-ksef-in-01-inbound.md).
 - [x] **INT-01 — LOCAL + CI PASS dla kodu `18ca64e`:** CAP-07C + INBOUND bez konfliktów i utraty historii, 321 Maven oraz pełna regresja UI5/CF smoke; [PR #3](https://github.com/scaamp/AInvoicer/pull/3) i [Ubuntu CI](https://github.com/scaamp/AInvoicer/actions/runs/42685746135), bez merge/deploy/LIVE. Aktualne checks końcowego HEAD w PR. [Dziennik](journal/2026-11-09-int-01-branch-integration.md) · [Review/plan merge](audits/2026-11-09-int-01-integration-review.md).
-- [ ] **KSEF-IN-02 — staging/checkpoint persistence:** trwałe dokumenty/granty/checkpointy, storage XML, lease/CAS, autoryzowany token provider i ograniczony scheduler; osobne testy DB/restart/konkurencja przed LIVE.
+- [x] **KSEF-IN-02 — lokalny staging/checkpoint persistence:** dokumenty/granty/checkpointy, storage interface, lease/CAS i crash recovery; 351 Maven w sprincie źródłowym, synchronizacja OFF bez schedulera. [Dziennik](journal/2026-11-10-ksef-in-02.md), PR #5 pozostaje otwarty.
+- [x] **UI5-10 — lokalny ekran Inbox:** lista/filtry/sort/paging/szczegóły i adapter CAP; [dziennik](journal/2026-11-10-ui5-10-inbound-inbox.md).
+- [x] **INT-02 — LOCAL PASS, PR opublikowany:** bezpieczny read-only OData + UI5 przez prawdziwe HTTP, historie obu sprintów; Maven368, JWT29, UI5→CAP16/73, QUnit112, OPA21, MTAR PASS. [PR #6](https://github.com/scaamp/AInvoicer/pull/6) stacked do IN-02; [bieżący CI](https://github.com/scaamp/AInvoicer/pull/6/checks). [Dziennik](journal/2026-11-10-int-02-inbound-fullstack.md) · [Kontrakt](guides/INT_02_INBOUND_FULLSTACK.md).
+- [ ] **INBOUND następny etap:** trwały provider/HANA, ograniczenia globalnego budżetu API, SSO A/B oraz autorytatywne mapowanie do CompanyCode; aktywacja CF i LIVE KSeF osobno zatwierdzana.
 
 - [x] **CAP-07C — LOCAL + CI PASS:** generator bezpiecznego MTAR smoke, guardy/testy executable JAR-a CF, fail-closed usług zewnętrznych UI5, CI offline i mocniejszy consent CAP-04D. [PR #2](https://github.com/scaamp/AInvoicer/pull/2), [Ubuntu CI PASS](https://github.com/scaamp/AInvoicer/actions/runs/42671257855) dla kodu `ca3739a`; bez merge/deploy/SAP WRITE/KSeF SEND. Dokładne wyniki regresji/publikacji: [dziennik](journal/2026-11-09-cap-07c-autonomous-hardening.md).
 - [ ] **CAP-07B.2 — LIVE Business User SSO Acceptance:** osobno zatwierdzony redeploy nowego smoke → poprawny IdP/Role Collection → `AINV_H01_UI_USER` → principal H01 i izolacja A/B. Brak HANA free/HDI nadal blokuje trwały workflow; bez płatnych usług.

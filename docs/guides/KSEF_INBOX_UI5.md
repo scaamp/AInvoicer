@@ -8,6 +8,12 @@ tags: [ainvoicer, sapui5, ksef, inbound, frontend, mock, int-02]
 
 # SAPUI5 — KSeF Inbox
 
+> **INT-02, 2026-11-10:** publiczny read-only `InboundInvoiceOverview` jest zaimplementowany.
+> Obowiązujący kontrakt, autoryzacja, typy i lokalne testy HTTP/UI5: [przewodnik INT-02](INT_02_INBOUND_FULLSTACK.md).
+> Sekcje opisujące planowany endpoint i wspólne wyłączenie wszystkich beanów są historycznym stanem sprintu źródłowego.
+> Synchronizacja pozostaje OFF, a build CF nadal wyłącza Inbox.
+
+
 [Project Home](../README.md) · [Kokpit KSeF (UI5)](SAPUI5_KSEF_COCKPIT.md) · [Architektura INBOUND](KSEF_INBOUND_ARCHITECTURE.md) · [Dziennik UI5-10](../journal/2026-11-10-ui5-10-inbound-inbox.md)
 
 > **Stan (2026-11-10):** ekran działa **lokalnie na syntetycznych danych mock**. Brak backendu CAP dla INBOUND,

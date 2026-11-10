@@ -12,6 +12,10 @@ AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijan
 
 ## Od czego zacząć
 
+- [INT-02 — KSeF Inbox Full-Stack: integracja, testy i publikacja](journal/2026-11-10-int-02-inbound-fullstack.md) · [Kontrakt i runner HTTP/UI5](guides/INT_02_INBOUND_FULLSTACK.md) · [Security review](audits/2026-11-10-int-02-security-review.md).
+- [KSEF-IN-02 — staging, checkpoint CAS, lease i recovery](journal/2026-11-10-ksef-in-02.md) · [Persystencja](guides/KSEF_INBOUND_PERSISTENCE.md).
+- [UI5-10 — ekran KSeF Inbox](journal/2026-11-10-ui5-10-inbound-inbox.md) · [Przewodnik UI5](guides/KSEF_INBOX_UI5.md).
+
 - [INT-01 — integracja CAP-07C + KSEF-IN-01, pełna regresja i publikacja PR](journal/2026-11-09-int-01-branch-integration.md) · [Audyt integracji, konflikt PR #1 i plan merge do main](audits/2026-11-09-int-01-integration-review.md).
 - [KSEF-IN-01 — rdzeń metadata/XML, parser FA(3), deduplikacja i HWM; offline](journal/2026-11-09-ksef-in-01-inbound.md) · [Architektura INBOUND](guides/KSEF_INBOUND_ARCHITECTURE.md).
 
