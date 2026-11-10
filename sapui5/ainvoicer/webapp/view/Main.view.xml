@@ -11,6 +11,17 @@
     xmlns:table="sap.ui.table"
 >
     <Page id="page" title="Invoices">
+        <headerContent>
+            <!-- UI5-10: osobny widok faktur odebranych z KSeF (staging CAP); inna domena niż zakładka Purchase (RAP). -->
+            <Button
+                id="ksefInboxButton"
+                text="{i18n>inboxNavButton}"
+                tooltip="{i18n>inboxNavButtonTooltip}"
+                icon="sap-icon://inbox"
+                type="Transparent"
+                press=".onNavToKsefInbox"
+            />
+        </headerContent>
         <content>
             <Panel
                 id="aiCommandPanel"

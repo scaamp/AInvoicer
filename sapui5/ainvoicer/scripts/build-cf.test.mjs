@@ -6,7 +6,7 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { CAP_SERVICE_URL, RAP_SERVICE_URL, stageWebapp, transformManifest, verifyArtifact } from "./build-cf.mjs";
+import { CAP_SERVICE_URL, INBOX_CAPABILITIES, RAP_SERVICE_URL, stageWebapp, transformManifest, verifyArtifact } from "./build-cf.mjs";
 
 const project = join(dirname(fileURLToPath(import.meta.url)), "..");
 const sourceManifest = () => JSON.parse(readFileSync(join(project, "webapp", "manifest.json"), "utf8"));
@@ -101,6 +101,69 @@ test("built dist-cf (if present) passes the same verification", { skip: !existsS
     const report = verifyArtifact(join(project, "dist-cf"));
     assert.deepEqual(report.errors, []);
     assert.ok(report.files > 10);
+});
+
+test("UI5-10: developer manifest uses clearly configured KSeF Inbox mock data with every action OFF", () => {
+    const inbox = sourceManifest()["sap.ui5"].config.ksefInbox;
+    assert.equal(inbox.dataMode, "mock");
+    assert.equal(inbox.cap.entitySet, null, "no CAP endpoint is assumed before INT-02");
+    assert.deepEqual(Object.values(inbox.capabilities), INBOX_CAPABILITIES.map(() => false));
+});
+
+test("UI5-10: CF manifest disables the KSeF Inbox (no mock path, no CAP entity, no fallback)", () => {
+    const inbox = transformManifest(sourceManifest())["sap.ui5"].config.ksefInbox;
+    assert.equal(inbox.dataMode, "disabled");
+    assert.equal(inbox.mock, undefined, "no demo data path in CF");
+    assert.equal(inbox.cap.entitySet, null);
+    assert.equal(inbox.cap.serviceUrl, CAP_SERVICE_URL);
+    assert.deepEqual(inbox.capabilities, Object.fromEntries(INBOX_CAPABILITIES.map((key) => [key, false])));
+    // Nawet źródło przełączone na "cap" z encją nie przechodzi do CF w tym etapie.
+    const capSource = sourceManifest();
+    Object.assign(capSource["sap.ui5"].config.ksefInbox, { dataMode: "cap" });
+    capSource["sap.ui5"].config.ksefInbox.cap.entitySet = "InboundInvoiceOverview";
+    assert.equal(transformManifest(capSource)["sap.ui5"].config.ksefInbox.dataMode, "disabled");
+    assert.equal(transformManifest(capSource)["sap.ui5"].config.ksefInbox.cap.entitySet, null);
+});
+
+test("UI5-10: source with an enabled KSeF Inbox action is rejected", () => {
+    for (const key of INBOX_CAPABILITIES) {
+        const manifest = sourceManifest();
+        manifest["sap.ui5"].config.ksefInbox.capabilities[key] = true;
+        assert.throws(() => transformManifest(manifest), new RegExp("ksefInbox capabilities.*" + key));
+    }
+});
+
+test("UI5-10: artifact verification rejects Inbox demo data, mock mode and enabled Inbox actions", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ainv-cf-inbox-"));
+    try {
+        const manifest = transformManifest(sourceManifest());
+        writeFileSync(join(dir, "manifest.json"), JSON.stringify(manifest));
+        writeFileSync(join(dir, "index.html"), '<meta http-equiv="Content-Security-Policy" content="connect-src \'self\'; form-action \'self\'; base-uri \'self\'; object-src \'none\'">');
+        assert.deepEqual(verifyArtifact(dir).errors, []);
+
+        const mockInbox = structuredClone(manifest);
+        mockInbox["sap.ui5"].config.ksefInbox = sourceManifest()["sap.ui5"].config.ksefInbox;
+        writeFileSync(join(dir, "manifest.json"), JSON.stringify(mockInbox));
+        writeFileSync(join(dir, "leak.js"), "var p='ainvoicer/localService/ksef/inbound/InboundInvoices.json'; var c={\"approveAndPost\": true};");
+        const errors = verifyArtifact(dir).errors.join("\n");
+        assert.match(errors, /ksefInbox must be disabled/);
+        assert.match(errors, /KSeF Inbox demo data reference in leak\.js/);
+        assert.match(errors, /mutating capability enabled in leak\.js/);
+    } finally {
+        rmSync(dir, { recursive: true, force: true });
+    }
+});
+
+test("UI5-10: staged CF sources contain no Inbox fixture", () => {
+    const stage = mkdtempSync(join(tmpdir(), "ainv-cf-inbox-stage-"));
+    try {
+        stageWebapp(join(project, "webapp"), stage);
+        assert.ok(existsSync(join(stage, "controller", "InboundInbox.controller.js")), "Inbox code is shipped (disabled)");
+        assert.equal(existsSync(join(stage, "localService", "ksef", "inbound")), false);
+        assert.equal(JSON.parse(readFileSync(join(stage, "manifest.json"), "utf8"))["sap.ui5"].config.ksefInbox.dataMode, "disabled");
+    } finally {
+        rmSync(stage, { recursive: true, force: true });
+    }
 });
 
 test("stale preload cannot re-enable voice or AI behind a safe manifest and CSP", () => {

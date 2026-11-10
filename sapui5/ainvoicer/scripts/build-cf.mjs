@@ -61,7 +61,33 @@ export function transformManifest(source) {
     }
     // Flex/LREP (/sap/bc/lrep) nie istnieje za approuterem; personalizacja UI wyłączona w wariancie CF.
     ui5.flexEnabled = false;
+    transformInboxConfig(ui5.config);
     return manifest;
+}
+
+export const INBOX_CAPABILITIES = ["viewXml", "checkDuplicate", "linkSapDocument", "approveAndPost"];
+
+/**
+ * UI5-10: KSeF Inbox w CF. Backend read-only (KsefService.InboundInvoiceOverview) jeszcze nie istnieje, więc
+ * wariant CF jest WYŁĄCZONY (dataMode=disabled): bez ścieżki mock, bez encji CAP, bez żadnego HTTP.
+ * Włączenie po INT-02 wymaga świadomej zmiany tej funkcji i testów — nie przełącznika w manifeście.
+ */
+function transformInboxConfig(config) {
+    const inbox = config.ksefInbox;
+    if (!inbox) {
+        return; // brak konfiguracji = adapter i tak działa w trybie disabled
+    }
+    const enabled = INBOX_CAPABILITIES.filter((key) => (inbox.capabilities || {})[key] !== false);
+    if (enabled.length) {
+        throw new Error("manifest: ksefInbox capabilities must be explicitly false in source: " + enabled.join(", "));
+    }
+    config.ksefInbox = {
+        dataMode: "disabled",
+        pageSize: inbox.pageSize,
+        environments: inbox.environments,
+        cap: { serviceUrl: CAP_SERVICE_URL, entitySet: null },
+        capabilities: Object.fromEntries(INBOX_CAPABILITIES.map((key) => [key, false]))
+    };
 }
 
 const SECRET_PATTERNS = [
@@ -112,8 +138,12 @@ export function verifyArtifact(dir) {
         if (/"dataMode"\s*:\s*"(mock|cap)"/.test(text)) {
             errors.push("non-RAP dataMode in " + rel);
         }
-        if (/"(sendInvoice|syncInbound|viewXml|downloadUpo|checkDuplicate)"\s*:\s*true/.test(text)) {
+        if (/"(sendInvoice|syncInbound|viewXml|downloadUpo|checkDuplicate|linkSapDocument|approveAndPost)"\s*:\s*true/.test(text)) {
             errors.push("mutating capability enabled in " + rel);
+        }
+        // Syntetyczne faktury Inbox (UI5-10) nigdy nie trafiają do artefaktu CF — ani plik, ani ścieżka.
+        if (/InboundInvoices\.json/.test(text)) {
+            errors.push("KSeF Inbox demo data reference in " + rel);
         }
         if (!/-dbg\.js$/.test(rel)) {
             for (const match of text.matchAll(EXTERNAL_HOST)) {
@@ -128,6 +158,11 @@ export function verifyArtifact(dir) {
     }
     if (Object.values(cockpit.capabilities || {}).some((value) => value !== false)) {
         errors.push("manifest.json: all capabilities must be false");
+    }
+    const inbox = manifest["sap.ui5"].config.ksefInbox;
+    if (inbox && (inbox.dataMode !== "disabled" || inbox.mock || (inbox.cap && inbox.cap.entitySet)
+            || Object.values(inbox.capabilities || {}).some((value) => value !== false))) {
+        errors.push("manifest.json: ksefInbox must be disabled without mock data, CAP entity or capabilities");
     }
     if (JSON.stringify(cockpit.externalServices) !== JSON.stringify({ ai: false, scanner: false, voice: false, tts: false })) {
         errors.push("manifest.json: externalServices must all be explicitly false");
