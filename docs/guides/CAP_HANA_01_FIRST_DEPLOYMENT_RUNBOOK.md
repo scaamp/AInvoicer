@@ -2,7 +2,7 @@
 title: "CAP-HANA-01 — pierwsze HDI i kontrolowany deployment CAP"
 date: 2026-11-11
 type: guide
-status: deployment-failed-descriptor-fix-build-pending
+status: descriptor-fixed-offline-abort-and-redeploy-approval-pending
 tags: [ainvoicer, cap-hana-01, hana, hdi, cloud-foundry, deployment, recovery]
 ---
 
@@ -12,11 +12,49 @@ tags: [ainvoicer, cap-hana-01, hana, hdi, cloud-foundry, deployment, recovery]
 scalaniu deskryptorów (operacja `30401273-ddf4-11f1-ab29-eeee0a9dd8f2`, ERROR).
 `mbt assemble` nie tłumaczy typów projektu: w `mtad.yaml` wymagane są mapowania
 `java→java.tomcat`, `approuter.nodejs→javascript.nodejs`, `hdb→com.sap.xs.hdi`, zgodne z MBT1.2.49.
-Generator i regresja poprawione; odbudowa/new SHA PENDING. Stare0.7.3 i rollback0.7.2 nie są zestawem
-do ponowienia. Nie wykonywać `cf deploy -a retry`: użyłby niepoprawnych deskryptorów.
+Generator i regresja poprawione; odbudowa/nowe SHA zweryfikowane offline. Poprzednie bajty0.7.3
+i rollback0.7.2 nie są zestawem do ponowienia. Nie wykonywać `cf deploy -a retry`:
+użyłby niepoprawnych deskryptorów przypisanych do starej operacji.
 Status operacji wskazuje utrzymaną blokadę; przed nowym deploymentem wymagane zatwierdzone zakończenie
 starej operacji przez abort. Agent nie wykonał abort/retry/deploy. Aktualne dowody są w dzienniku.
 Ocena GO i checksumy niżej zachowują historię poprzedniego preflightu; nie stanowią bieżącej rekomendacji.
+
+### Poprawiony zestaw do nowej zgody — VERIFIED OFFLINE, NOT DEPLOYED
+
+Oba MTAR odbudowano w tym samym worktree z czystego `e2df55aed2ebdd973fb4a27541401a30a43ee73e`.
+Maven423 PASS/6 skipped, executable CF JAR10/10, UI5 CF13/13, AppRouter10/10, deploy29/29;
+build smoke/HANA, verify:release/verify:hana i odczyt rzeczywistych typów wewnątrz ZIP PASS.
+Test porównuje typy z prawdziwym `mbt mtad-gen -p cf` wersji1.2.49, także z extension fs4.
+Stare archiwa faktycznie odrzucane przez poprawiony walidator. Nie testowano nowego stagingu CF.
+
+| Poprawiony plik | Bajty | SHA-256 |
+| --- | --- | --- |
+| `D:\AInvoicer-cap-hana-01-build\deploy\build\ainvoicer_0.7.3.mtar` | 67562971 | `6a92fb787ccc77e1abc0b870a30ccbcba420c1d663446b628d7e3ab2ec8d935b` |
+| `D:\AInvoicer-cap-hana-01-build\deploy\build\ainvoicer_0.7.2.mtar` | 67551642 | `66014221b2219cfed68aa89502750ef67b9b65ebfa4d100fd5cb1299abcd3a69` |
+| `D:\AInvoicer\deploy\btp-dev-eu20-hana-first.mtaext` | 599 | `f11b31967d12cc3f587b55a39aaf385791503b8f2b11af472f2d03bd37cfd14e` |
+
+Extension i zakres pozostają jak zatwierdzany wcześniej: jawny fs4, te same hosty/usługi,
+wszystkie transporty/storage/outbox OFF. Typy w MTAR: CAP java.tomcat, AppRouter javascript.nodejs,
+HDI com.sap.xs.hdi. 14 tabel/6 indeksów/4 widoki wygenerowane, wdrożenie nadal PENDING.
+Nowe SHA wymagają nowej zgody; dotychczasowa próba właściciela jej nie zastępuje.
+
+**NO-GO wykonawcze do osobnej zgody na poniższe dwie operacje.** Nie uruchomiono ich:
+
+```powershell
+# Przed operacją właściciel odnawia sesję, jeśli potrzebne; trace wyłączony, bez publikacji logów HTTP.
+$env:CF_TRACE = 'false'
+$cfCliPath = Join-Path $env:USERPROFILE 'tools/cf8/x/cf.exe'
+& $cfCliPath deploy -i 30401273-ddf4-11f1-ab29-eeee0a9dd8f2 -a abort
+# Najpierw potwierdzić zakończenie starej operacji/zwolnienie blokady, target i wszystkie SHA z tabeli.
+& $cfCliPath deploy D:\AInvoicer-cap-hana-01-build\deploy\build\ainvoicer_0.7.3.mtar -e D:\AInvoicer\deploy\btp-dev-eu20-hana-first.mtaext
+```
+
+Abort nie jest rollbackiem aplikacji/schematu. Jeśli operacja jest już zakończona przez właściciela,
+nie ponawiać abort w ciemno; odczytać stan. Nie uruchamiać retry starego MTAR ani undeploy/delete-services.
+Podczas diagnostyki wykryto trace CLI ujawniający token; nie zapisano wartości w repo i nie powtarzamy jej.
+Właściciel otrzymał zalecenie odnowienia sesji. Odczyty wykonywać z CF_TRACE=false i bez raw HTTP/logów.
+
+### Historia poprzedniego preflightu — stare checksumy wycofane
 
 **GO do zatwierdzenia kontrolowanego pierwszego deploymentu DEV; NOT DEPLOYED.**
 To ocena przygotowania konkretnej operacji, nie zgoda wykonawcza ani końcowy security sign-off.

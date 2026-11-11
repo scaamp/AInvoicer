@@ -19,7 +19,9 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
   **OWNER-REPORTED**. [Pełna historia i ograniczenia PAYG](journal/2026-11-11-hdi-shared-provisioning.md).
 - [ ] **CAP-HANA-01 LIVE — NO-GO po odrzuconym deploymentcie / NOT DEPLOYED:**
   Naprawione mapowanie typów projektu do typów CF,29/29 testów wraz z SAP MBT mtad-gen PASS.
-  Odbudowa obu MTAR/nowe SHA i zakończenie operacji ERROR przed ponowną zgodą pozostają PENDING.
+  Odbudowa obu MTAR/nowe SHA/verify PASS z czystego e2df55a; Maven423 PASS/6 skipped,
+  gotowy JAR CF10/10, UI5 CF13/13 i AppRouter10/10 PASS. Zakończenie operacji ERROR
+  oraz nowa zgoda na konkretny zestaw/SHA pozostają PENDING.
   Poniższe wyniki opisują wcześniejszy preflight:
   MTAR/SHA i CI zweryfikowane offline; propozycja osobnego extension przypina wszystkie moduły do fs4.
   CAP HANA NOT CONNECTED. Wymagana zgoda na konkretny deploy/DDL/bindingi/przerwę;

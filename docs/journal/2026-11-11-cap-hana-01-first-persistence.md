@@ -2,7 +2,7 @@
 title: "CAP-HANA-01 — final review INT-03 i przygotowanie pierwszej persystencji"
 date: 2026-11-11
 type: journal
-status: preflight-pass-deployment-approval-pending
+status: deployment-failed-descriptor-fixed-offline-new-approval-pending
 tags: [ainvoicer, int-03, cap-hana-01, hana, hdi, security, deployment]
 ---
 
@@ -340,3 +340,37 @@ bezpiecznych pól CAPI. Nie pobierano VCAP ani credentiali bindingów; nie zmien
 i `mbt mtad-gen --help`. To realny test offline translacji, nadal bez potwierdzenia nowego stagingu CF.
 Następny krok: odbudować oba MTAR, przedstawić nowe SHA, po osobnej zgodzie abort starej operacji
 i deployment poprawionego zestawu. Nie ponawiać niepoprawnego archiwum przez retry.
+
+### Odbudowa po naprawie — VERIFIED OFFLINE
+
+Worktree wydania `D:\AInvoicer-cap-hana-01-build` był czysty; przełączono detached HEAD na commit
+naprawy `e2df55aed2ebdd973fb4a27541401a30a43ee73e`, bez nowej gałęzi/worktree i bez kopiowania MTAR
+między checkoutami. Przed zmianą zweryfikowano oba stare SHA i zachowano stare archiwa/evidence
+w `deploy/build/rejected-30401273`. Nie są kandydatami deploymentu/rollbacku.
+
+Wykonano npm test29/29, build:btp:smoke, verify:release, build:btp:hana, verify:hana — PASS.
+W środku pełne Maven clean verify429 (423 PASS/6 Azurite skipped), CF executable JAR10/10,
+UI5 CF13/13 i AppRouter10/10. Ponowny test prawdziwych odrzuconych archiwów potwierdził odmowę
+obu przez nowy walidator. Node24.13.0/JDK25.0.4.1/Maven3.9.16/MBT1.2.49 bez zmian.
+Nie powtarzano QUnit/OPA/pełnego Azurite lokalnie — zmiana dotyczy generatorów deskryptora.
+
+| Poprawiony MTAR | Bajty | SHA-256 |
+| --- | --- | --- |
+| ainvoicer_0.7.3.mtar | 67562971 | `6a92fb787ccc77e1abc0b870a30ccbcba420c1d663446b628d7e3ab2ec8d935b` |
+| ainvoicer_0.7.2.mtar | 67551642 | `66014221b2219cfed68aa89502750ef67b9b65ebfa4d100fd5cb1299abcd3a69` |
+
+SourceCommit e2df55a, workingTreeDirty=false,
+sourceFilesSha256 `fcde76abeace9c305179630af18d68c80980518f95ce90084b7f2188e5459119`.
+HANA descriptor `5c31959eed0c6895f5554cb43172747faf2410e9ba31e33a49aaf487d45dffba`,
+CAP JAR `2145df4c7eb252b7302e95dd590cd177f39d944e9e8a123116f1df12dd54ad83`,
+HDI payload `73e5b4bd4d2ef6b4fd6f22642535f206213283ea84e1cd885380466c9753f852`.
+Odczyt mtad.yaml wewnątrz obu archiwów: CAP java.tomcat, AppRouter javascript.nodejs,
+HDI com.sap.xs.hdi. Wyłącznie existing-service, niezmienione flagi/routes/stackplan; HANA14/6/4.
+Dokładny zewnętrzny extension do nowej zgody pozostaje w D:\AInvoicer\deploy,599B,
+SHA `f11b31967d12cc3f587b55a39aaf385791503b8f2b11af472f2d03bd37cfd14e`.
+Kopia extension w checkoutcie wydania ma inne zakończenia linii; nie zastępuje wskazanego pliku.
+
+**NOT DEPLOYED / LIVE staging i HANA persistence PENDING.** Naprawa jest gotowa offline;
+NO-GO wykonawcze do zatwierdzonego abort operacji ERROR i nowej zgody na zestaw/SHA.
+Dokładne przyszłe polecenia są na początku runbooka. Nie wykonano żadnej z tych mutacji.
+Logi module-type-fix-tests/smoke/hana.log i nowe release-evidence są ignorowane w Git.

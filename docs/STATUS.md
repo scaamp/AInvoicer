@@ -22,7 +22,11 @@ zakończyła się ERROR podczas scalania deskryptorów: `Unsupported module type
 29/29 testów PASS, w tym porównanie z prawdziwym SAP MBT1.2.49 `mtad-gen` i regresja odrzucenia
 typów projektowych. Oba dotychczasowe MTAR, również rollback0.7.2, są wycofane z rekomendacji:
 mają ten sam defekt; zachowano oryginały/evidence w build/rejected-30401273 worktree wydania.
-Odbudowa i nowe SHA PENDING. Nie wykonano retry/abort/redeploy ani DML.
+Odbudowa obu MTAR z czystego `e2df55a` i verify PASS (**VERIFIED OFFLINE**).
+Nowe0.7.3 SHA256 `6a92fb787ccc77e1abc0b870a30ccbcba420c1d663446b628d7e3ab2ec8d935b`;
+rollback0.7.2 `66014221b2219cfed68aa89502750ef67b9b65ebfa4d100fd5cb1299abcd3a69`.
+NO-GO wykonawcze do zatwierdzenia abort starej operacji ERROR i nowego zestawu/SHA.
+Nie wykonano retry/abort/redeploy ani DML.
 Szczegóły: [dziennik](journal/2026-11-11-cap-hana-01-first-persistence.md#naprawa-po-pierwszej-próbie-deploymentu--2026-11-11).
 Poniższa ocena GO i stare checksumy opisują preflight sprzed ujawnienia defektu.
 
