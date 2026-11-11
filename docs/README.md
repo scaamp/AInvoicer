@@ -8,6 +8,9 @@ tags: [ainvoicer, dokumentacja]
 
 # AInvoicer — baza wiedzy projektu
 
+**Owner-led learning:** [BLOB-LAB-01 — samodzielne ćwiczenie CAP Java / HDI / HANA BLOB](guides/BLOB_LAB_01_OWNER_LED_HDI.md). Codex i Claude Code nie mogą realizować tego laboratorium autonomicznie; mogą pomagać wyłącznie w zakresie wskazanym przez właściciela. Laboratorium nie zostało rozpoczęte ani zatwierdzone do LIVE deployu.
+
+
 ## Strategia infrastruktury i bazy danych
 
 - [Infrastructure as Code / Database as Code — pełna strategia, architektura, etapy, ryzyka, backup/DR i przyszły SaaS](architecture/INFRASTRUCTURE_AS_CODE_STRATEGY.md).
