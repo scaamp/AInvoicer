@@ -250,7 +250,7 @@ Walidator odrzuca dodatkowe usługi/env, mutating flags, UI SEND/Inbox opt-in, n
 lokalne bindingi, `application-test.yaml` i bibliotekę `java-security-test` w JAR.
 Nie pakuje narzędzi diagnostycznych/testów do runtime. Zależności HANA w JAR nie tworzą HANA/HDI.
 
-**Własny finalny build 11 listopada08:39 CET: PASS**, czysty commit
+**Pierwszy zweryfikowany build 11 listopada08:39 CET: PASS**, czysty commit
 `ba2f92a57e9230b118a85b3b4db135f7c1fbf213`, `workingTreeDirty=false`, 67 511 674 bajty.
 SHA256 MTAR: `6cf4b86f9aa8000dcef0276c2cd4af076ae26a5000362ac65e75abd611411286`.
 `verify:release` potwierdził archiwum, payloady i niezmienione wejścia.
@@ -265,6 +265,14 @@ Aktualny wynik CI konkretnego HEAD jest w [checks PR7](https://github.com/scaamp
 Kontrakt CAPI kolektora sprawdzono względem
 [Cloud Controller API3.233.0](https://v3-apidocs.cloudfoundry.org/version/3.233.0/index.html):
 użyte zasoby są odczytami GET; nie oznacza to ponownej weryfikacji ich uprawnień LIVE.
+
+**Aktualne wydanie po wznowieniu LIVE:** clean build i `verify:release` **PASS** 11 listopada10:24 CET,
+źródłowy commit `99edaad3063836c00534035c44e759da198a6eb6`, `workingTreeDirty=false`.
+MTAR ma **67 511 694 bajty**, SHA256
+`ecec1b22ed8a01dde529a7d4df483a4e0483fd09b8ab01ceecd1e664e7b7ecc1`.
+Ponownie Maven373/373, executable JAR CF10/10, AppRouter10/10 i UI5 CF13/13 PASS;
+testy narzędzi po korekcie CAPI i dodaniu istniejącej tożsamości CF: **24/24 PASS**.
+Podany wcześniej hash ba2f92a jest historyczny; do zatwierdzenia używać aktualnego manifestu wydania.
 
 ### cflinuxfs5 / SAP Java Buildpack / JDK25
 
