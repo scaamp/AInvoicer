@@ -14,7 +14,7 @@ export function hashes(file) {
     const bytes = readFileSync(file);
     const archive = new Zip(bytes);
     return { mtar: sha256(bytes), descriptor: sha256(archive.readFile('META-INF/mtad.yaml')),
-        capJar: sha256(new Zip(archive.readFile('ainvoicer-srv/data.zip')).readFile('cap-java-exec.jar')),
+        capJar: sha256(archive.readFile('ainvoicer-srv/data.zip')),
         approuterPayload: sha256(archive.readFile('ainvoicer-approuter/data.zip')) };
 }
 
