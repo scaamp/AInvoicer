@@ -2,11 +2,17 @@
 title: "CAP-HANA-01 — final review INT-03 i przygotowanie pierwszej persystencji"
 date: 2026-11-11
 type: journal
-status: approved-deployment-staging-failed-portable-zip-fix-pending
+status: recovery-go-for-owner-approval-not-deployed
 tags: [ainvoicer, int-03, cap-hana-01, hana, hdi, security, deployment]
 ---
 
 # CAP-HANA-01 — stan i dowody sesji
+
+**Aktualizacja CAP-HANA-01R, 20:35 CET:** niezależny preflight Codex potwierdza
+broker HANA `serviceStopped=false`, zgodne SHA i PASS weryfikacji gotowych artefaktów.
+GO techniczne do osobnej zgody, bez abort/deploymentu; CAP nadal na starym runtime.
+Szczegóły i ograniczenia: [końcowy wpis recovery](#cap-hana-01r--niezależna-weryfikacja-codex-2035-cet).
+Poniższe wcześniejsze nagłówki „najnowszy stan” opisują historię poprzednich prób.
 
 **Najnowszy stan LIVE:** po nowej zgodzie wykonano abort i deployment poprawionego deskryptora.
 Merge przeszedł; operacja d110c171… zakończyła się ERROR przy stagingu przez uprawnienia ZIP Windows.
@@ -477,3 +483,88 @@ QUnit/OPA i Inbox HTTP SUCCESS. Późniejszy commit uzupełnia wyłącznie dokum
 wejścia runtime/workflow/testów pozostają identyczne. Nie jest to dowód stagingu/HANA/persystencji LIVE.
 Końcowy CAPI read potwierdził nadal stare droplety CAP/AppRoutera1/1, deployer STOPPED/0, HDI1 app
 binding i0 key bindings. Nowej mutacji CF nie wykonywano; potrzebna zgoda na nowy zestaw196b9b8c… .
+
+## CAP-HANA-01R — niezależna weryfikacja Codex 20:35 CET
+
+### Zakres i izolacja
+
+Odczytano AGENTS, STATUS, ROADMAP, dzienniki CAP-HANA/HDI/KSEF-STOR, skill CAP Java,
+ADR0001/0007 i politykę BLOB-LAB-01. `origin/main=319adbf77941f6f0d9edf4fcb9af08e80ee83bc8`.
+Żądany branch `feature/cap-hana-01r-deployment-recovery` był już zajęty przez osobny,
+czysty worktree Claude Code (`72bd8c6`, raport NO-GO z wcześniejszego odczytu HANA).
+Nie zmieniano tej pracy. Odstępstwo od nazwy: nowy branch
+`feature/cap-hana-01r-deployment-recovery-review`, worktree `D:\AInvoicer-cap-hana-01r-review`,
+utworzony z aktualnego origin/main. Zachowano główny checkout oraz jego untracked
+`cap-java/db/documents.cds`; nie był wejściem wydania. Bez implementacji/testów BLOB-LAB,
+zmian modeli biznesowych, KSeF INBOUND, XML/PDF storage ani dokumentów STATUS/ROADMAP/README.
+
+### VERIFIED LIVE — odczyty CF 19:30–19:35 UTC
+
+CF8.19.0 / multiapps3.12.0, proces CLI bez DEBUG/CF_TRACE. Wyłącznie odczyty:
+target, services, apps, service db/HANA, mta-ops (aktywne i historia), org/space/quota,
+stacks/buildpacks/plugins; CAPI apps/processes/current droplet, service instances/plans,
+credential-binding **metadata bez details**, usage_summary. Z parametrów brokera wybrano
+tylko database_id/serviceStopped; z `environment_variables` CAP wyłącznie dozwolone flagi
+i obecność kluczy nadpisania. Nie odczytywano systemowego `/env`, VCAP ani credentiali.
+
+| Obszar | Własny wynik |
+| --- | --- |
+| Target | EU20 `api.cf.eu20-001.hana.ondemand.com`, org `National Center for Cryptography_dev-v2xzij9s`, space `dev` |
+| MTA | d110c171… aktywna ERROR, 30401273… ABORTED, poprzednia udana a22f0f10… FINISHED |
+| HANA | `serviceStopped=false` w dwóch odczytach, ostatni 19:33:27 UTC; agent nie wykonywał Start. Historyczne NO-GO z raportu Claude nie jest bieżącym stanem. Nie jest to test SQL health. |
+| HDI | create succeeded, plan hdi-shared `free=true`; parametr database_id zgodny z2161fe76…; 1 binding app do deployera, 0 key bindings HDI |
+| CAP | STARTED1/1, 1024 MB, fs4, SAP Java bp2.76.0, droplet09.11 SHA944f83c7…; wyłącznie XSUAA+Destination |
+| AppRouter | STARTED1/1, 256 MB, fs4, Node bp1.9.6, droplet09.11 SHA0fd73eca…; wyłącznie XSUAA+Destination |
+| Deployer | STOPPED, 256 MB, lifecycle fs4/nodejs_buildpack, brak bieżącego dropletu; wyłącznie HDI |
+| RAM | FREE_QUOTA4096 MB, usage1408 MB/3 started instances, wolne2688 MB, bez space quota |
+| Flagi starego CAP | profil cf, identity-smoke=true, KSeF/SAP WRITE/sweeper=false; brak wskazanych override JAVA/SPRING_DATASOURCE/SPRING_CONFIG/CDS_SECURITY/SPRING_APPLICATION_JSON |
+| Anonimowe GET | metadata CAP401 PASS, indeks CAP200/contractExposed=true **FAIL**, indeks AppRoutera401 PASS; bez redirectów, bez zapisu body/cookies |
+
+Początkowy filtr CAPI `service_credential_bindings?space_guids=...` nie zwrócił poprawnej kolekcji;
+nie uznano pustej projekcji za brak bindingów. Powtórzono z obsługiwanym filtrem
+`service_instance_guids` dla każdej z3 usług i potwierdzono mapowanie aplikacji.
+Inne aplikacje/usługi pozostały nietknięte. Nie ma dowodu nowego stagingu ani JDBC HANA.
+
+### VERIFIED OFFLINE — zachowane bajty wydania
+
+Nie odbudowywano MTAR. `git diff4630f89..origin/main` dla cap-java/approuter/UI5/deploy/mta.yaml
+jest pusty; worktree wydania czysty, HEAD4630f89. Ponownie zmierzono pełne SHA-256 i rozmiary:
+HANA196b9b8c…/67562976 B, rollback00e31c97…/67551647 B, extensionf11b3196…/599 B.
+Pełne hashe i ścieżki są w [aktualnej bramce runbooka](../guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md#cap-hana-01r--aktualna-bramka-recovery-1111-2035-cet).
+Odczytane evidence porównano z prawdziwymi payloadami i sourceHash99b81b16… z worktree wydania.
+Walidatory archiwów uruchomiono z nowego checkoutu, bez zapisu w worktree wydania.
+
+| Weryfikacja | Wynik i granice |
+| --- | --- |
+| `verifyArchive` HANA i smoke, `hashes`, `sourceHash` | PASS dla obu zachowanych MTAR/evidence; HANA14 tabel/6 indeksów/4 widoki |
+| Python3.11.9 `zipfile` (`-I`) | wszystkie nested ZIP obu MTAR: Unix creator3, pliki0644, katalogi0755 |
+| Deskryptor i HDI | java.tomcat/javascript.nodejs/com.sap.xs.hdi, trzy existing-service; Node^24.0.0, HDI deploy5.7.0; brak undeploy/CSV/hdbtabledata/BLOB-LAB |
+| Flagi nowego MTAR | SEND/INBOUND/SAP WRITE/sweeper OFF, storage off, outbox persistent/inMemory OFF; identity-smoke=false, SQL init never |
+| `npm test --prefix deploy` | 32 testy: **31 PASS/1 Go skipped** lokalnie, brak Go; test porównuje typy z MBT1.2.49 |
+| `npm run test:cf-runtime --prefix deploy` | **10/10 PASS**, rzeczywisty JAR wyciągnięty z zatwierdzanego MTAR do nowego target; syntetyczne bindingi, bez BTP/HANA |
+| [CI main43083056546](https://github.com/scaamp/AInvoicer/actions/runs/43083056546) | **completed/success** dla dokładnego319adbf; wcześniejszy run f04fb56 cancelled, nie PASS |
+| Build | Nie powtarzano Maven/UI5 ani rebuild MTAR; historyczny Maven423 PASS/6 skipped i build obu archiwów odnotowany powyżej; aktualny CI SUCCESS. Nie przedstawiamy tego jako nowego lokalnego builda. |
+
+Lokalnie Node24.13.0, Microsoft JDK25.0.4.1, Maven3.9.16. Przygotowanie nowego node_modules:
+`npm ci --prefix deploy --ignore-scripts`, następnie `npm rebuild --prefix deploy mbt`.
+Pierwszy test przed rebuildem miał30 PASS/1 FAIL/1 skipped: brak binarnego MBT po pominięciu
+install script; wrapper kończył się kodem0 bez mtad.yaml. Po instalacji binarnego MBT pełny rerun
+31 PASS/1 skipped. To korekta lokalnego narzędzia, bez zmian kodu ani bajtów MTAR.
+`git diff --check` PASS. Nie dodawano nowych testów dla samej dokumentacji.
+
+Źródła sprawdzone podczas sesji: [CAP Java Persistence Services](https://cap.cloud.sap/docs/java/cqn-services/persistence-services)
+i [MultiApps CLI](https://github.com/cloudfoundry/multiapps-cli-plugin), a faktyczne opcje abort/retries/version-rule
+potwierdzono lokalnym `cf deploy --help`. Kontrakt runtime HANA pozostaje do sprawdzenia LIVE.
+
+### Decyzja i najmniejszy następny krok
+
+**GO techniczne do osobnej zgody na próbę DEV** z jawnymi ograniczeniami security/SQL;
+**NO-GO wykonawcze bez zgody** na abort d110c171… oraz deployment196b9b8c…/extensionf11b3196…
+z `--retries 0`. Aktualny defekt indeksu CAP ma poprawkę w nowym JAR, lokalnie10/10 PASS;
+brak końcowego sign-off bezpieczeństwa do ponowienia LIVE. Żadna zgoda nie została domniemana.
+Nie wykonano abort/retry/deploy, restartu, DDL/DML, service keys ani nowych usług/kosztownych zmian.
+
+Po zgodzie najpierw ponowny target/HANA/SHA/ops, potem abort, potwierdzenie ABORTED i deployment.
+Pierwszy błąd zatrzymuje wykonanie. Pełny plan logów HDI/JDBC/guardów/bindingów/anonimowych GET,
+rozróżnienie SQL od logów oraz osobno zatwierdzany rollback są w aktualnej bramce runbooka.
+Syntetyczne INSERT/SELECT, restart i konkurencja pozostają poza zgodą deploymentową.
