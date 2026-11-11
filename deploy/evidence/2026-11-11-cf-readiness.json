@@ -1,0 +1,6 @@
+{
+  "kind": "READ_ONLY_CF_INVENTORY",
+  "at": "2026-11-11T07:13:23.500Z",
+  "status": "BLOCKED",
+  "reason": "CF login, CLI or read authorization unavailable; raw output suppressed"
+}

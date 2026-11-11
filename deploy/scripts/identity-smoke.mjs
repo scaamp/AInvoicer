@@ -12,7 +12,7 @@ import Zip from 'adm-zip';
 export const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 export const smokeEnv = Object.freeze({
     SPRING_PROFILES_ACTIVE: 'cf', AINV_DEPLOYMENT_IDENTITY_SMOKE: 'true',
-    AINV_KSEF_ENABLED: 'false', AINV_SAP_WRITE_ENABLED: 'false',
+    AINV_KSEF_ENABLED: 'false', AINV_KSEF_INBOUND_ENABLED: 'false', AINV_SAP_WRITE_ENABLED: 'false',
     AINV_SAP_WRITE_SWEEPER_ENABLED: 'false', SPRING_SQL_INIT_PLATFORM: 'h2'
 });
 const jreEnv = {
@@ -103,6 +103,11 @@ export function verifyArchive(file) {
     validate(YAML.parse(archive.readAsText('META-INF/mtad.yaml')));
     const srv = new Zip(archive.readFile('ainvoicer-srv/data.zip'));
     assert.deepEqual(srv.getEntries().map(e => e.entryName), ['cap-java-exec.jar']);
+    const jar = new Zip(srv.readFile('cap-java-exec.jar'));
+    for (const entry of jar.getEntries()) {
+        assert.ok(!/(^|\/)(default-env\.json|application-test\.yaml)|java-security-test|BOOT-INF\/classes\/.*Test\.class/.test(entry.entryName),
+            'test identity or local binding in runtime JAR: ' + entry.entryName);
+    }
     const router = new Zip(archive.readFile('ainvoicer-approuter/data.zip'));
     for (const entry of router.getEntries()) {
         assert.ok(!/(^|\/)(node_modules|test|localService|\.env|default-env|default-services)/i.test(entry.entryName), entry.entryName);
@@ -111,8 +116,17 @@ export function verifyArchive(file) {
         }
     }
     const manifest = JSON.parse(router.readAsText('resources/manifest.json'));
-    assert.equal(manifest['sap.ui5'].config.ksefCockpit.dataMode, 'rap');
-    assert.deepEqual(manifest['sap.ui5'].config.ksefCockpit.externalServices,
+    const config = manifest['sap.ui5'].config;
+    assert.equal(config.ksefCockpit.dataMode, 'rap');
+    assert.equal(config.ksefCockpit.capabilities.sendInvoice, false);
+    assert.ok(Object.values(config.ksefCockpit.capabilities).every(v => v === false));
+    assert.equal(config.ksefInbox.dataMode, 'disabled');
+    assert.ok(Object.values(config.ksefInbox.capabilities).every(v => v === false));
+    assert.equal(config.ksefInbox.mock, undefined);
+    assert.equal(config.ksefInbox.cap?.entitySet, undefined);
+    assert.deepEqual(JSON.parse(router.readAsText('xs-app.json')),
+        JSON.parse(readFileSync(join(root, 'approuter/xs-app.json'), 'utf8')), 'artifact routes must match reviewed source');
+    assert.deepEqual(config.ksefCockpit.externalServices,
         { ai: false, scanner: false, voice: false, tts: false });
     console.log('MTAR validation PASS: two modules, existing services only, no HDI, all mutations OFF');
 }
