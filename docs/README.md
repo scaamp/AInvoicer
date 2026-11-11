@@ -8,6 +8,25 @@ tags: [ainvoicer, dokumentacja]
 
 # AInvoicer — baza wiedzy projektu
 
+**CAP-HANA-01 LIVE: zatwierdzony deployment przeszedł merge, ale staging deployera zakończył się ERROR.**
+Deployer utworzony i przypięty do HDI; CAP/AppRouter pozostają na poprzednim runtime, CAP HANA NOT DEPLOYED.
+Naprawa przenośności ZIP Windows→Unix odbudowana i zweryfikowana offline, nowe hashe w runbooku;
+CI poprawki1ea445a SUCCESS, nowa zgoda PENDING.
+[Najnowszy wynik](journal/2026-11-11-cap-hana-01-first-persistence.md).
+Poniższe wpisy opisują wcześniejsze etapy.
+
+**CAP-HANA-01: pierwsza próba deploymentu odrzucona przed stagingiem; NO-GO dla poprzednich MTAR.**
+Naprawiono mapowanie typów projektu do typów CF,29/29 testów PASS; oba MTAR odbudowane i verify PASS.
+Nowe SHA w dzienniku/runbooku; wymagane zatwierdzenie abort starej operacji ERROR i nowego deploymentu.
+[Aktualny wynik i przyczyna](journal/2026-11-11-cap-hana-01-first-persistence.md).
+Poniższe GO jest historią preflightu sprzed błędu; CAP HANA nadal NOT DEPLOYED.
+
+CAP-HANA-01 (2026-11-11): [final review, merge INT-03 i dowody przygotowania](journal/2026-11-11-cap-hana-01-first-persistence.md) ·
+[runbook pierwszego HDI/deploymentu/testów/rollbacku](guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md).
+PR #8 MERGED e2696ab po CI PASS. [HDI provisioning i koszty](journal/2026-11-11-hdi-shared-provisioning.md):
+HDI **VERIFIED LIVE**, Cloud Central RUNNING/Database ID **OWNER-REPORTED**;
+CAP→HANA **NOT DEPLOYED**, GO do osobnego zatwierdzenia kontrolowanego deploymentu DEV.
+
 Aktualizacja INT-03 (2026-11-11): [dziennik integracji i testy](journal/2026-11-11-int-03-orchestration.md),
 [audyt security/persistence](audits/2026-11-11-int-03-security-persistence.md),
 [HANA CAP deployment](guides/HANA_CLOUD_CAP_DEPLOYMENT.md),
@@ -16,7 +35,7 @@ Aktualizacja INT-03 (2026-11-11): [dziennik integracji i testy](journal/2026-11-
 [storage](guides/KSEF_DURABLE_STORAGE.md), [dziennik STOR-01](journal/2026-11-11-ksef-stor-01.md),
 [CAP-07D acceptance](guides/CAP_07D_SECURITY_ACCEPTANCE.md), [dziennik CAP-07D](journal/2026-11-11-cap-07d.md),
 [propozycja ADR-0008 BLOB](decisions/ADR-0008-document-storage-dev-test-proposal.md).
-**HANA Free Tier LIVE / HDI NOT CONFIGURED / CAP HANA NOT CONNECTED.**
+**HANA Free Tier LIVE / HDI PROVISIONED / CAP HANA NOT CONNECTED / NOT DEPLOYED.**
 
 AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijana w kierunku integracji z KSeF 2.0. Repozytorium zachowuje istniejące moduły ABAP, SAPUI5, Node.js i Python; backend powstaje w `cap-java/` na głównej gałęzi `main`. Dotychczasową linię `java-cap-ksef` promowano do `main`; oryginalny projekt zachowano na `archive/original-ainvoicer-2026-10-29`.
 

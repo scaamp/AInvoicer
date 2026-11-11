@@ -2,18 +2,40 @@
 title: "CAP-HANA — bezpieczne przygotowanie wdrożenia na istniejącej Free Tier"
 date: 2026-11-11
 type: guide
-status: offline-ready-hdi-blocked
+status: hdi-provisioned-deployment-approval-pending
 tags: [ainvoicer, hana, hdi, deployment, security, int-03]
 ---
 
 # HANA Cloud / CAP — wariant przygotowany, niewdrożony
 
-**HANA Free Tier LIVE / HDI NOT CONFIGURED / CAP HANA NOT CONNECTED.**
+**Aktualizacja LIVE:** po zgodzie właściciela agent zakończył starą operację i uruchomił poprawione0.7.3.
+Merge przeszedł; staging deployera zakończył się ERROR (`package.json: permission denied`).
+HDI ma1 app binding do STOPPED deployera bez trasy; CAP nadal nie ma HDI i działa na starym droplecie.
+Naprawa metadanych ZIP creator10→Unix3/0644/0755 odbudowana i zweryfikowana offline.
+Nowe hashe są na początku runbooka; CI poprawki1ea445a SUCCESS, osobna zgoda na nowy deployment PENDING.
+Bez DML/restartu CAP. Aktualne dowody są na końcu dziennika; starsze stany poniżej są historią.
+
+**NO-GO dla dotychczasowych artefaktów:** pierwsza próba została odrzucona przed stagingiem przez
+niezmapowany typ `approuter.nodejs`. Naprawiono translację CF dla obu generatorów; oba MTAR
+odbudowano z nowymi SHA i zweryfikowano offline. Wymagana osobna zgoda na zakończenie operacji ERROR
+i ponowny deployment. Aktualne bajty/SHA i polecenia: początek runbooka CAP-HANA-01.
+[Przyczyna i dowody](../journal/2026-11-11-cap-hana-01-first-persistence.md).
+
+Aktualny zestaw po final review/merge INT-03, dokładne artefakty i wykonywalne komendy:
+[runbook CAP-HANA-01](CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md) ·
+[dziennik CAP-HANA-01](../journal/2026-11-11-cap-hana-01-first-persistence.md).
+Poniższy opis pozostaje kontraktem generatora; historyczne checksumy INT-03 nie zastępują nowego wydania.
+
+**HANA Free Tier LIVE / HDI PROVISIONED / CAP HANA NOT CONNECTED / NOT DEPLOYED.**
+Aktualizacja po ręcznej konfiguracji właściciela: CF potwierdza `ainvoicer-db/hana/hdi-shared`,
+free=true, brak bindingów i jawny `database_id`. RUNNING/zgodność ID z Cloud Central potwierdził
+właściciel. [Historia, źródła i ograniczenia PAYG](../journal/2026-11-11-hdi-shared-provisioning.md).
+Nie tworzyć ponownie HDI. Aktualna bramka i propozycja jawnego fs4 są w runbooku CAP-HANA-01.
 Build MTAR nie daje zgody na tworzenie HDI, deploy, restart, zapis do HANA/SAP ani KSeF.
 [As-built](HANA_CLOUD_FREE_TIER_SETUP.md) · [Audyt](../audits/2026-11-11-int-03-security-persistence.md) ·
 [Dziennik](../journal/2026-11-11-int-03-orchestration.md) · [ADR-0007](../decisions/ADR-0007-cap-persistence-hana-cloud.md).
 
-## Rzeczywisty stan i bramka kosztowa
+## Historyczny stan INT-03 i bramka kosztowa
 
 Odczyt INT-03 `cf target/services/marketplace/apps` potwierdza właściwe EU20/org/space,
 jedną widoczną usługę `hana-cloud/hana-free` o nazwie `ainvoicer-hana-dev`, bez bindingów.
@@ -168,10 +190,11 @@ Free Tier nie zapewnia backup/recovery, więc nie obiecujemy przywrócenia utrac
 Przed migracją już używanego kontenera wymagany jest uzgodniony eksport danych i plan odtworzenia;
 dlatego pierwszy deployment tylko na dedykowanym, pustym HDI i danych syntetycznych.
 
-## Pięć czynności właściciela przed CAP-HANA-01
+## Historyczny plan przed provisioningiem — postęp CAP-HANA-01
 
-1. Potwierdzić bezpłatność i dostępność `hana/hdi-shared`; bez płatnych entitlementów.
-2. Potwierdzić Database ID istniejącej HANA i mapowanie org/space; zatwierdzić utworzenie dedykowanego HDI.
+1. **Wykonane:** dostępność/free potwierdzone CF/CAPI. Indywidualne rozliczenie PAYG nadal PENDING.
+2. **Wykonane przez właściciela:** HDI; database_id brokera i org/space VERIFIED LIVE,
+   zgodny Database ID/RUNNING w Cloud Central OWNER-REPORTED. Nie ponawiać create.
 3. Zatwierdzić konkretny MTAR/SHA, migrację i binding CAP do tego HDI, z rollbackiem aplikacji.
 4. Zatwierdzić syntetyczny scope i uruchomienie harness w sieci CF, następnie test restart/recovery.
 5. Oddzielnie zakończyć LIVE security A/B/principal i zdecydować o ADR-0008; bez aktywowania KSeF/storage.

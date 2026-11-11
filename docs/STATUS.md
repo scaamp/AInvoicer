@@ -14,22 +14,78 @@ tags: [ainvoicer, cap-java, status]
 
 ## Current Phase
 
-**INT-03 (2026-11-11) — integracja security/storage/HANA, LOCAL PASS, PR #8.**
-Final review przed merge: poprawiono atomowość seed i odmowę cleanup dla obcego lease/zmienionego
-checkpointu; nowa lokalna regresja H2 **4/4 PASS**. Merge wymaga CI PASS poprawionego HEAD.
-Osobny worktree `D:\AInvoicer-int-03`, trzy merge bez konfliktów. Wspólny tenant gate dekoruje
-oficjalny decoder SAP dla całego HTTP CAP; znana luka CAP-07D poza Inbox usunięta w kodzie.
-Storage Azure pozostaje opcjonalny/OFF; poprawiono deadline body. Wariant HANA MTAR wymaga
-istniejących XSUAA/Destination/HDI, bez provisioning i bez delivery outbox/transportów.
-**HANA Free Tier LIVE / HDI NOT CONFIGURED / CAP HANA NOT CONNECTED.** Własny inventory CF potwierdza
-`ainvoicer-hana-dev/hana-free`, brak oferty `hana/hdi-shared` i bindingu CAP; SQL wersji pochodzi od właściciela.
-Pełne liczniki regresji, SHA, PR/CI i ograniczenia: [dziennik INT-03](journal/2026-11-11-int-03-orchestration.md).
-Maven425 (419 PASS/6 skipped), Azurite6/6, QUnit112, OPA21, Inbox16, CF JAR10 i oba MTAR PASS.
-[PR #8](https://github.com/scaamp/AInvoicer/pull/8) · [aktualny CI HEAD](https://github.com/scaamp/AInvoicer/pull/8/checks).
-[Audyt](audits/2026-11-11-int-03-security-persistence.md) · [HANA deployment](guides/HANA_CLOUD_CAP_DEPLOYMENT.md) ·
-[As-built](guides/HANA_CLOUD_FREE_TIER_SETUP.md) · [propozycja BLOB, niezatwierdzona](decisions/ADR-0008-document-storage-dev-test-proposal.md).
-Bez deployu, HDI creation, restartu, zapisów HANA/SAP i LIVE KSeF. Następny krok: bezpłatny entitlement
-HDI + Database ID/mapowanie + osobna zgoda CAP-HANA-01. Historyczne „brak HANA” niżej opisuje stan z wcześniejszej daty.
+**CAP-HANA-01 LIVE — zatwierdzona próba zakończona ERROR przy stagingu (2026-11-11).**
+Właściciel wyraźnie zatwierdził abort starej operacji i poprawione0.7.3/SHA6a92fb78… .
+**VERIFIED LIVE:** abort30401273… zakończony ABORTED; nowa operacja
+`d110c171-ddf8-11f1-8764-eeee0a818911` przyjęła deskryptor, utworzyła deployer i jego binding HDI,
+ale staging Node buildpack1.9.6/fs4 zakończył się `package.json: permission denied` (także3 domyślne
+ponowienia narzędzia). Deployer STOPPED, bez trasy, HDI1 app binding; CAP/AppRouter pozostały
+STARTED1/1 na starych dropletach, CAP bez HDI. Docelowe0.7.3/HANA **NOT DEPLOYED**.
+Znaleziono nieprzenośny creator=10 w payloadach ZIP Windows oraz katalogi0666; Go archive/zip
+interpretuje creator10 jako mode000. Normalizacja do Unix creator3/pliki0644/katalogi0755
+zaimplementowana we wszystkich3 payloadach i walidatorze. Lokalnie31 PASS/1 Go skipped;
+niezależny czytnik Go1.26.10 wymagany w CI. Czysta odbudowa4630f89 i verify obu MTAR PASS;
+Python potwierdził Unix3/0644/0755 w rzeczywistych payloadach. Nowe0.7.3 SHA256
+`196b9b8cc85843f08b200aba9455e6f1c8b725a9ad3b765a3f883ba68b621570`, rollback0.7.2
+`00e31c977eb0d29cb86a4f6b7ecbdf115cfaf1a489f247955545b317f847f962`.
+[CI43075836717](https://github.com/scaamp/AInvoicer/actions/runs/43075836717) dla kodu HEAD1ea445a
+**SUCCESS**, także niezależny Go ZIP reader i pełna regresja. Nowa zgoda na abort d110c171…/
+deployment196b9b8c… z `--retries 0` pozostaje PENDING.
+Nie wykonano nowego abort/retry/redeploy, DML ani restartu CAP. Stan historyczny poniżej.
+
+**CAP-HANA-01 — NO-GO, deployment odrzucony przed stagingiem (2026-11-11).**
+Właściciel uruchomił zatwierdzany zestaw; operacja `30401273-ddf4-11f1-ab29-eeee0a9dd8f2`
+zakończyła się ERROR podczas scalania deskryptorów: `Unsupported module type approuter.nodejs`.
+**VERIFIED LIVE:** stare droplety/checksumy CAP/AppRoutera bez zmian, obie aplikacje1/1, HDI0 bindingów.
+**VERIFIED OFFLINE:** poprawiono mapowanie typów projektu do typów CF w obu generatorach;
+29/29 testów PASS, w tym porównanie z prawdziwym SAP MBT1.2.49 `mtad-gen` i regresja odrzucenia
+typów projektowych. Oba dotychczasowe MTAR, również rollback0.7.2, są wycofane z rekomendacji:
+mają ten sam defekt; zachowano oryginały/evidence w build/rejected-30401273 worktree wydania.
+Odbudowa obu MTAR z czystego `e2df55a` i verify PASS (**VERIFIED OFFLINE**).
+Nowe0.7.3 SHA256 `6a92fb787ccc77e1abc0b870a30ccbcba420c1d663446b628d7e3ab2ec8d935b`;
+rollback0.7.2 `66014221b2219cfed68aa89502750ef67b9b65ebfa4d100fd5cb1299abcd3a69`.
+NO-GO wykonawcze do zatwierdzenia abort starej operacji ERROR i nowego zestawu/SHA.
+Nie wykonano retry/abort/redeploy ani DML.
+Szczegóły: [dziennik](journal/2026-11-11-cap-hana-01-first-persistence.md#naprawa-po-pierwszej-próbie-deploymentu--2026-11-11).
+Poniższa ocena GO i stare checksumy opisują preflight sprzed ujawnienia defektu.
+
+**INT-03 MERGED / CAP-HANA-01 przygotowanie offline (2026-11-11).**
+[PR #8](https://github.com/scaamp/AInvoicer/pull/8) scalony jako `e2696ab2bee91399423ce9565a7f467194894215`
+po final review i [CI43052235875 SUCCESS](https://github.com/scaamp/AInvoicer/actions/runs/43052235875)
+HEAD368314c. Poprawiono atomowość seed/cleanup harnessu, dodano4 regresje H2. Lokalnie Maven429
+(423 PASS/6 Azurite skipped), CF JAR10, UI5 CF13, AppRouter10, deploy27 i oba MTAR PASS;
+CI osobno zaliczył Azurite, QUnit/OPA oraz Inbox HTTP. PR #7 GitHub oznaczył merged przez wspólną historię;
+nie wykonywano jego niezależnego merge. Main lokalny zsynchronizowany; nowy branch
+`feature/cap-hana-01-first-persistence` bazuje na e2696ab.
+
+**CAP-HANA-01: HDI VERIFIED LIVE / CAP HANA NOT CONNECTED / NOT DEPLOYED.**
+Nowy odczyt CF potwierdził `ainvoicer-db`, `hana/hdi-shared`, `create succeeded`, 0 bindingów
+(również service keys), `free=true`. Broker HDI zwraca jawny Database ID; właściciel potwierdził
+zgodny ID i RUNNING w Cloud Central (**OWNER-REPORTED**). Broker HANA: `serviceStopped=false`.
+Plan jest free w CF i SAP Help; Costs and Usage/indywidualna stawka PAYG pozostają **PENDING**.
+CAP/AppRouter1/1 nadal na starych dropletach fs4, bez HANA; bieżący JDBC/SQL **PENDING**.
+**GO do zatwierdzenia kontrolowanego deploymentu DEV**, bez zgody wykonawczej i bez DML.
+Proponowany osobny extension `deploy/btp-dev-eu20-hana-first.mtaext` przypina trzy moduły do fs4;
+nie zmienia istniejącego extension ani MTAR. fs4 jest deprecated; staging i migracja fs5 to osobne wyniki.
+LIVE A/B/DCL/principal H01 i końcowy security sign-off pozostają **PENDING**.
+Runbook zawiera konkretny MTAR/SHA, deployment, testy, rollback i outage.
+Harness wymaga osobno zatwierdzonego runnera z toolchain/bindingami w sieci CF; nie jest w produkcyjnym JAR.
+Kopia artefaktów między worktree została prawidłowo odrzucona przez hash wejść (49 plików tylko LF/CRLF);
+główny build dodatkowo blokuje zastany JAR. Wydanie **PASS** z czystego220a512 w izolowanym worktree
+`D:\AInvoicer-cap-hana-01-build`: Maven429/CF10/UI5 CF13/AppRouter10, smoke/HANA build i verify PASS.
+HANA MTAR SHA256 `be7bdbe6757f80e5498cbce033e560bb49d8c4dcd552bb7c181f8218c5bf2b81`;
+pozostałe manifesty/checksumy i ograniczenia opisano w dzienniku.
+
+[Dziennik CAP-HANA-01](journal/2026-11-11-cap-hana-01-first-persistence.md) ·
+[Wykonywalny runbook i bramki](guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md) ·
+[Audyt INT-03](audits/2026-11-11-int-03-security-persistence.md) ·
+[Propozycja ADR-0008, bez implementacji](decisions/ADR-0008-document-storage-dev-test-proposal.md).
+Właściciel utworzył HDI ręcznie; agent wykonał tylko odczyty CF i testy offline.
+[Historia provisioningu i kosztów](journal/2026-11-11-hdi-shared-provisioning.md).
+Nie wykonano deploy/restart, DDL/DML HANA, SAP WRITE ani LIVE KSeF; storage i oba outbox OFF.
+Następny krok właściciela: zatwierdzić dokładną operację z runbooka (MTAR, nowy extension, fs4,
+przerwa aplikacji i jawne ryzyka security), potem osobno runner/testy/DML/restart.
+Historyczne wpisy poniżej opisują stan z wcześniejszych dat.
 
 **CAP-07B.2 LIVE (2026-11-10) — FUNCTIONAL PASS / SECURITY ACCEPTANCE PENDING.**
 W subaccount CF EU20: XSUAA `ainvoicer-auth` (2 bindingi), dedykowana rola
