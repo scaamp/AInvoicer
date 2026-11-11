@@ -2,11 +2,21 @@
 title: "CAP-HANA-01 — pierwsze HDI i kontrolowany deployment CAP"
 date: 2026-11-11
 type: guide
-status: preflight-ready-deployment-approval-pending
+status: deployment-failed-descriptor-fix-build-pending
 tags: [ainvoicer, cap-hana-01, hana, hdi, cloud-foundry, deployment, recovery]
 ---
 
 # CAP-HANA-01 — runbook do osobnego zatwierdzenia
+
+**AKTUALIZACJA: NO-GO dla poprzednich MTAR.** Pierwsza próba właściciela została odrzucona przy
+scalaniu deskryptorów (operacja `30401273-ddf4-11f1-ab29-eeee0a9dd8f2`, ERROR).
+`mbt assemble` nie tłumaczy typów projektu: w `mtad.yaml` wymagane są mapowania
+`java→java.tomcat`, `approuter.nodejs→javascript.nodejs`, `hdb→com.sap.xs.hdi`, zgodne z MBT1.2.49.
+Generator i regresja poprawione; odbudowa/new SHA PENDING. Stare0.7.3 i rollback0.7.2 nie są zestawem
+do ponowienia. Nie wykonywać `cf deploy -a retry`: użyłby niepoprawnych deskryptorów.
+Status operacji wskazuje utrzymaną blokadę; przed nowym deploymentem wymagane zatwierdzone zakończenie
+starej operacji przez abort. Agent nie wykonał abort/retry/deploy. Aktualne dowody są w dzienniku.
+Ocena GO i checksumy niżej zachowują historię poprzedniego preflightu; nie stanowią bieżącej rekomendacji.
 
 **GO do zatwierdzenia kontrolowanego pierwszego deploymentu DEV; NOT DEPLOYED.**
 To ocena przygotowania konkretnej operacji, nie zgoda wykonawcza ani końcowy security sign-off.

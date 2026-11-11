@@ -21,6 +21,13 @@ const jreEnv = {
 };
 export const loadMta = () => YAML.parse(readFileSync(join(root, 'mta.yaml'), 'utf8'));
 
+/** Typy projektu wymagają mapowania CF przed mbt assemble; zgodność sprawdza test prawdziwego mtad-gen. */
+export function cfModuleType(type) {
+    const types = { java: 'java.tomcat', 'approuter.nodejs': 'javascript.nodejs', hdb: 'com.sap.xs.hdi' };
+    assert.ok(Object.hasOwn(types, type), 'review unsupported source module type before packaging');
+    return types[type];
+}
+
 /** Transformacja strukturalna; whitelist zapobiega dziedziczeniu nowych sekretów/flag z pełnego MTA. */
 export function descriptor(source) {
     const mta = structuredClone(source);
@@ -38,6 +45,7 @@ export function descriptor(source) {
     mta.description = 'AInvoicer identity-smoke: read-only, ephemeral H2, existing XSUAA/Destination';
     mta.modules = [srv, router];
     for (const module of mta.modules) {
+        module.type = cfModuleType(module.type);
         delete module['build-parameters'];
         module.path = module.name + '/data.zip';
         module.requires = module.requires.filter(r => r.name !== 'ainvoicer-db');
@@ -65,8 +73,8 @@ export function validate(mta) {
     }
     const srv = mta.modules.find(m => m.name === 'ainvoicer-srv');
     const router = mta.modules.find(m => m.name === 'ainvoicer-approuter');
-    assert.equal(srv.type, 'java');
-    assert.equal(router.type, 'approuter.nodejs');
+    assert.equal(srv.type, 'java.tomcat');
+    assert.equal(router.type, 'javascript.nodejs');
     assert.deepEqual(srv.properties, { ...jreEnv, ...smokeEnv });
     assert.deepEqual(router.properties, { SESSION_TIMEOUT: 15, destinations: [
         { name: 'ainvoicer-cap', url: '~{srv-api/srv-url}', forwardAuthToken: true },

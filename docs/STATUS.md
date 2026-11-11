@@ -14,6 +14,18 @@ tags: [ainvoicer, cap-java, status]
 
 ## Current Phase
 
+**CAP-HANA-01 — NO-GO, deployment odrzucony przed stagingiem (2026-11-11).**
+Właściciel uruchomił zatwierdzany zestaw; operacja `30401273-ddf4-11f1-ab29-eeee0a9dd8f2`
+zakończyła się ERROR podczas scalania deskryptorów: `Unsupported module type approuter.nodejs`.
+**VERIFIED LIVE:** stare droplety/checksumy CAP/AppRoutera bez zmian, obie aplikacje1/1, HDI0 bindingów.
+**VERIFIED OFFLINE:** poprawiono mapowanie typów projektu do typów CF w obu generatorach;
+29/29 testów PASS, w tym porównanie z prawdziwym SAP MBT1.2.49 `mtad-gen` i regresja odrzucenia
+typów projektowych. Oba dotychczasowe MTAR, również rollback0.7.2, są wycofane z rekomendacji:
+mają ten sam defekt; zachowano oryginały/evidence w build/rejected-30401273 worktree wydania.
+Odbudowa i nowe SHA PENDING. Nie wykonano retry/abort/redeploy ani DML.
+Szczegóły: [dziennik](journal/2026-11-11-cap-hana-01-first-persistence.md#naprawa-po-pierwszej-próbie-deploymentu--2026-11-11).
+Poniższa ocena GO i stare checksumy opisują preflight sprzed ujawnienia defektu.
+
 **INT-03 MERGED / CAP-HANA-01 przygotowanie offline (2026-11-11).**
 [PR #8](https://github.com/scaamp/AInvoicer/pull/8) scalony jako `e2696ab2bee91399423ce9565a7f467194894215`
 po final review i [CI43052235875 SUCCESS](https://github.com/scaamp/AInvoicer/actions/runs/43052235875)

@@ -8,6 +8,11 @@ tags: [ainvoicer, dokumentacja]
 
 # AInvoicer — baza wiedzy projektu
 
+**CAP-HANA-01: pierwsza próba deploymentu odrzucona przed stagingiem; NO-GO dla poprzednich MTAR.**
+Naprawiono mapowanie typów projektu do typów CF,29/29 testów PASS; odbudowa i nowe SHA w toku.
+[Aktualny wynik i przyczyna](journal/2026-11-11-cap-hana-01-first-persistence.md).
+Poniższe GO jest historią preflightu sprzed błędu; CAP HANA nadal NOT DEPLOYED.
+
 CAP-HANA-01 (2026-11-11): [final review, merge INT-03 i dowody przygotowania](journal/2026-11-11-cap-hana-01-first-persistence.md) ·
 [runbook pierwszego HDI/deploymentu/testów/rollbacku](guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md).
 PR #8 MERGED e2696ab po CI PASS. [HDI provisioning i koszty](journal/2026-11-11-hdi-shared-provisioning.md):

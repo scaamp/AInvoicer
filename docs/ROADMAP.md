@@ -17,7 +17,10 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
 - [x] **HDI provisioning:** właściciel utworzył `ainvoicer-db`; **VERIFIED LIVE** CF `hana/hdi-shared`,
   create succeeded, 0 bindingów, free=true, database_id z brokera. Cloud Central RUNNING/zgodny ID
   **OWNER-REPORTED**. [Pełna historia i ograniczenia PAYG](journal/2026-11-11-hdi-shared-provisioning.md).
-- [ ] **CAP-HANA-01 LIVE — GO do zatwierdzenia kontrolowanego DEV / NOT DEPLOYED:**
+- [ ] **CAP-HANA-01 LIVE — NO-GO po odrzuconym deploymentcie / NOT DEPLOYED:**
+  Naprawione mapowanie typów projektu do typów CF,29/29 testów wraz z SAP MBT mtad-gen PASS.
+  Odbudowa obu MTAR/nowe SHA i zakończenie operacji ERROR przed ponowną zgodą pozostają PENDING.
+  Poniższe wyniki opisują wcześniejszy preflight:
   MTAR/SHA i CI zweryfikowane offline; propozycja osobnego extension przypina wszystkie moduły do fs4.
   CAP HANA NOT CONNECTED. Wymagana zgoda na konkretny deploy/DDL/bindingi/przerwę;
   runner, DML/restart, staging, LIVE A/B/DCL/principal i Costs and Usage nadal PENDING.

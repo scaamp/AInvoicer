@@ -8,6 +8,11 @@ tags: [ainvoicer, hana, hdi, deployment, security, int-03]
 
 # HANA Cloud / CAP — wariant przygotowany, niewdrożony
 
+**NO-GO dla dotychczasowych artefaktów:** pierwsza próba została odrzucona przed stagingiem przez
+niezmapowany typ `approuter.nodejs`. Naprawiono translację CF dla obu generatorów; wymagane
+nowe artefakty/SHA oraz osobna zgoda na zakończenie operacji ERROR i ponowny deployment.
+[Przyczyna i dowody](../journal/2026-11-11-cap-hana-01-first-persistence.md).
+
 Aktualny zestaw po final review/merge INT-03, dokładne artefakty i wykonywalne komendy:
 [runbook CAP-HANA-01](CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md) ·
 [dziennik CAP-HANA-01](../journal/2026-11-11-cap-hana-01-first-persistence.md).

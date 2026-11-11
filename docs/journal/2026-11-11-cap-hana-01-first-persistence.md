@@ -8,6 +8,10 @@ tags: [ainvoicer, int-03, cap-hana-01, hana, hdi, security, deployment]
 
 # CAP-HANA-01 — stan i dowody sesji
 
+**Najnowszy stan: NO-GO, pierwsza próba deploymentu odrzucona przy scalaniu deskryptorów.**
+Nie doszło do stagingu/bindingu HDI. Wcześniejsze GO i hashe nie są już rekomendacją użycia.
+Patrz [naprawa poniżej](#naprawa-po-pierwszej-próbie-deploymentu--2026-11-11).
+
 **Aktualizacja LIVE preflight 11 listopada:** HDI **VERIFIED LIVE**, provisioning wykonany przez
 właściciela; CAP→HANA **NOT DEPLOYED**. **GO do zatwierdzenia kontrolowanego DEV**, bez DML.
 [Historia HDI i kosztów](2026-11-11-hdi-shared-provisioning.md).
@@ -304,3 +308,35 @@ Najmniejszy kolejny krok: osobna zgoda na dokładne polecenie/hashe/extension w 
 Po deployu read-only HDI/JDBC/security; potem przygotowanie runnera i oddzielna zgoda na
 syntetyczne DML/restart/cleanup. Rollback0.7.2 ma zweryfikowany SHA; wymaga osobnej decyzji,
 nie cofa schematu i nie odtwarza H2.
+
+## Naprawa po pierwszej próbie deploymentu — 2026-11-11
+
+**OWNER-REPORTED:** właściciel wykonał polecenie dla oryginalnego0.7.3 i extension fs4.
+Operacja `30401273-ddf4-11f1-ab29-eeee0a9dd8f2` z17:20:27Z zakończyła się błędem
+`Unsupported module type "approuter.nodejs" for platform type "CLOUD-FOUNDRY"` podczas merge.
+**VERIFIED LIVE:** mta-ops wskazuje ERROR/acquiredLock=true; CAPI potwierdza niezmienione GUID-y,
+daty i checksumy dropletów z9 listopada, CAP/AppRouter STARTED1/1 oraz0 bindingów HDI.
+Nie wykonywano retry, abort, nowego deploymentu ani DML. CAP HANA **NOT DEPLOYED**.
+
+Przyczyna: generator zachowywał typy development descriptor i przekazywał je bez mapowania
+do `mbt assemble`, które oczekuje już deployment descriptor. Dotychczasowy walidator sprawdzał
+zgodność z własnym generatorem i utrwalał ten sam defekt; zielone CI nie wykryło niezgodności CF.
+Stary rollback0.7.2 ma tę samą wadę. Nie jest bezpiecznym kandydatem do ponownego deploymentu.
+
+**VERIFIED OFFLINE:** prawdziwe `mbt mtad-gen -p cf` wersji1.2.49 potwierdza mapowania
+java→java.tomcat, approuter.nodejs→javascript.nodejs, hdb→com.sap.xs.hdi. Naprawiono oba generatory,
+bez zmiany źródłowego mta.yaml, Java/CDS/UI5/tras/flag/bindingów. Dodano2 testy: porównanie obu
+wariantów z prawdziwym SAP MBT wraz z extension fs4 oraz odmowę typów projektowych w obu wariantach.
+`npm test --prefix deploy`:29/29 PASS. Oryginalne MTAR i evidence zachowano po sprawdzeniu hashy
+w `D:\AInvoicer-cap-hana-01-build\deploy\build\rejected-30401273`, bez transferu między checkoutami.
+Nowa odbudowa i checksumy PENDING; dotychczasowe artefakty oznaczone jako odrzucone.
+
+Podczas pierwszego odczytu mta-ops narzędzie wypisało trace HTTP zawierający token sesji CF.
+Nie zapisano go w repo ani nowych plikach; wartości nie powtarzamy. Właściciel otrzymał zalecenie
+odnowienia logowania. Następne odczyty wykonano z procesowym CF_TRACE=false i projekcją wyłącznie
+bezpiecznych pól CAPI. Nie pobierano VCAP ani credentiali bindingów; nie zmieniano ustawień konta.
+
+Źródła: [SAP MBT1.2.49 — mapowanie platform](https://github.com/SAP/cloud-mta-build-tool/blob/v1.2.49/configs/platform_cfg.yaml)
+i `mbt mtad-gen --help`. To realny test offline translacji, nadal bez potwierdzenia nowego stagingu CF.
+Następny krok: odbudować oba MTAR, przedstawić nowe SHA, po osobnej zgodzie abort starej operacji
+i deployment poprawionego zestawu. Nie ponawiać niepoprawnego archiwum przez retry.

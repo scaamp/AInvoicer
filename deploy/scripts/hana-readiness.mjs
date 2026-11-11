@@ -7,7 +7,7 @@ import { pathToFileURL } from 'node:url';
 import { spawnSync, execFileSync } from 'node:child_process';
 import YAML from 'yaml';
 import Zip from 'adm-zip';
-import { descriptor as smokeDescriptor, loadMta, root, smokeEnv, verifyArchive as verifySmoke } from './identity-smoke.mjs';
+import { cfModuleType, descriptor as smokeDescriptor, loadMta, root, smokeEnv, verifyArchive as verifySmoke } from './identity-smoke.mjs';
 import { hashes, sha256, sourceHash } from './release-evidence.mjs';
 
 export const hanaEnv = Object.freeze({
@@ -28,6 +28,7 @@ export function descriptor(source = loadMta()) {
     srv['deployed-after'] = ['ainvoicer-db-deployer'];
     mta.modules.find(m => m.name === 'ainvoicer-approuter')['deployed-after'] = ['ainvoicer-srv'];
     const db = structuredClone(source.modules.find(m => m.name === 'ainvoicer-db-deployer'));
+    db.type = cfModuleType(db.type);
     delete db['build-parameters'];
     db.path = 'ainvoicer-db-deployer/data.zip';
     db.parameters['no-route'] = true;
