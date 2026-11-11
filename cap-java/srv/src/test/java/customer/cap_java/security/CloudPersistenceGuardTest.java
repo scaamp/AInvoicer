@@ -69,7 +69,8 @@ class CloudPersistenceGuardTest {
 
     @Test void cloudRuntimeWithEmbeddedH2FailsClosed() {
         String failure = startFailure();
-        assertTrue(failure.contains("requires durable SAP HANA Cloud persistence (found database 'H2')"), failure);
+        // INT-03 odrzuca brak bindingu HDI przed połączeniem JDBC; kontrola produktu H2 pozostaje w verify().
+        assertTrue(failure.contains("requires durable SAP HANA Cloud HDI binding (hana/hdi-shared)"), failure);
         assertFalse(failure.contains("jdbc:"), "bez URL źródła danych w komunikacie");
     }
 

@@ -127,6 +127,23 @@
 		</dependency>
 	</dependencies>
 
+	<!-- Wyłącznie osobno zatwierdzony zapis syntetyczny do istniejącego HDI; nigdy zwykłe verify/CI. -->
+	<profiles>
+		<profile>
+			<id>hana-integration</id>
+			<build><plugins>
+				<plugin><artifactId>maven-surefire-plugin</artifactId><configuration><skipTests>true</skipTests></configuration></plugin>
+				<plugin>
+					<artifactId>maven-failsafe-plugin</artifactId><version>3.6.0</version>
+					<configuration>
+						<skipTests>false</skipTests><includes><include>**/HanaPersistenceIT.java</include></includes>
+						<systemPropertyVariables><ainv.hana.integration>true</ainv.hana.integration></systemPropertyVariables>
+					</configuration>
+					<executions><execution><goals><goal>integration-test</goal><goal>verify</goal></goals></execution></executions>
+				</plugin>
+			</plugins></build>
+		</profile>
+	</profiles>
 	<build>
 		<finalName>${project.artifactId}</finalName>
 		<plugins>

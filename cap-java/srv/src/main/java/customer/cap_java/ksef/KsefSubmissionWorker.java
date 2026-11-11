@@ -57,7 +57,7 @@ public class KsefSubmissionWorker implements EventHandler {
     private final String configuredNip;
 
     public KsefSubmissionWorker(PersistenceService db, CdsRuntime runtime,
-            @Qualifier("KsefSubmissionOutbox") OutboxService outbox, KsefAuthentication authentication,
+            @org.springframework.context.annotation.Lazy @Qualifier("KsefSubmissionOutbox") OutboxService outbox, KsefAuthentication authentication,
             KsefOnlineSession session, KsefDocumentStore documents, KsefFa3Documents fa3,
             KsefAcceptedWriteback acceptedWriteback, Clock clock,
             @Value("${ainv.ksef.enabled:false}") boolean enabled,

@@ -1,0 +1,8 @@
+{
+  "name": "ainvoicer-storage-emulator-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local Azurite only; never a BTP or Azure account",
+  "devDependencies": { "azurite": "3.37.0", "@azure/storage-blob": "12.29.1" },
+  "scripts": { "test": "node azurite.mjs" }
+}

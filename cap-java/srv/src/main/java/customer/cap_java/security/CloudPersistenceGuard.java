@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+import com.sap.cds.services.runtime.CdsRuntime;
 
 /**
  * Fail-fast trwałości na chmurze (CAP-07.1).
@@ -33,13 +34,18 @@ public class CloudPersistenceGuard {
 
     private static final Logger log = LoggerFactory.getLogger(CloudPersistenceGuard.class);
 
-    public CloudPersistenceGuard(CloudIdentityGuard identityChecked, Environment environment, DataSource dataSource,
+    public CloudPersistenceGuard(CloudIdentityGuard identityChecked, Environment environment, DataSource dataSource, CdsRuntime runtime,
             @Value("${ainv.deployment.identity-smoke:false}") boolean identitySmoke,
             @Value("${ainv.ksef.enabled:false}") boolean ksefEnabled,
             @Value("${ainv.sap-write.enabled:false}") boolean sapWriteEnabled,
             @Value("${ainv.sap-write.sweeper.enabled:true}") boolean sweeperEnabled) {
         if (!CloudIdentityGuard.isCloudRuntime(environment)) {
             return;
+        }
+        if (!identitySmoke && runtime.getEnvironment().getServiceBindings().filter(b ->
+                b.getServiceName().map("hana"::equals).orElse(false) && "hdi-shared".equals(b.getServicePlan().orElse("")))
+                .count() != 1) {
+            throw new IllegalStateException("Cloud runtime requires durable SAP HANA Cloud HDI binding (hana/hdi-shared)");
         }
         verify(databaseProduct(dataSource), identitySmoke, ksefEnabled, sapWriteEnabled, sweeperEnabled);
         if (identitySmoke && "H2".equalsIgnoreCase(databaseProduct(dataSource))

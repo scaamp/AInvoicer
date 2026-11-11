@@ -11,7 +11,10 @@
     "validate:smoke": "node scripts/identity-smoke.mjs validate",
     "build:btp:smoke": "node scripts/release-evidence.mjs start && node scripts/identity-smoke.mjs build && node scripts/release-evidence.mjs record",
     "verify:release": "node scripts/release-evidence.mjs verify",
-    "readiness:cf": "node scripts/cf-readiness.mjs"
+    "readiness:cf": "node scripts/cf-readiness.mjs",
+    "validate:hana": "node scripts/hana-readiness.mjs validate",
+    "build:btp:hana": "node scripts/hana-readiness.mjs build",
+    "verify:hana": "node scripts/hana-readiness.mjs verify"
   },
   "devDependencies": {
     "adm-zip": "0.6.1",
