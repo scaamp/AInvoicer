@@ -93,3 +93,15 @@ test('logout helper accepts denial, rejects still-active session and blocks netw
     const offline = await browser(() => { throw new Error('network'); }).deniedAfterSessionEnd();
     assert.ok(offline.checks.every(c => c.result === 'BLOCKED'));
 });
+
+test('no CAP role denies data while authenticated metadata may still be visible', async () => {
+    const suite = browser(async path => {
+        if (path.endsWith('$metadata')) return new Response('<xml/>');
+        if (path.startsWith('/odata/')) return new Response('{}', { status: 403 });
+        return Response.json({ value: [], '@odata.count': 0 });
+    });
+    const report = await suite.run({ mode: 'no-cap-role' });
+    assert.equal(report.checks.find(c => c.id === 'CAP metadata').result, 'OBSERVED_ONLY');
+    assert.equal(report.checks.find(c => c.id === 'CAP InvoiceIntegrationStatus count/list').result, 'PASS');
+    assert.ok(report.checks.every(c => c.result !== 'FAIL'));
+});

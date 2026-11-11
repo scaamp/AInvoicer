@@ -52,7 +52,9 @@
         }
         const operator = options.mode !== 'no-cap-role';
         const empty = ['no-attributes', 'ambiguous-attributes'].includes(options.mode);
-        await check('CAP metadata', cap + '$metadata', s => s === (operator ? 200 : 403) ? 'PASS' : 'FAIL');
+        // Service root wymaga authenticated-user; restrykcje KsefOperator dotyczą danych, nie samego schematu.
+        await check('CAP metadata', cap + '$metadata', s => !operator
+            ? [200, 403].includes(s) ? 'OBSERVED_ONLY' : 'FAIL' : s === 200 ? 'PASS' : 'FAIL');
         for (const entity of ['InvoiceIntegrationStatus', 'InboundInvoiceOverview']) {
             await check('CAP ' + entity + ' count/list', cap + entity + '?$top=1&$count=true', (s, d) => {
                 if (!operator) return s === 403 ? 'PASS' : 'FAIL';

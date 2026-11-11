@@ -121,6 +121,8 @@ z zatwierdzonych, istniejących niepustych fixtures i faktycznego metadata. Help
 Nie losować obcego klucza i nie traktować takiego404 jako dowodu izolacji. Brak fixtures daje BLOCKED.
 Pusta CAP H2 daje `BLOCKED_EMPTY_FIXTURE`; niepusta lista sama daje `OBSERVED_ONLY`.
 Helper testuje count/list, metadata, własny/obcy key, foreign filter/count i prywatne entity sets.
+Zalogowany użytkownik bez operatora może widzieć sam schemat metadata (`authenticated-user` na
+service root); helper oznacza to jako obserwację. Dane nadal muszą zwrócić403.
 Zwraca tylko statusy/liczności/request ID; dane i cookies pozostają w pamięci przeglądarki.
 
 Po **świadomym** logout `/do/logout` albo pełnym idle expiry bez ruchu przez15min wykonać
