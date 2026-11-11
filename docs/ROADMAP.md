@@ -34,6 +34,13 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
   MTAR/SHA i CI zweryfikowane offline; propozycja osobnego extension przypina wszystkie moduły do fs4.
   CAP HANA NOT CONNECTED. Wymagana zgoda na konkretny deploy/DDL/bindingi/przerwę;
   runner, DML/restart, staging, LIVE A/B/DCL/principal i Costs and Usage nadal PENDING.
+- [x] **CAP-HANA-01R — preflight i weryfikacja artefaktów (PR #14, MERGED be97a20):** niezależny odczyt CF/HANA,
+  ponownie zmierzone SHA 0.7.3/rollback/extension, `verifyArchive` PASS, bez odbudowy MTAR.
+  [Bramka](guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md#cap-hana-01r--aktualna-bramka-recovery-1111-2035-cet) ·
+  [Integracja ORCH-04](journal/2026-11-11-orch-04-integration.md).
+- [ ] **CAP-HANA-01R LIVE — decyzja właściciela:** A) abort `d110c171…`, B) deployment `196b9b8c…` +
+  extension `f11b3196…` z `--retries 0`. Następnie HDI make/JDBC/guardy/SQL katalogowy; DML, restart
+  i testy konkurencji osobno. Deployment i persystencja HANA **PENDING**.
 - [ ] **KSEF-STOR-02 — decyzja właściciela:** [ADR-0008](decisions/ADR-0008-document-storage-dev-test-proposal.md)
   proponuje limitowany BLOB DEV/TEST po CAP-HANA-01; brak implementacji. Object Store nadal OFF bez zgody kosztowej.
 
@@ -42,7 +49,15 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
 - [x] **KSEF-IN-02 — lokalny staging/checkpoint persistence:** dokumenty/granty/checkpointy, storage interface, lease/CAS i crash recovery; 351 Maven w sprincie źródłowym, synchronizacja OFF bez schedulera. [Dziennik](journal/2026-11-10-ksef-in-02.md), PR #5 pozostaje otwarty.
 - [x] **UI5-10 — lokalny ekran Inbox:** lista/filtry/sort/paging/szczegóły i adapter CAP; [dziennik](journal/2026-11-10-ui5-10-inbound-inbox.md).
 - [x] **INT-02 — LOCAL + CI PASS, MERGED do main:** bezpieczny read-only OData + UI5 przez prawdziwe HTTP, historie obu sprintów; Maven368, JWT29, UI5→CAP16/73, QUnit112, OPA21, MTAR PASS. [PR #5](https://github.com/scaamp/AInvoicer/pull/5) scalony jako3e7420d, następnie [PR #6](https://github.com/scaamp/AInvoicer/pull/6) przestawiony na main i scalony jako21c2e48. [CI efc6a91 PASS](https://github.com/scaamp/AInvoicer/actions/runs/42897303774), główny worktree na main zsynchronizowany. [Dziennik](journal/2026-11-10-int-02-inbound-fullstack.md) · [Kontrakt](guides/INT_02_INBOUND_FULLSTACK.md).
-- [ ] **INBOUND następny etap:** trwały provider/HANA, ograniczenia globalnego budżetu API, SSO A/B oraz autorytatywne mapowanie do CompanyCode; aktywacja CF i LIVE KSeF osobno zatwierdzana.
+- [x] **KSEF-IN-03A — globalny budżet API, komponent offline (PR #13, MERGED 528a973):** okna przesuwne,
+  limit in-flight, Retry-After, fail-closed; 39 testów PASS. Bez Spring wiring, HANA, schedulera i LIVE.
+  [Przewodnik](guides/KSEF_IN_03A_GLOBAL_API_BUDGET.md) · [Dziennik](journal/2026-11-11-ksef-in-03a-global-api-budget.md) ·
+  [Review ORCH-04](journal/2026-11-11-orch-04-integration.md#code-review--pr-13-ksef-in-03a).
+- [ ] **INBOUND następny etap:** adapter HANA `ApiBudgetRepository` (czas DB, CAS/lock, recovery/health
+  niepewnych permitów) i testy dwóch JVM po CAP-HANA-01; podłączenie budżetu per próba w `ReadRetryPolicy`;
+  trwały provider/HANA, SSO A/B oraz autorytatywne mapowanie do CompanyCode; aktywacja CF i LIVE KSeF osobno zatwierdzana.
+- [ ] **BLOB-LAB-01 — owner-led:** prowadzi właściciel; agenci nie implementują ani nie wdrażają go autonomicznie.
+  [Zasady](guides/BLOB_LAB_01_OWNER_LED_HDI.md).
 
 - [x] **CAP-07C — LOCAL + CI PASS:** generator bezpiecznego MTAR smoke, guardy/testy executable JAR-a CF, fail-closed usług zewnętrznych UI5, CI offline i mocniejszy consent CAP-04D. [PR #2](https://github.com/scaamp/AInvoicer/pull/2), [Ubuntu CI PASS](https://github.com/scaamp/AInvoicer/actions/runs/42671257855) dla kodu `ca3739a`; bez merge/deploy/SAP WRITE/KSeF SEND. Dokładne wyniki regresji/publikacji: [dziennik](journal/2026-11-09-cap-07c-autonomous-hardening.md).
 - [x] **CAP-07B.2 — funkcjonalne LIVE SSO (2026-11-10):** XSUAA, rola/Role Collection, `AINV_H01_UI_USER` (`OAuth2UserTokenExchange`), CAP GET i RAP READ 4 faktury z CF, także w odrębnej sesji — **FUNCTIONAL PASS**. [As-built / runbook / dowody](guides/CAP_07B_2_BTP_IDENTITY_SSO_LIVE.md).

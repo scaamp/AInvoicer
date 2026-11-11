@@ -14,6 +14,20 @@ tags: [ainvoicer, cap-java, status]
 
 ## Current Phase
 
+**ORCH-04 — PR #13 (KSEF-IN-03A) i PR #14 (CAP-HANA-01R) MERGED do main (2026-11-11).**
+Niezależny review obu PR bez blokerów; CI `offline` SUCCESS na dokładnych HEAD `8d69d74` i `7e9735a`.
+Scalono `--no-ff` dokładne SHA (merge `528a973`, `be97a20`), bez innych gałęzi.
+Regresja zintegrowanego drzewa i dowody: [dziennik ORCH-04](journal/2026-11-11-orch-04-integration.md).
+
+| Zakres | Stan |
+| --- | --- |
+| **CAP-HANA-01R** | Preflight CF/HANA wykonany; MTAR 0.7.3 `196b9b8c…` i extension `f11b3196…` zweryfikowane (SHA ponownie przeliczone, `verifyArchive` PASS, bez odbudowy). Odczyt CF 19:51 UTC: `d110c171…` nadal aktywna ERROR, HANA `serviceStopped=false`, CAP/AppRouter na starych dropletach bez HDI. **Deployment LIVE PENDING** (abort + deploy wymagają osobnej zgody właściciela). **Rzeczywista persystencja HANA PENDING** (JDBC/HDI make/SQL niepotwierdzone). [Bramka runbooka](guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md#cap-hana-01r--aktualna-bramka-recovery-1111-2035-cet) · [dziennik](journal/2026-11-11-cap-hana-01-first-persistence.md#cap-hana-01r--niezależna-weryfikacja-codex-2035-cet). |
+| **KSEF-IN-03A** | Komponent offline `InboundApiBudget` + port `ApiBudgetRepository` + `InMemoryApiBudgetRepository` zaimplementowany; 39 testów PASS. **Globalne limitowanie między JVM niewdrożone**, **brak adaptera HANA**, **brak Spring wiring i aktywacji INBOUND** (guard CF i flaga OFF bez zmian). [Przewodnik](guides/KSEF_IN_03A_GLOBAL_API_BUDGET.md) · [dziennik](journal/2026-11-11-ksef-in-03a-global-api-budget.md). |
+| **BLOB-LAB-01** | Owner-led; nie implementowany autonomicznie; bez nowych zmian infrastruktury dla laboratorium. [Zasady](guides/BLOB_LAB_01_OWNER_LED_HDI.md). ADR-0008 i KSEF-STOR-02 niezatwierdzone. |
+
+Nie wykonano abort/deploy/restartu CF, DDL/DML HANA, provisioningu, LIVE KSeF ani SAP WRITE.
+Wpisy poniżej opisują wcześniejszy stan.
+
 **CAP-HANA-01 LIVE — zatwierdzona próba zakończona ERROR przy stagingu (2026-11-11).**
 Właściciel wyraźnie zatwierdził abort starej operacji i poprawione0.7.3/SHA6a92fb78… .
 **VERIFIED LIVE:** abort30401273… zakończony ABORTED; nowa operacja
