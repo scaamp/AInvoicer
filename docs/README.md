@@ -8,6 +8,10 @@ tags: [ainvoicer, dokumentacja]
 
 # AInvoicer — baza wiedzy projektu
 
+CAP-HANA-01 (2026-11-11): [final review, merge INT-03 i dowody przygotowania](journal/2026-11-11-cap-hana-01-first-persistence.md) ·
+[runbook pierwszego HDI/deploymentu/testów/rollbacku](guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md).
+PR #8 MERGED e2696ab po CI PASS; CAP→HANA nadal NO-GO, koszt/plan HDI i osobne zgody zablokowane.
+
 Aktualizacja INT-03 (2026-11-11): [dziennik integracji i testy](journal/2026-11-11-int-03-orchestration.md),
 [audyt security/persistence](audits/2026-11-11-int-03-security-persistence.md),
 [HANA CAP deployment](guides/HANA_CLOUD_CAP_DEPLOYMENT.md),

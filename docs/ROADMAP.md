@@ -8,11 +8,15 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
 
 # Plan rozwoju
 
-- [x] **INT-03 — integracja offline:** CAP-07D + storage + HANA as-built, wspólny tenant gate,
+- [x] **INT-03 — MERGED e2696ab po final review/CI PASS:** CAP-07D + storage + HANA as-built, wspólny tenant gate,
   wariant HANA existing-service, storage body deadline, harness opt-in i CI emulatora.
   [Wyniki/PR/CI](journal/2026-11-11-int-03-orchestration.md) · [Runbook HANA](guides/HANA_CLOUD_CAP_DEPLOYMENT.md).
-- [ ] **CAP-HANA-01 — BLOCKED:** HANA Free Tier LIVE, HDI NOT CONFIGURED, CAP HANA NOT CONNECTED.
-  Potwierdzić bezpłatny `hana/hdi-shared`, Database ID/mapowanie i osobno zatwierdzić HDI/deploy/testy.
+- [x] **CAP-HANA-01 — przygotowanie offline:** branch z aktualnego main, poprawiony harness, świeży CF
+  preflight, buildy MTAR i [runbook](guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md) z testami/rollbackiem.
+  [Dowody i ograniczenia](journal/2026-11-11-cap-hana-01-first-persistence.md).
+- [ ] **CAP-HANA-01 LIVE — NO-GO:** HDI NOT CONFIGURED, CAP HANA NOT CONNECTED.
+  COST VERIFICATION BLOCKED dla hana/hdi-shared; Database ID/mapowanie, runner CF/testy i staging,
+  A/B/principal oraz osobne zgody HDI/deploy/DDL/DML/restart nadal wymagane.
 - [ ] **KSEF-STOR-02 — decyzja właściciela:** [ADR-0008](decisions/ADR-0008-document-storage-dev-test-proposal.md)
   proponuje limitowany BLOB DEV/TEST po CAP-HANA-01; brak implementacji. Object Store nadal OFF bez zgody kosztowej.
 
