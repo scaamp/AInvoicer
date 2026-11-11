@@ -58,6 +58,11 @@ Model AInvoicer:
 - Docelowe trwałe HANA Cloud/HDI, storage XML/UPO, retencja, sekret management i monitoring są nadal do wykonania.
 - Uwierzytelnianie KSeF jest niezależne od XSUAA; ścieżka testowa SDK używa KSeF TEST. Pełny scenariusz faktura SAP → KSeF → SAP nie został wykonany.
 
+## Strategia infrastruktury i danych
+
+- [Infrastructure as Code / Database as Code — dokument strategiczny](INFRASTRUCTURE_AS_CODE_STRATEGY.md)
+- [ADR-0009 — przyjęta strategia etapowego wdrażania IaC i DbAC](../decisions/ADR-0009-iac-database-as-code-strategy.md)
+
 ## Powiązane dokumenty
 
 - [IAM, Restriction Fields/Types i DCL](../guides/RAP_UI_IAM_MODEL.md)
