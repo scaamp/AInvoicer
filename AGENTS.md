@@ -3,6 +3,10 @@
 > Instrukcje projektowe dla Codex, Claude Code i innych agentów kodujących.
 > Dotyczy całego repozytorium. W razie konfliktu wymagania użytkownika w bieżącym zadaniu mają pierwszeństwo; dokumentuj świadome odstępstwa od ustalonej architektury.
 
+## Rezerwacja edukacyjna BLOB-LAB-01 — OWNER-LED
+
+**Przed jakimkolwiek zadaniem dotyczącym samodzielnego ćwiczenia CAP Java / HDI / `LargeBinary` / XML/PDF przeczytaj [BLOB-LAB-01](docs/guides/BLOB_LAB_01_OWNER_LED_HDI.md).** To ćwiczenie jest zarezerwowane dla właściciela: to on sam pisze encję CDS, konfiguruje HDI, uruchamia deployment i testy BLOB/OData. Codex i Claude Code pełnią rolę mentorów, recenzentów i autorów wyłącznie jasno zamówionych fragmentów kodu. **Nie implementuj ani nie wdrażaj autonomicznie BLOB-LAB-01 ani nie włączaj go ukradkiem do KSEF-STOR-02.** Każda konkretna zmiana pliku, build, provisioning, DDL/DML, binding, deployment lub merge wymagają osobnego wskazania zakresu przez właściciela. Zadania spoza laboratorium pozostają bez zmian; przy kolizji najpierw zgłoś konflikt.
+
 ## 1. Cel projektu
 
 AInvoicer to rozwijana aplikacja SAP Fiori do obsługi faktur zakupowych i sprzedażowych, docelowo z integracją KSeF 2.0. To ma być utrzymywalny produkt integracyjny, a nie jednorazowy PoC. Jednocześnie projekt służy praktycznej nauce SAP CAP Java, Spring Boot, SAP BTP i integracji z SAP ABAP Cloud.
