@@ -14,8 +14,10 @@ tags: [ainvoicer, btp, hana, hana-cloud, free-tier, cloud-foundry, persistence, 
 
 > **Stan 2026-11-11:** instancja **`ainvoicer-hana-dev`** (SAP HANA Cloud, SAP HANA Database, **free tier**)
 > istnieje w CF org `National Center for Cryptography_dev-v2xzij9s`, space `dev`, i odpowiada na SQL
-> (`DBADMIN`, wersja `4.00.000.00.1793723943`). **CAP nie jest jeszcze do niej podłączony**: brak entitlementu
-> `hdi-shared`, kontenera HDI i redeployu. Płatne plany HANA zostały usunięte z subaccount.
+> (`DBADMIN`, wersja `4.00.000.00.1793723943`, wcześniejszy dowód właściciela). **CAP nie jest jeszcze do niej podłączony**.
+> Później tego samego dnia właściciel utworzył `ainvoicer-db/hdi-shared`; odczyt CF potwierdził provisioning,
+> free=true, database_id i 0 bindingów. RUNNING/zgodny Database ID w Cloud Central OWNER-REPORTED.
+> [Dziennik HDI i kosztów](../journal/2026-11-11-hdi-shared-provisioning.md). Redeploy CAP **NOT DEPLOYED**.
 > Wszystkie kroki w BTP wykonał właściciel; agent prowadził i weryfikował na podstawie zrzutów ekranu.
 
 ## 1. Po co i dlaczego właśnie tak
@@ -138,7 +140,13 @@ Zapytania o pamięć/dysk (aneks A) przygotowano, wyniku nie raportowano.
 - Szczegóły bindingu (`cf env`, service key) zawierają credentiale — agent ich nie odczytuje.
 - W dokumentacji nie zapisujemy loginu użytkownika BTP.
 
-## 6. Następne kroki (nie wykonane)
+## 6. Następne kroki i historia planu
+
+**Aktualizacja CAP-HANA-01:** punkty 1–2 i utworzenie HDI z punktu 3 wykonał właściciel;
+CF/CAPI potwierdzają plan free i gotowy kontener bez bindingów. Nie powtarzać provisioningu.
+RUNNING/Database ID potwierdzono przez właściciela w tej sesji. Kolejny krok to zgoda na
+konkretny deployment z [runbooka](CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md), później osobne testy.
+Poniżej zachowano wcześniejszy plan; rozliczenie indywidualnego PAYG w Costs and Usage nadal PENDING.
 
 Aktualizacja INT-03: sesja CF działa; read-only inventory potwierdza HANA free i brak oferty `hana`/HDI.
 Przygotowano wariant wymagający istniejącego kontenera zamiast automatycznego provisioningu pełnym MTA.

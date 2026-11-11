@@ -38,7 +38,7 @@ Z drugiej strony procesy KSeF wymagają bezwzględnej trwałości statusów, ide
 
 ## Zakres bieżący i poza zakresem
 
-Na 11.11.2026 według repo `main`: INT-03 jest scalony, model CDS i offline HANA readiness istnieją. Właściciel potwierdził przez BTP Cockpit utworzenie `ainvoicer-db` (`hdi-shared`, `Usable`). Osobny PR #9 CAP-HANA-01 dotyczy kontrolowanego deploymentu HANA; jego pierwszy deployment został odrzucony z powodu nieobsługiwanego typu modułu MTA, poprawka jest przygotowana offline, a LIVE persystencja pozostaje niepotwierdzona. Nie zakładamy zakończenia deploymentu na podstawie zielonego CI.
+Na 11.11.2026 według repo `main`: INT-03 jest scalony, model CDS i offline HANA readiness istnieją. Właściciel potwierdził przez BTP Cockpit utworzenie `ainvoicer-db` (`hdi-shared`, `Usable`). PR #9 CAP-HANA-01 został scalony do main, ale próby deploymentu ujawniły błędy deskryptora MTA i stagingu; mimo poprawek offline LIVE persystencja pozostaje niepotwierdzona. Nie zakładamy zakończenia deploymentu na podstawie zielonego CI.
 
 Wykonanie Terraform, migracja zasobów pod zarządzanie IaC, aktywacja storage BLOB/R2 oraz uruchomienie biznesowych operacji KSeF nie należą do tej decyzji.
 

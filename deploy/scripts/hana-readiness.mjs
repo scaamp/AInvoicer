@@ -7,7 +7,8 @@ import { pathToFileURL } from 'node:url';
 import { spawnSync, execFileSync } from 'node:child_process';
 import YAML from 'yaml';
 import Zip from 'adm-zip';
-import { descriptor as smokeDescriptor, loadMta, root, smokeEnv, verifyArchive as verifySmoke } from './identity-smoke.mjs';
+import { normalizePermissions, verifyPermissions } from './portable-zip.mjs';
+import { cfModuleType, descriptor as smokeDescriptor, loadMta, root, smokeEnv, verifyArchive as verifySmoke } from './identity-smoke.mjs';
 import { hashes, sha256, sourceHash } from './release-evidence.mjs';
 
 export const hanaEnv = Object.freeze({
@@ -28,6 +29,7 @@ export function descriptor(source = loadMta()) {
     srv['deployed-after'] = ['ainvoicer-db-deployer'];
     mta.modules.find(m => m.name === 'ainvoicer-approuter')['deployed-after'] = ['ainvoicer-srv'];
     const db = structuredClone(source.modules.find(m => m.name === 'ainvoicer-db-deployer'));
+    db.type = cfModuleType(db.type);
     delete db['build-parameters'];
     db.path = 'ainvoicer-db-deployer/data.zip';
     db.parameters['no-route'] = true;
@@ -47,6 +49,7 @@ export function verifyArchive(file) {
         'ainvoicer-db-deployer/data.zip', 'ainvoicer-srv/data.zip'
     ]);
     const db = new Zip(zip.readFile('ainvoicer-db-deployer/data.zip'));
+    verifyPermissions(db);
     const files = db.getEntries().filter(e => !e.isDirectory).map(e => e.entryName);
     assert.ok(files.includes('src/gen/.hdiconfig') && files.includes('src/gen/cds.outbox.Messages.hdbtable'));
     assert.ok(files.includes('package-lock.json'));
@@ -96,7 +99,8 @@ function main() {
         const db = new Zip();
         for (const name of ['package.json', 'package-lock.json']) db.addLocalFile(join(root, 'cap-java/db', name));
         db.addLocalFolder(join(root, 'cap-java/db/src/gen'), 'src/gen');
-        mkdirSync(join(assembly, 'ainvoicer-db-deployer')); db.writeZip(join(assembly, 'ainvoicer-db-deployer/data.zip'));
+        mkdirSync(join(assembly, 'ainvoicer-db-deployer'));
+        normalizePermissions(db).writeZip(join(assembly, 'ainvoicer-db-deployer/data.zip'));
         rmSync(artifact, { force: true });
         run(process.execPath, [join(root, 'deploy/node_modules/mbt/bin/mbt'), 'assemble', '-s', assembly, '-t', out], assembly);
         const schema = verifyArchive(artifact);

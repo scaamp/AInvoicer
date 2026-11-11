@@ -54,6 +54,12 @@ jobs:
           printf '%s  %s\n' "$(cat apache-maven-3.9.16-bin.tar.gz.sha512)" apache-maven-3.9.16-bin.tar.gz | sha512sum -c -
           tar -xzf apache-maven-3.9.16-bin.tar.gz
           echo "$RUNNER_TEMP/apache-maven-3.9.16/bin" >> "$GITHUB_PATH"
+      # Niezależny czytnik ZIP wykrywa Windows creator=10 -> mode000 przed buildem/deploymentem.
+      # Narzędzie wyłącznie testowe, bez nowego runtime ani zależności aplikacji.
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.10'
+          cache: false
       - name: Deployment invariants and secret patterns
         run: |
           npm ci --prefix deploy

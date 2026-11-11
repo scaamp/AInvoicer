@@ -89,7 +89,7 @@ Poniższa tabela rozdziela stan zweryfikowany w `main`, relację właściciela o
 | HDI readiness | Generator, weryfikacja MTAR/evidence i offline testy na `main` | **Pipeline offline: wdrożony** |
 | HANA Free Tier | `ainvoicer-hana-dev` utworzona; SQL potwierdzony wcześniej przez właściciela | **Baza istnieje, status bieżący do sprawdzenia** |
 | HDI `ainvoicer-db` | Według potwierdzenia właściciela w BTP Cockpit: `Usable / Creation Succeeded`, `hdi-shared`, CF space `dev` | **Provisioning wykonany ręcznie; potwierdzenie owner-reported** |
-| CAP → rzeczywista HANA | PR #9 `feature/cap-hana-01-first-persistence` nadal otwarty; pierwszy `cf deploy` został odrzucony na typie modułu MTA; poprawka została przygotowana i przetestowana offline | **LIVE NOT VERIFIED / deployment NO-GO bez ponownej zgody** |
+| CAP → rzeczywista HANA | PR #9 został scalony do main, ale próby wdrożenia nie potwierdziły połączenia CAP z HANA; ujawnione błędy deskryptora MTA i stagingu mają poprawki offline | **LIVE NOT VERIFIED / dalsze próby tylko za osobną zgodą** |
 | Bezpieczny model XSUAA/Destination | Istnieją bindingi i testy offline; LIVE macierz A/B, DCL i principal H01 wymagają pełnych dowodów | **Częściowe** |
 | BTP entitlements i provisioning | Wykonane ręcznie przy tworzeniu HANA/HDI; brak kodu deklarującego cały krajobraz | **IaC: planowane** |
 | XML/PDF/UPO | Adapter Azure Blob istnieje offline, provider OFF; HANA BLOB DEV/TEST jest propozycją ADR-0008 | **Brak produkcyjnego archiwum** |

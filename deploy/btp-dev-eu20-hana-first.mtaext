@@ -1,0 +1,20 @@
+# CAP-HANA-01: propozycja pierwszego deploymentu, wymaga osobnej zgody właściciela.
+# Zachowuje hosty btp-dev-eu20 i jawnie utrzymuje fs4; bez migracji CAP/AppRoutera do fs5.
+# fs4 jest DEPRECATED. Migracja na fs5 wymaga osobnego stagingu i review.
+_schema-version: "3.1"
+ID: ainvoicer.btp-dev-eu20-hana-first
+extends: ainvoicer
+
+parameters:
+  ainv-host-prefix: ainvoicer-v2xzij9s
+
+modules:
+  - name: ainvoicer-srv
+    parameters:
+      stack: cflinuxfs4
+  - name: ainvoicer-approuter
+    parameters:
+      stack: cflinuxfs4
+  - name: ainvoicer-db-deployer
+    parameters:
+      stack: cflinuxfs4

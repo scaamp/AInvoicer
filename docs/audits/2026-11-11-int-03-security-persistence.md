@@ -102,8 +102,13 @@ limitowany adapter relacyjny tylko dla odtwarzalnych DEV/TEST po osobnej akcepta
 
 Końcowe liczniki regresji, wersje, artefakty SHA, commit/PR i rzeczywisty wynik CI są w
 [dzienniku INT-03](../journal/2026-11-11-int-03-orchestration.md).
-Lokalnie Maven425 (419 PASS/6 skipped), Azurite6/6, QUnit112/OPA21/Inbox16, CF JAR10 i oba MTAR PASS.
-Integracja jest opublikowana w [PR #8](https://github.com/scaamp/AInvoicer/pull/8), bez merge do main.
+Pierwszy przebieg: Maven425 (419 PASS/6 skipped), Azurite6/6, QUnit112/OPA21/Inbox16, CF JAR10 i oba MTAR PASS.
+Po final review/hardening harnessu lokalnie Maven429 (423 PASS/6 skipped),4 nowe regresje H2;
+[CI43052235875](https://github.com/scaamp/AInvoicer/actions/runs/43052235875) HEAD368314c SUCCESS we wszystkich krokach.
+[PR #8](https://github.com/scaamp/AInvoicer/pull/8) **MERGED** do main jako
+`e2696ab2bee91399423ce9565a7f467194894215`, z expected head i bez obejścia ochrony.
+PR #7 GitHub oznaczył merged przez ancestry; nie wykonywano niezależnego merge.
+Aktualne przygotowanie, checksumy i blockery: [CAP-HANA-01](../journal/2026-11-11-cap-hana-01-first-persistence.md).
 Warunki pozostające poza gotowością offline: bezpłatny entitlement HDI, jawny Database ID/mapowanie,
 zgoda na kontener/deploy, realne testy CAP/HANA i LIVE SSO A/B. Nie wolno uruchamiać procesu KSeF na
 podstawie samego zielonego builda ani na HANA bez zatwierdzonego trwałego magazynu XML/UPO.
