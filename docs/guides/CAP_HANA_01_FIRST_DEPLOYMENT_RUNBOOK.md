@@ -2,11 +2,75 @@
 title: "CAP-HANA-01 — pierwsze HDI i kontrolowany deployment CAP"
 date: 2026-11-11
 type: guide
-status: portable-zip-release-ready-new-deployment-approval-pending
+status: recovery-go-for-owner-approval-not-deployed
 tags: [ainvoicer, cap-hana-01, hana, hdi, cloud-foundry, deployment, recovery]
 ---
 
 # CAP-HANA-01 — runbook do osobnego zatwierdzenia
+
+## CAP-HANA-01R — aktualna bramka recovery (11.11, 20:35 CET)
+
+**GO techniczne do osobnego zatwierdzenia kontrolowanej próby DEV; NO-GO wykonawcze bez zgody.**
+HANA broker zwraca teraz `serviceStopped=false` (19:31 i 19:33 UTC). Wcześniejszy odczyt
+`serviceStopped=true` z raportu Claude Code nie opisuje już bieżącego stanu. Agent nie uruchamiał bazy.
+Nie wykonano SQL health check ani nowego stagingu; broker nie potwierdza dostępności SQL.
+Dowody: [dziennik recovery](../journal/2026-11-11-cap-hana-01-first-persistence.md#cap-hana-01r--niezależna-weryfikacja-codex-2035-cet).
+
+| Bramka | Bieżący wynik |
+| --- | --- |
+| Target | API `https://api.cf.eu20-001.hana.ondemand.com`; org `National Center for Cryptography_dev-v2xzij9s`; space `dev`. |
+| Poprzednia operacja | `d110c171-ddf8-11f1-8764-eeee0a818911` nadal aktywna **ERROR**; wymaga zatwierdzonego abort, bez retry. Historyczna przyczyna: nieprzenośne prawa ZIP i błąd stagingu `package.json: permission denied`. |
+| Runtime | CAP i AppRouter STARTED 1/1, droplety z 09.11, bindingi tylko auth+destination; CAP nadal identity-smoke/H2. Deployer STOPPED, brak dropletu, tylko binding HDI. |
+| HANA/HDI | `ainvoicer-hana-dev`: hana-cloud/hana-free; `ainvoicer-db`: hana/hdi-shared, create succeeded, plan `free=true`. HDI `database_id=2161fe76-faf9-40e7-8693-72728fa6d49e`, zgodny z istniejącą HANA. |
+| RAM/stack | FREE_QUOTA 4096 MB, użyte 1408 MB, wolne 2688 MB; deployer 256 MB. Wszystkie moduły jawnie fs4 (DEPRECATED); fs5 ACTIVE, migracja poza zakresem. Node bp1.9.6/SAP Java bp2.76.0 dostępne. |
+| Artefakty/testy | Wszystkie SHA poniżej zgodne; deskryptory, evidence i sourceHash PASS; generator 31 PASS/1 Go skipped lokalnie; gotowy JAR 10/10 PASS. CI main319adbf COMPLETED/SUCCESS. |
+| Bezpieczeństwo | Nowy MTAR: SEND/INBOUND/SAP WRITE/sweeper OFF, storage off, oba outbox OFF, identity-smoke false, SQL init never. Guard blokuje H2 zamiast HANA. |
+| Otwarte ograniczenia | Bieżący indeks CAP anonimowo HTTP200 ujawnia kontrakt (**FAIL**); metadata CAP i indeks AppRoutera HTTP401. Poprawka indeksu w nowym JAR przechodzi lokalny test; potwierdzenie LIVE po deployu. A/B/DCL/principal H01 oraz SQL/lock/CAS/restart nadal PENDING. |
+| Koszty | Wyłącznie 3 istniejące usługi: auth/destination/db; bez provisioningu i nowych płatnych usług. Nie jest to gwarancja kosztu całego konta PAYG. |
+
+### Dokładny zestaw — ponownie zmierzone SHA-256, bez odbudowy
+
+| Plik | Bajty | SHA-256 |
+| --- | --- | --- |
+| `D:\AInvoicer-cap-hana-01-build\deploy\build\ainvoicer_0.7.3.mtar` | 67562976 | `196b9b8cc85843f08b200aba9455e6f1c8b725a9ad3b765a3f883ba68b621570` |
+| `D:\AInvoicer-cap-hana-01-build\deploy\build\ainvoicer_0.7.2.mtar` (rollback) | 67551647 | `00e31c977eb0d29cb86a4f6b7ecbdf115cfaf1a489f247955545b317f847f962` |
+| `D:\AInvoicer\deploy\btp-dev-eu20-hana-first.mtaext` | 599 | `f11b31967d12cc3f587b55a39aaf385791503b8f2b11af472f2d03bd37cfd14e` |
+
+Używać dokładnie wskazanych ścieżek. Kopia extension w nowym worktree ma inne bajty CRLF;
+nie zastępuje zatwierdzanego pliku LF. Źródła runtime `main319adbf` są zgodne z buildem4630f89;
+nie włączono niezacommitowanego `cap-java/db/documents.cds` z głównego checkoutu.
+
+### Dwie konkretne operacje do zgody — NIE WYKONANO
+
+```powershell
+Remove-Item Env:DEBUG,Env:CF_TRACE -ErrorAction SilentlyContinue
+$cfCliPath = Join-Path $env:USERPROFILE 'tools/cf8/x/cf.exe'
+# A: tylko po osobnej zgodzie na zakończenie starej operacji
+& $cfCliPath deploy -i d110c171-ddf8-11f1-8764-eeee0a818911 -a abort
+# Potwierdzić ABORTED, brak aktywnej blokady, właściwy target,
+# serviceStopped=false i ponownie wszystkie SHA z tabeli.
+# B: tylko po osobnej zgodzie na powyższe bajty, DDL/bindingi i przerwę aplikacji
+& $cfCliPath deploy D:\AInvoicer-cap-hana-01-build\deploy\build\ainvoicer_0.7.3.mtar -e D:\AInvoicer\deploy\btp-dev-eu20-hana-first.mtaext --retries 0
+```
+
+Ryzyko: przerwa CAP/AppRoutera przy zwykłym deploymencie; DDL 14 tabel/6 indeksów/4 widoków
+w istniejącym HDI. Pakiet nie zawiera undeploy, CSV ani hdbtabledata, ale pustego schematu nie
+potwierdzono SQL. Abort nie cofa aplikacji/schematu. Przy pierwszym błędzie zatrzymać pracę;
+bez kolejnego deployu, retry, undeploy, usuwania usług ani samodzielnego rollbacku.
+
+Po zatwierdzonym deployu: sprawdzić FINISHED i HDI make SUCCESS, nowe droplety, binding CAP→HDI,
+HANA JDBC oraz przejście CloudIdentityGuard/CloudPersistenceGuard. Odczytać dozwolone flagi
+`environment_variables` i powtórzyć anonimowe GET, w tym indeks CAP. Faktyczne istnienie obiektów
+potwierdzić katalogowym SQL przez dostępne autoryzowane narzędzie; logi HDI nie zastępują SQL.
+Brak takiego narzędzia zgłosić jako PENDING. Syntetyczne DML, restart i testy konkurencji wymagają
+osobnej zgody. Nie tworzyć service keys ani odczytywać credentiali/VCAP dla tej weryfikacji.
+
+Rollback aplikacji wymaga osobnej decyzji: zweryfikowany MTAR0.7.2 z tabeli oraz
+`D:\AInvoicer-cap-hana-01-build\deploy\btp-dev-eu20.mtaext`
+(SHA `4c6afb70c98f3f4bbe851865bdd8eb0c4f2ebd5a28b37d1b31419634fd3405b7`),
+`cf deploy <rollback-mtar> -e <rollback-extension> --version-rule ALL --retries 0`.
+Zachować HDI i dane, sprawdzić pozostałe bindingi/env oraz stan deployera.
+Powrót do efemerycznego H2 nie odtwarza danych HANA ani starej bazy H2; schematu nie cofamy.
 
 ## Aktualny wynik zatwierdzonej próby — staging ERROR
 
