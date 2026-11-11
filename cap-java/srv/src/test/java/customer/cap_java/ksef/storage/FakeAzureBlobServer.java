@@ -49,6 +49,7 @@ public final class FakeAzureBlobServer implements AutoCloseable {
     volatile String retryAfter;
     final AtomicInteger commitThenStallNextPuts = new AtomicInteger();
     volatile long stallMillis = 1500;
+    volatile boolean stallGetBody;
     volatile boolean readOnly;
     public volatile boolean revoked;
     volatile Instant now = Instant.parse("2026-11-11T08:00:00Z");
@@ -177,6 +178,15 @@ public final class FakeAzureBlobServer implements AutoCloseable {
         Map<String, String> extra = new HashMap<>();
         extra.put("Content-MD5", Base64.getEncoder().encodeToString(blob.md5()));
         blob.metadata().forEach((k, v) -> extra.put("x-ms-meta-" + k, v));
+        if (stallGetBody) {
+            extra.forEach((k, v) -> exchange.getResponseHeaders().set(k, v));
+            exchange.sendResponseHeaders(200, blob.content().length);
+            exchange.getResponseBody().write(blob.content(), 0, 1);
+            exchange.getResponseBody().flush();
+            try { Thread.sleep(stallMillis); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            exchange.getResponseBody().write(blob.content(), 1, blob.content().length - 1);
+            return;
+        }
         respond(exchange, 200, null, blob.content(), extra);
     }
 

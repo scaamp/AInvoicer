@@ -1,14 +1,11 @@
 package customer.cap_java.ksef.storage;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
@@ -100,8 +97,8 @@ public final class AzureBlobSasClient implements ObjectStorageClient {
             }
             builder.header(META_PREFIX + name, value);
         });
-        HttpResponse<InputStream> response = send(builder.build());
-        try (InputStream body = response.body()) {
+        HttpResponse<byte[]> response = send(builder.build(), 64 * 1024);
+        {
             int status = response.statusCode();
             if (status == 201) { return CreateOutcome.CREATED; }
             // 409 BlobAlreadyExists / 412 ConditionNotMet: obiekt istnieje, wywołujący zweryfikuje treść.
@@ -112,21 +109,19 @@ public final class AzureBlobSasClient implements ObjectStorageClient {
                 }
             }
             throw failure(response, "STORAGE_PUT");
-        } catch (IOException closing) {
-            throw new ObjectStorageException(Category.UNAVAILABLE, "STORAGE_PUT_IO");
         }
     }
 
     @Override public Optional<StoredObject> read(String key, int maxBytes) {
-        HttpResponse<InputStream> response = send(HttpRequest.newBuilder(blobUri(key))
-                .timeout(requestTimeout).header("x-ms-version", API_VERSION).GET().build());
-        try (InputStream body = response.body()) {
+        HttpResponse<byte[]> response = send(HttpRequest.newBuilder(blobUri(key))
+                .timeout(requestTimeout).header("x-ms-version", API_VERSION).GET().build(), maxBytes);
+        {
             int status = response.statusCode();
             if (status == 404) { return Optional.empty(); }
             if (status != 200) { throw failure(response, "STORAGE_GET"); }
             long declared = response.headers().firstValueAsLong("Content-Length").orElse(-1);
             if (declared > maxBytes) { throw new ObjectStorageException(Category.TOO_LARGE, "STORAGE_OBJECT_TOO_LARGE"); }
-            byte[] content = readLimited(body, maxBytes);
+            byte[] content = response.body();
             if (declared >= 0 && declared != content.length) {
                 throw new ObjectStorageException(Category.UNAVAILABLE, "STORAGE_GET_TRUNCATED");
             }
@@ -142,8 +137,6 @@ public final class AzureBlobSasClient implements ObjectStorageClient {
                 }
             });
             return Optional.of(new StoredObject(content, metadata));
-        } catch (IOException io) {
-            throw new ObjectStorageException(Category.UNAVAILABLE, "STORAGE_GET_IO");
         }
     }
 
@@ -153,13 +146,11 @@ public final class AzureBlobSasClient implements ObjectStorageClient {
         }
         String query = "restype=container&comp=list&prefix=" + encode(prefix) + "&maxresults=" + maxResults
                 + (marker == null || marker.isEmpty() ? "" : "&marker=" + encode(marker));
-        HttpResponse<InputStream> response = send(HttpRequest.newBuilder(URI.create(container + "?" + query + "&" + sas))
-                .timeout(requestTimeout).header("x-ms-version", API_VERSION).GET().build());
-        try (InputStream body = response.body()) {
+        HttpResponse<byte[]> response = send(HttpRequest.newBuilder(URI.create(container + "?" + query + "&" + sas))
+                .timeout(requestTimeout).header("x-ms-version", API_VERSION).GET().build(), MAX_LIST_RESPONSE_BYTES);
+        {
             if (response.statusCode() != 200) { throw failure(response, "STORAGE_LIST"); }
-            return parseList(readLimited(body, MAX_LIST_RESPONSE_BYTES));
-        } catch (IOException io) {
-            throw new ObjectStorageException(Category.UNAVAILABLE, "STORAGE_LIST_IO");
+            return parseList(response.body());
         }
     }
 
@@ -207,16 +198,38 @@ public final class AzureBlobSasClient implements ObjectStorageClient {
     }
 
     /** Timeout/I/O = UNAVAILABLE; wynik zapisu może być nieznany, ale create-only czyni ponowienie bezpiecznym. */
-    private HttpResponse<InputStream> send(HttpRequest request) {
+    private HttpResponse<byte[]> send(HttpRequest request, int maxBytes) {
+        var oversized = new java.util.concurrent.atomic.AtomicBoolean();
+        java.util.concurrent.CompletableFuture<HttpResponse<byte[]>> pending = null;
         try {
-            return http.send(request, HttpResponse.BodyHandlers.ofInputStream());
-        } catch (HttpTimeoutException timeout) {
+            // INT-03: pełna odpowiedź ma deadline i limit bajtów. ofInputStream kończył timeout
+            // na nagłówkach, więc powolny body mógł blokować worker bez końca.
+            pending = http.sendAsync(request, info -> {
+                var delegate = HttpResponse.BodySubscribers.limiting(HttpResponse.BodySubscribers.ofByteArray(), maxBytes);
+                return new HttpResponse.BodySubscriber<byte[]>() {
+                    private long received;
+                    public java.util.concurrent.CompletionStage<byte[]> getBody() { return delegate.getBody(); }
+                    public void onSubscribe(java.util.concurrent.Flow.Subscription subscription) { delegate.onSubscribe(subscription); }
+                    public void onNext(List<java.nio.ByteBuffer> buffers) {
+                        for (var buffer : buffers) received += buffer.remaining();
+                        if (received > maxBytes) oversized.set(true);
+                        delegate.onNext(buffers);
+                    }
+                    public void onError(Throwable error) { delegate.onError(error); }
+                    public void onComplete() { delegate.onComplete(); }
+                };
+            });
+            return pending.get(requestTimeout.toMillis(), java.util.concurrent.TimeUnit.MILLISECONDS);
+        } catch (java.util.concurrent.TimeoutException timeout) {
             throw new ObjectStorageException(Category.UNAVAILABLE, "STORAGE_TIMEOUT");
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
             throw new ObjectStorageException(Category.UNAVAILABLE, "STORAGE_INTERRUPTED");
-        } catch (IOException io) {
+        } catch (java.util.concurrent.ExecutionException io) {
+            if (oversized.get()) { throw new ObjectStorageException(Category.TOO_LARGE, "STORAGE_OBJECT_TOO_LARGE"); }
             throw new ObjectStorageException(Category.UNAVAILABLE, "STORAGE_IO");
+        } finally {
+            if (pending != null && !pending.isDone()) pending.cancel(true);
         }
     }
 
@@ -237,12 +250,6 @@ public final class AzureBlobSasClient implements ObjectStorageClient {
             category = Category.REJECTED;
         }
         return new ObjectStorageException(category, operation + "_HTTP_" + status + (code.isEmpty() ? "" : "_" + code), retryAfter);
-    }
-
-    private static byte[] readLimited(InputStream body, int maxBytes) throws IOException {
-        byte[] content = body.readNBytes(maxBytes + 1);
-        if (content.length > maxBytes) { throw new ObjectStorageException(Category.TOO_LARGE, "STORAGE_OBJECT_TOO_LARGE"); }
-        return content;
     }
 
     private static byte[] decode(String base64) {

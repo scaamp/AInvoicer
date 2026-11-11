@@ -213,6 +213,17 @@ class ContentAddressedDocumentStoreTest {
         assertNull(error.retryNotBefore());
     }
 
+    @Test void timeoutIncludesBodyAfterHeadersHaveAlreadyArrived() {
+        String reference = store().forScope(OUT_A).put(xml);
+        fake.stallGetBody = true;
+        fake.stallMillis = 1500;
+        var fast = settings.withLoopbackHttpForTests(Duration.ofMillis(250)).withMaxAttempts(1);
+        assertTimeoutPreemptively(Duration.ofSeconds(1), () -> {
+            var error = failure("KSEF_DOCUMENT_STORE_UNAVAILABLE", () -> store(fast, null).forScope(OUT_A).get(reference));
+            assertTrue(error.retryable());
+        });
+    }
+
     @Test void longRetryAfterIsReturnedToCallerInsteadOfBlocking() {
         fake.failNextRequests.set(1);
         fake.failureStatus = 503;
