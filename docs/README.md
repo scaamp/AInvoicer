@@ -8,6 +8,14 @@ tags: [ainvoicer, dokumentacja]
 
 # AInvoicer — baza wiedzy projektu
 
+## Strategia infrastruktury i bazy danych
+
+- [Infrastructure as Code / Database as Code — pełna strategia, architektura, etapy, ryzyka, backup/DR i przyszły SaaS](architecture/INFRASTRUCTURE_AS_CODE_STRATEGY.md).
+- [ADR-0009 — przyjęcie etapowej strategii IaC i DbAC](decisions/ADR-0009-iac-database-as-code-strategy.md).
+
+> Stan 11.11.2026: strategia jest przyjęta; model CAP CDS/HDI i build offline istnieją, lecz pełne IaC BTP i odtworzenie danych nie są wdrożone. Rzeczywisty stan CAP-HANA-01 śledzimy w [PR #9](https://github.com/scaamp/AInvoicer/pull/9), nie w historycznych podsumowaniach poniżej.
+
+
 Aktualizacja INT-03 (2026-11-11): [dziennik integracji i testy](journal/2026-11-11-int-03-orchestration.md),
 [audyt security/persistence](audits/2026-11-11-int-03-security-persistence.md),
 [HANA CAP deployment](guides/HANA_CLOUD_CAP_DEPLOYMENT.md),
