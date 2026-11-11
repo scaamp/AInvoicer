@@ -8,6 +8,14 @@ tags: [ainvoicer, dokumentacja]
 
 # AInvoicer — baza wiedzy projektu
 
+## Strategia infrastruktury i bazy danych
+
+- [Infrastructure as Code / Database as Code — pełna strategia, architektura, etapy, ryzyka, backup/DR i przyszły SaaS](architecture/INFRASTRUCTURE_AS_CODE_STRATEGY.md).
+- [ADR-0009 — przyjęcie etapowej strategii IaC i DbAC](decisions/ADR-0009-iac-database-as-code-strategy.md).
+
+> Strategia przyjęta; model CAP CDS/HDI oraz walidacja offline istnieją, lecz nie jest to pełne IaC BTP ani mechanizm backupu. Bieżący stan runtime CAP/HANA sprawdzaj w [STATUS](STATUS.md) i [dzienniku CAP-HANA-01](journal/2026-11-11-cap-hana-01-first-persistence.md).
+
+
 **CAP-HANA-01 LIVE: zatwierdzony deployment przeszedł merge, ale staging deployera zakończył się ERROR.**
 Deployer utworzony i przypięty do HDI; CAP/AppRouter pozostają na poprzednim runtime, CAP HANA NOT DEPLOYED.
 Naprawa przenośności ZIP Windows→Unix odbudowana i zweryfikowana offline, nowe hashe w runbooku;
