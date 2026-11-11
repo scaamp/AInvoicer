@@ -190,6 +190,82 @@ class XsuaaJwtODataContractTest {
         assertEquals(401, get("Bearer " + token, "InvoiceIntegrationStatus").statusCode());
     }
 
+    /** CAP-07D: token H01 nie daje dostępu do CAP; testowa sygnatura nie zastępuje audience aplikacji. */
+    @Test void rapAudienceCannotBeUsedForCapEvenWithOperatorScope() throws Exception {
+        String token = operator(NIP_A, "1000").withClaimValue("client_id", "sb-h01-offline!t9")
+            .withClaimValue("azp", "sb-h01-offline!t9").withClaimValues("aud", "sb-h01-offline!t9")
+            .createToken().getTokenValue();
+        for (String path : new String[]{"$metadata", "InvoiceIntegrationStatus", "InboundInvoiceOverview"}) {
+            assertEquals(401, get("Bearer " + token, path).statusCode(), path);
+        }
+    }
+
+    /** Obcy tenant i audience: odmowa przed odczytem każdej publicznej projekcji. */
+    @Test void foreignTenantAndAudienceAreRejectedAcrossCap() throws Exception {
+        String token = operator(NIP_A, "1000").withClaimValue("zid", "foreign-test-tenant")
+            .withClaimValue("app_tid", "foreign-test-tenant").withClaimValue("client_id", "sb-foreign!t9")
+            .withClaimValue("azp", "sb-foreign!t9").withClaimValues("aud", "sb-foreign!t9")
+            .createToken().getTokenValue();
+        for (String path : new String[]{"$metadata", "InvoiceIntegrationStatus/$count", "KsefOperations",
+                "InboundInvoiceOverview"}) {
+            assertEquals(401, get("Bearer " + token, path).statusCode(), path);
+        }
+    }
+
+    /**
+     * Znane ograniczenie ADR-0006, nie akceptacja izolacji tenantów: poprawny audience/podpis obcej
+     * strefy jest dopuszczany przez bazowy stos XSUAA. Guard INT-02 chroni tylko inbox. Test utrwala
+     * rzeczywisty wynik i blokuje deklarację pełnego SECURITY PASS bez osobnej poprawki polityki.
+     */
+    @Test void dedicatedTenantGapOutsideInboxIsExplicitlyCharacterized() throws Exception {
+        String token = operator(NIP_A, "1000").withClaimValue("zid", "foreign-test-tenant")
+            .withClaimValue("app_tid", "foreign-test-tenant").createToken().getTokenValue();
+        assertEquals(200, get("Bearer " + token, "$metadata").statusCode());
+        var body = read(token, "InvoiceIntegrationStatus?$filter=invoiceUUID%20eq%20'" + invoice + "'");
+        assertEquals(Set.of(NIP_A + "/1000"), pairs(body), "known gap must remain visible in acceptance report");
+        assertEquals(403, get("Bearer " + token, "InboundInvoiceOverview").statusCode());
+    }
+
+    /** Zalogowany operator nie odczytuje tabel technicznych także przez zgadywany inny service root. */
+    @Test void privateTablesAndTechnicalEndpointsStayClosedForAuthenticatedOperator() throws Exception {
+        String authorization = "Bearer " + operator(NIP_A, "1000").createToken().getTokenValue();
+        for (String entity : new String[]{"KsefInboundDocuments", "KsefInboundAccessGrants", "KsefInboundSyncCheckpoints",
+                "KsefInboundSyncLeases", "SapResultWrites", "KsefSubmissions", "KsefInvoiceReservations"}) {
+            var response = get(authorization, entity);
+            assertEquals(404, response.statusCode(), entity);
+            assertSafeError(response);
+        }
+        for (String path : new String[]{"/", "/h2-console/", "/actuator/env", "/actuator/beans", "/v3/api-docs",
+                "/odata/v4/customer.cap_java/KsefInboundDocuments"}) {
+            var response = http.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
+                .header("Authorization", authorization).GET().build(), HttpResponse.BodyHandlers.ofString());
+            assertTrue(Set.of(401, 403, 404).contains(response.statusCode()), path + ": " + response.statusCode());
+            assertSafeError(response);
+        }
+    }
+
+    /** Bezpieczne błędy 401/403/404 nie ujawniają bindingów, stosu ani danych syntetycznej faktury. */
+    @Test void accessFailuresReturnSafeBodies() throws Exception {
+        var unauthenticated = get("Bearer malformed", "InvoiceIntegrationStatus");
+        assertEquals(401, unauthenticated.statusCode());
+        assertSafeError(unauthenticated);
+        String noRole = security.getPreconfiguredJwtGenerator().createToken().getTokenValue();
+        var forbidden = get("Bearer " + noRole, "InboundInvoiceOverview");
+        assertEquals(403, forbidden.statusCode());
+        assertSafeError(forbidden);
+        var missing = get("Bearer " + operator(NIP_A, "1000").createToken().getTokenValue(),
+            "InvoiceIntegrationStatus(" + foreignOperation + ")");
+        assertEquals(404, missing.statusCode());
+        assertSafeError(missing);
+    }
+
+    private void assertSafeError(HttpResponse<String> response) {
+        for (String secret : new String[]{"clientsecret", "VCAP_SERVICES", "stackTrace", "java.lang.",
+                "jdbc:", "xmlStorageRef", "FOREIGN-B", invoice}) {
+            assertFalse(response.body().contains(secret), "unsafe error body: " + secret);
+        }
+    }
+
     // ---- Autoryzacja: rola z tokenu i zakres z xs.user.attributes ----------------------------------
 
     @Test void authenticatedUserWithoutOperatorScopeIsForbidden() throws Exception {

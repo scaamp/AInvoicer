@@ -1,0 +1,156 @@
+{
+  "kind": "READ_ONLY_CF_INVENTORY",
+  "at": "2026-11-11T09:18:50.824Z",
+  "targetVerified": true,
+  "cflinuxfs5Available": true,
+  "buildpacks": [
+    {
+      "name": "nodejs_buildpack",
+      "stack": "cflinuxfs4",
+      "enabled": true,
+      "filename": "nodejs_buildpack-cached-cflinuxfs4-v1.9.6.zip"
+    },
+    {
+      "name": "nodejs_buildpack",
+      "stack": "cflinuxfs5",
+      "enabled": true,
+      "filename": "nodejs_buildpack-cached-cflinuxfs5-v1.9.6.zip"
+    },
+    {
+      "name": "sap_java_buildpack_jakarta",
+      "stack": null,
+      "enabled": true,
+      "filename": "sap_java_buildpack-v2.76.0.zip"
+    },
+    {
+      "name": "nodejs_buildpack",
+      "stack": "cflinuxfs3",
+      "enabled": true,
+      "filename": "nodejs_buildpack-cached-cflinuxfs3-v1.8.9.zip"
+    }
+  ],
+  "apps": [
+    {
+      "name": "ainvoicer-srv",
+      "state": "STARTED",
+      "routes": [
+        "ainvoicer-v2xzij9s-srv.cfapps.eu20-001.hana.ondemand.com"
+      ],
+      "bindings": [
+        "ainvoicer-destination",
+        "ainvoicer-auth"
+      ],
+      "environment": {
+        "flags": {
+          "AINV_DEPLOYMENT_IDENTITY_SMOKE": "true",
+          "AINV_KSEF_ENABLED": "false",
+          "AINV_SAP_WRITE_ENABLED": "false",
+          "AINV_SAP_WRITE_SWEEPER_ENABLED": "false",
+          "AINV_KSEF_INBOUND_ENABLED": "UNSET"
+        },
+        "profileCf": true,
+        "h2Platform": true,
+        "sapMachine25": true,
+        "sessionTimeout15": false,
+        "destinations": []
+      },
+      "xsuaaBinding": {
+        "exactlyOne": true,
+        "dedicated": true,
+        "expectedApplicationFamily": true
+      },
+      "currentDroplet": {
+        "createdAt": "2026-11-09T17:06:55Z",
+        "stack": "cflinuxfs4",
+        "hash": "944f83c7a1d7d8647f6e5c5aab7218bb3364190ea999881a845599d4455462da",
+        "buildpacks": [
+          {
+            "name": "sap_java_buildpack_jakarta",
+            "version": "2.76.0",
+            "sapMachineVersion": null
+          }
+        ]
+      }
+    },
+    {
+      "name": "ainvoicer-approuter",
+      "state": "STARTED",
+      "routes": [
+        "ainvoicer-v2xzij9s-approuter.cfapps.eu20-001.hana.ondemand.com"
+      ],
+      "bindings": [
+        "ainvoicer-auth",
+        "ainvoicer-destination"
+      ],
+      "environment": {
+        "flags": {
+          "AINV_DEPLOYMENT_IDENTITY_SMOKE": "UNSET",
+          "AINV_KSEF_ENABLED": "UNSET",
+          "AINV_SAP_WRITE_ENABLED": "UNSET",
+          "AINV_SAP_WRITE_SWEEPER_ENABLED": "UNSET",
+          "AINV_KSEF_INBOUND_ENABLED": "UNSET"
+        },
+        "profileCf": false,
+        "h2Platform": false,
+        "sapMachine25": false,
+        "sessionTimeout15": true,
+        "destinations": [
+          {
+            "name": "ainvoicer-cap",
+            "forwardAuthToken": true,
+            "expectedUrl": true
+          },
+          {
+            "name": "ui5",
+            "forwardAuthToken": false,
+            "expectedUrl": true
+          }
+        ]
+      },
+      "xsuaaBinding": {
+        "exactlyOne": true,
+        "dedicated": true,
+        "expectedApplicationFamily": true
+      },
+      "currentDroplet": {
+        "createdAt": "2026-11-09T17:06:47Z",
+        "stack": "cflinuxfs4",
+        "hash": "0fd73ecae12e40bc349fd8c64a6f215450fe4332001e045fed46d049d92aac38",
+        "buildpacks": [
+          {
+            "name": "nodejs_buildpack",
+            "version": "1.9.6",
+            "sapMachineVersion": null
+          }
+        ]
+      }
+    }
+  ],
+  "buildpackStackNote": "null = no stack constraint reported by CAPI; not a successful fs5 staging test",
+  "services": [
+    {
+      "name": "ainvoicer-auth",
+      "plan": "application",
+      "lastOperationSucceeded": true
+    },
+    {
+      "name": "ainvoicer-destination",
+      "plan": "lite",
+      "lastOperationSucceeded": true
+    },
+    {
+      "name": "ainvoicer-hana-dev",
+      "plan": "hana-free",
+      "lastOperationSucceeded": true
+    }
+  ],
+  "xsuaaConfiguration": "BLOCKED: broker does not support FetchInstanceParameters (CF120004); policy not evaluated",
+  "destinationContent": "BLOCKED: CAPI metadata does not prove subaccount Destination authentication or principal",
+  "stagingOnFs5Jdk25": "NOT_EXECUTED: requires separately approved deployment",
+  "expectedAppsPresent": true,
+  "bindingMetadataExpected": true,
+  "sameBoundApplicationAndTenant": true,
+  "coreSmokeEnvExpected": true,
+  "smokeEnvExpected": false,
+  "securityAcceptance": "PENDING: inventory is not JWT, DCL, principal or session acceptance"
+}

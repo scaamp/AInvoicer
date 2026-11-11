@@ -68,7 +68,9 @@ const failures = [
     ['sweeper ON', { AINV_SAP_WRITE_SWEEPER_ENABLED: 'true' }, 'Identity smoke mode requires'],
     ['KSeF ON', { AINV_KSEF_ENABLED: 'true' }, 'Identity smoke mode requires'],
     ['SAP WRITE ON', { AINV_SAP_WRITE_ENABLED: 'true' }, 'Identity smoke mode requires'],
+    ['INBOUND ON without durable store', { AINV_KSEF_INBOUND_ENABLED: 'true' }, 'KSEF_INBOUND_DURABLE_STORE_REQUIRED'],
     ['mock ON', { CDS_SECURITY_MOCK_ENABLED: 'true' }, 'requires cds.security.mock.enabled=false'],
+    ['CAP auth OFF', { CDS_SECURITY_AUTHENTICATION_MODE: 'never' }, 'requires CAP XSUAA authentication to stay enabled'],
     ['no H2 platform', { SPRING_SQL_INIT_PLATFORM: undefined }, 'requires SPRING_SQL_INIT_PLATFORM=h2']
 ];
 for (const [name, overrides, reason] of failures) test('packaged CF JAR fails closed: ' + name, async () => {

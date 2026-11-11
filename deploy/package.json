@@ -9,7 +9,9 @@
     "test": "node --test test/*.test.mjs",
     "test:cf-runtime": "node --test runtime/*.test.mjs",
     "validate:smoke": "node scripts/identity-smoke.mjs validate",
-    "build:btp:smoke": "node scripts/identity-smoke.mjs build"
+    "build:btp:smoke": "node scripts/release-evidence.mjs start && node scripts/identity-smoke.mjs build && node scripts/release-evidence.mjs record",
+    "verify:release": "node scripts/release-evidence.mjs verify",
+    "readiness:cf": "node scripts/cf-readiness.mjs"
   },
   "devDependencies": {
     "adm-zip": "0.6.1",
