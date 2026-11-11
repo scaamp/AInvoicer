@@ -14,7 +14,14 @@ tags: [ainvoicer, cap-java, status]
 
 ## Current Phase
 
-**CAP-HANA-01S — CAP STOPPED po nieudanym stagingu (2026-11-11, VERIFIED LIVE).**
+**CAP-HANA-01S — CAP NA HANA WDROŻONY (2026-11-11, VERIFIED LIVE).** Po zgodzie właściciela abort `40b8e964…`
+i deployment poprawionego 0.7.3 `54a89984…` (`--retries 0`): operacja `82250a52…` FINISHED; HDI deploy SUCCEEDED;
+CAP i AppRouter STARTED 1/1 na nowych dropletach; CAP związany z `ainvoicer-db`, pula Hikari połączona sterownikiem HANA;
+anonimowe GET CAP 401 (dawny FAIL indeksu usunięty). Efekty zewnętrzne OFF. **PENDING:** katalogowy SQL,
+syntetyczne DML, restart/trwałość, CAS/konkurencja, LIVE A/B/DCL, security sign-off, merge poprawki po CI.
+[Wynik i akceptacja](guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md#cap-hana-01s--wynik-live-deployment-82250a52-finished-1111-2140-cet).
+
+**Wcześniej tego dnia — CAP-HANA-01S: CAP STOPPED po nieudanym stagingu (VERIFIED LIVE).**
 Zatwierdzony abort `d110c171…` wykonany (ABORTED); deployment `40b8e964…`: HDI make SUCCEEDED, staging CAP
 BuildpackCompileFailed — `srv/data.zip` opakowywał JAR. `ainvoicer-srv` STOPPED, AppRouter na starym droplecie,
 operacja aktywna ERROR; rollback 0.7.2 `00e31c97…` ma tę samą wadę. Poprawka `fe0a0c1` i nowe MTAR

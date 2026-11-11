@@ -2,11 +2,37 @@
 title: "CAP-HANA-01 — pierwsze HDI i kontrolowany deployment CAP"
 date: 2026-11-11
 type: guide
-status: cap-down-staging-failed-fix-built-approval-pending
+status: hana-deployed-cap-running-sql-dml-pending
 tags: [ainvoicer, cap-hana-01, hana, hdi, cloud-foundry, deployment, recovery]
 ---
 
 # CAP-HANA-01 — runbook do osobnego zatwierdzenia
+
+## CAP-HANA-01S — wynik LIVE: deployment 82250a52 FINISHED (11.11, 21:40 CET)
+
+Zgoda właściciela: „zgadzam się – abort i deploy” (bramka poniżej, bez czekania na CI PR).
+Preflight 20:28 UTC PASS (target, HANA `serviceStopped=false`, SHA `54a89984…`/`f11b3196…`);
+abort `40b8e964…` → ABORTED, brak aktywnych operacji; ponowny HANA/SHA PASS.
+
+| Kontrola (VERIFIED LIVE, odczyt) | Wynik |
+| --- | --- |
+| Operacja `82250a52-de0e-11f1-ab29-eeee0a9dd8f2` (`--retries 0`, `-f` tylko bez promptu) | **FINISHED**; MTA `ainvoicer` 0.7.3 |
+| HDI | task `deploy` #2 SUCCEEDED 20:29:50 UTC (payload identyczny z #1); deployer STOPPED |
+| CAP `ainvoicer-srv` | STARTED 1/1, droplet `730e32a9` (20:31:22 UTC), SAP Java bp 2.76.0, fs4 |
+| AppRouter | STARTED 1/1, droplet `da231d8b` (20:33:13 UTC), Node bp 1.9.6, fs4 |
+| Bindingi | `ainvoicer-db` → deployer + **srv**; auth/destination → srv + approuter |
+| Start CAP (logi, filtrowane) | profil `cf`; DataSource `ds-ainvoicer-db`; `HikariPool-1` — połączenie `com.sap.db.jdbc.HanaConnection`; XSUAA; `Started Application` 5,7 s; guardy fail-closed nie zatrzymały startu |
+| Flagi env CAP | HANA_READINESS=true, IDENTITY_SMOKE=false, KSeF/INBOUND/SAP WRITE/sweeper=false, storage off, outbox OFF, SQL init never |
+| Anonimowe GET CAP | `/`, `$metadata`, `KsefOperations` → **401**, puste body (wcześniejszy FAIL indeksu 200 usunięty) |
+| Anonimowe GET AppRouter | bez XHR: 200 = strona przekierowania logowania XSUAA (~710 B, bez treści UI/OData); z `X-Requested-With` → 401 |
+
+Obserwacja: WARN `Failed to register handler method` dla handlerów outbox (CAP, KSeF worker, SAP writeback)
+— oczekiwane przy wyłączonych outboxach; do weryfikacji przy ich włączaniu.
+
+**Nadal PENDING:** katalogowy SQL obiektów HDI (brak autoryzowanego narzędzia — dowodem jest HDI make
+i działające połączenie JDBC, nie zapytanie), syntetyczne DML/SELECT, restart i trwałość po restarcie,
+testy CAS/lock/konkurencji, LIVE A/B/DCL/principal H01 i końcowy security sign-off. Merge poprawki
+generatora do `main` po PR i CI. Nie wykonano DML, restartu, rollbacku ani nowej mutacji po deploymencie.
 
 ## CAP-HANA-01S — incydent 40b8e964 i nowa bramka (11.11, 21:40 CET)
 

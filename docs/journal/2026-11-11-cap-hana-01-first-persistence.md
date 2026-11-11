@@ -2,13 +2,17 @@
 title: "CAP-HANA-01 — final review INT-03 i przygotowanie pierwszej persystencji"
 date: 2026-11-11
 type: journal
-status: cap-down-staging-failed-fix-built-approval-pending
+status: hana-deployed-cap-running-sql-dml-pending
 tags: [ainvoicer, int-03, cap-hana-01, hana, hdi, security, deployment]
 ---
 
 # CAP-HANA-01 — stan i dowody sesji
 
-**Aktualizacja CAP-HANA-01S, 21:40 CET:** deployment `40b8e964…` — HDI make SUCCEEDED, staging CAP
+**CAP-HANA-01S LIVE, 21:40 CET:** abort `40b8e964…` i deployment poprawionego `54a89984…` — operacja
+`82250a52…` **FINISHED**, CAP/AppRouter STARTED, CAP→HDI JDBC aktywne; SQL/DML/restart PENDING.
+[Wynik](#cap-hana-01s--deployment-82250a52-finished-claude-code-2140-cet).
+
+**Wcześniej, CAP-HANA-01S:** deployment `40b8e964…` — HDI make SUCCEEDED, staging CAP
 BuildpackCompileFailed (opakowany JAR w `srv/data.zip`); **CAP STOPPED**. Poprawka i nowe SHA:
 [sekcja incydentu](#cap-hana-01s--incydent-40b8e964-i-poprawka-claude-code-2140-cet) · [bramka runbooka](../guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md#cap-hana-01s--incydent-40b8e964-i-nowa-bramka-1111-2140-cet).
 
@@ -598,3 +602,13 @@ STARTED na starym droplecie bez aktualizacji, deployer STOPPED, operacja `40b8e9
 JAR z `target/`, nie payloadu MTAR. Dodano kontrakt układu Java Main i regresję dokładnie wadliwego układu.
 Poprawka, nowe SHA i bramka: [runbook](../guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md#cap-hana-01s--incydent-40b8e964-i-nowa-bramka-1111-2140-cet).
 Nie wykonano retry, restartu, rollbacku, DML ani nowej mutacji CF po błędzie.
+
+## CAP-HANA-01S — deployment 82250a52 FINISHED (Claude Code, 21:40 CET)
+
+Po zgodzie „zgadzam się – abort i deploy”: preflight PASS → abort `40b8e964…` ABORTED → ponowny
+HANA/SHA PASS → `cf deploy D:\AInvoicer-cap-hana-01s\deploy\build\ainvoicer_0.7.3.mtar -e
+D:\AInvoicer\deploy\btp-dev-eu20-hana-first.mtaext --retries 0 -f` (operacja `82250a52…`, FINISHED).
+Staging CAP przeszedł na poprawionym payloadzie. CAP i AppRouter STARTED 1/1 na nowych dropletach,
+CAP związany z HDI, start z pulą Hikari na sterowniku HANA. Pełna tabela akceptacji i lista PENDING:
+[runbook](../guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md#cap-hana-01s--wynik-live-deployment-82250a52-finished-1111-2140-cet).
+Logi startu filtrowano lokalnie; nie zapisywano URL JDBC, credentiali ani VCAP. Brak DML/restartu.
