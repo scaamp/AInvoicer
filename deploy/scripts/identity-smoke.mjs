@@ -8,6 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import YAML from 'yaml';
 import Zip from 'adm-zip';
+import { normalizePermissions, verifyPermissions } from './portable-zip.mjs';
 
 export const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 export const smokeEnv = Object.freeze({
@@ -110,6 +111,7 @@ export function verifyArchive(file) {
     ]);
     validate(YAML.parse(archive.readAsText('META-INF/mtad.yaml')));
     const srv = new Zip(archive.readFile('ainvoicer-srv/data.zip'));
+    verifyPermissions(srv);
     assert.deepEqual(srv.getEntries().map(e => e.entryName), ['cap-java-exec.jar']);
     const jar = new Zip(srv.readFile('cap-java-exec.jar'));
     for (const entry of jar.getEntries()) {
@@ -117,6 +119,7 @@ export function verifyArchive(file) {
             'test identity or local binding in runtime JAR: ' + entry.entryName);
     }
     const router = new Zip(archive.readFile('ainvoicer-approuter/data.zip'));
+    verifyPermissions(router);
     for (const entry of router.getEntries()) {
         assert.ok(!/(^|\/)(node_modules|test|localService|\.env|default-env|default-services)/i.test(entry.entryName), entry.entryName);
         if (!entry.isDirectory && /\.(js|json|html|xml|properties)$/.test(entry.entryName)) {
@@ -171,7 +174,7 @@ function main() {
         for (const [name, dir] of [['ainvoicer-srv', srv], ['ainvoicer-approuter', router]]) {
             mkdirSync(join(assembly, name));
             const zip = new Zip(); zip.addLocalFolder(dir);
-            zip.writeZip(join(assembly, name, 'data.zip'));
+            normalizePermissions(zip).writeZip(join(assembly, name, 'data.zip'));
         }
         run(process.execPath, [join(root, 'deploy/node_modules/mbt/bin/mbt'), 'assemble', '-s', assembly, '-t', out], assembly);
         verifyArchive(target);

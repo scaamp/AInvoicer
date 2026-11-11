@@ -8,6 +8,12 @@ tags: [ainvoicer, hana, hdi, deployment, security, int-03]
 
 # HANA Cloud / CAP — wariant przygotowany, niewdrożony
 
+**Aktualizacja LIVE:** po zgodzie właściciela agent zakończył starą operację i uruchomił poprawione0.7.3.
+Merge przeszedł; staging deployera zakończył się ERROR (`package.json: permission denied`).
+HDI ma1 app binding do STOPPED deployera bez trasy; CAP nadal nie ma HDI i działa na starym droplecie.
+Naprawa metadanych ZIP creator10→Unix3/0644/0755 wymaga nowej odbudowy/SHA i osobnej zgody.
+Bez DML/restartu CAP. Aktualne dowody są na końcu dziennika; starsze stany poniżej są historią.
+
 **NO-GO dla dotychczasowych artefaktów:** pierwsza próba została odrzucona przed stagingiem przez
 niezmapowany typ `approuter.nodejs`. Naprawiono translację CF dla obu generatorów; oba MTAR
 odbudowano z nowymi SHA i zweryfikowano offline. Wymagana osobna zgoda na zakończenie operacji ERROR

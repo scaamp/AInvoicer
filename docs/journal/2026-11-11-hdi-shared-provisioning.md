@@ -8,6 +8,11 @@ tags: [ainvoicer, journal, cap-hana-01, hana, hdi, btp, costs, cloud-foundry]
 
 # HDI hdi-shared — konfiguracja i dowody
 
+**Późniejsza aktualizacja LIVE:** zatwierdzony deployment utworzył jeden app binding HDI do
+`ainvoicer-db-deployer`, ale staging zakończył się ERROR. Deployer STOPPED/bez trasy, CAP nadal bez HDI.
+Tabele provisioningu poniżej zachowują stan0 bindingów z wcześniejszego odczytu.
+[Próba deploymentu i naprawa ZIP](2026-11-11-cap-hana-01-first-persistence.md).
+
 [Project Home](../README.md) · [STATUS](../STATUS.md) · [ROADMAP](../ROADMAP.md) ·
 [Wydanie i testy CAP-HANA-01](2026-11-11-cap-hana-01-first-persistence.md) ·
 [Runbook](../guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md)

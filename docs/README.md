@@ -8,6 +8,11 @@ tags: [ainvoicer, dokumentacja]
 
 # AInvoicer — baza wiedzy projektu
 
+**CAP-HANA-01 LIVE: zatwierdzony deployment przeszedł merge, ale staging deployera zakończył się ERROR.**
+Deployer utworzony i przypięty do HDI; CAP/AppRouter pozostają na poprzednim runtime, CAP HANA NOT DEPLOYED.
+Naprawa przenośności ZIP Windows→Unix w toku walidacji; [najnowszy wynik](journal/2026-11-11-cap-hana-01-first-persistence.md).
+Poniższe wpisy opisują wcześniejsze etapy.
+
 **CAP-HANA-01: pierwsza próba deploymentu odrzucona przed stagingiem; NO-GO dla poprzednich MTAR.**
 Naprawiono mapowanie typów projektu do typów CF,29/29 testów PASS; oba MTAR odbudowane i verify PASS.
 Nowe SHA w dzienniku/runbooku; wymagane zatwierdzenie abort starej operacji ERROR i nowego deploymentu.

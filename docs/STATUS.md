@@ -14,6 +14,19 @@ tags: [ainvoicer, cap-java, status]
 
 ## Current Phase
 
+**CAP-HANA-01 LIVE — zatwierdzona próba zakończona ERROR przy stagingu (2026-11-11).**
+Właściciel wyraźnie zatwierdził abort starej operacji i poprawione0.7.3/SHA6a92fb78… .
+**VERIFIED LIVE:** abort30401273… zakończony ABORTED; nowa operacja
+`d110c171-ddf8-11f1-8764-eeee0a818911` przyjęła deskryptor, utworzyła deployer i jego binding HDI,
+ale staging Node buildpack1.9.6/fs4 zakończył się `package.json: permission denied` (także3 domyślne
+ponowienia narzędzia). Deployer STOPPED, bez trasy, HDI1 app binding; CAP/AppRouter pozostały
+STARTED1/1 na starych dropletach, CAP bez HDI. Docelowe0.7.3/HANA **NOT DEPLOYED**.
+Znaleziono nieprzenośny creator=10 w payloadach ZIP Windows oraz katalogi0666; Go archive/zip
+interpretuje creator10 jako mode000. Normalizacja do Unix creator3/pliki0644/katalogi0755
+zaimplementowana we wszystkich3 payloadach i walidatorze. Lokalnie31 PASS/1 Go skipped;
+niezależny czytnik Go1.26.10 wymagany w CI. Nowa odbudowa/SHA i CI PENDING.
+Nie wykonano nowego abort/retry/redeploy, DML ani restartu CAP. Stan historyczny poniżej.
+
 **CAP-HANA-01 — NO-GO, deployment odrzucony przed stagingiem (2026-11-11).**
 Właściciel uruchomił zatwierdzany zestaw; operacja `30401273-ddf4-11f1-ab29-eeee0a9dd8f2`
 zakończyła się ERROR podczas scalania deskryptorów: `Unsupported module type approuter.nodejs`.

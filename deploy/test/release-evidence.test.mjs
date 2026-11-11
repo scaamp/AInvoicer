@@ -7,6 +7,7 @@ import Zip from 'adm-zip';
 import YAML from 'yaml';
 import { descriptor, loadMta, root, verifyArchive } from '../scripts/identity-smoke.mjs';
 import { hashes, sourceHash } from '../scripts/release-evidence.mjs';
+import { normalizePermissions } from '../scripts/portable-zip.mjs';
 
 // Syntetyczny ZIP bez wykonywalnego kodu; służy wyłącznie do wykrywania podmiany zawartości MTAR.
 function artifact(file, mutate = () => {}) {
@@ -24,8 +25,8 @@ function artifact(file, mutate = () => {}) {
     const zip = new Zip();
     zip.addFile('META-INF/MANIFEST.MF', Buffer.from('Manifest-Version: 1.0\n'));
     zip.addFile('META-INF/mtad.yaml', Buffer.from(YAML.stringify(descriptor(loadMta()))));
-    zip.addFile('ainvoicer-srv/data.zip', srv.toBuffer());
-    zip.addFile('ainvoicer-approuter/data.zip', router.toBuffer());
+    zip.addFile('ainvoicer-srv/data.zip', normalizePermissions(srv).toBuffer());
+    zip.addFile('ainvoicer-approuter/data.zip', normalizePermissions(router).toBuffer());
     zip.writeZip(file);
 }
 

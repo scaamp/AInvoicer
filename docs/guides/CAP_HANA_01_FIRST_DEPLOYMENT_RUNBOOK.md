@@ -2,11 +2,32 @@
 title: "CAP-HANA-01 — pierwsze HDI i kontrolowany deployment CAP"
 date: 2026-11-11
 type: guide
-status: descriptor-fixed-offline-abort-and-redeploy-approval-pending
+status: deployment-staging-failed-portable-zip-fix-pending
 tags: [ainvoicer, cap-hana-01, hana, hdi, cloud-foundry, deployment, recovery]
 ---
 
 # CAP-HANA-01 — runbook do osobnego zatwierdzenia
+
+## Aktualny wynik zatwierdzonej próby — staging ERROR
+
+Zgoda właściciela na abort30401273… i deployment0.7.3/SHA6a92fb78… została wykonana.
+Stara operacja ABORTED. Nowa `d110c171-ddf8-11f1-8764-eeee0a818911` przyjęła typy deploymentu,
+utworzyła `ainvoicer-db-deployer` i jego binding HDI, ale staging Node buildpack1.9.6/fs4 zakończył
+się `Unable to load package.json: permission denied`, także przy3 automatycznych retry narzędzia.
+Nie uruchomiono HDI deployera, CAP/AppRouter nie zostały zaktualizowane. HANA0.7.3 NOT DEPLOYED.
+
+**NO-GO dla archiwów SHA6a92fb78… i66014221… .** Są zachowane w build/rejected-d110c171.
+Windows adm-zip zapisał creator10 i katalogi0666; Go archive/zip dla creator10 zwraca tryb000.
+Generator normalizuje teraz wszystkie payloady CF do Unix creator3, plików0644 i katalogów0755;
+walidator odrzuca nieprzenośne metadane. Regresja Go1.26.10 w CI czyta prawdziwe ZIP-y,
+lokalnie bez Go jest jawnie skipped. Odbudowa/nowe SHA/CI PENDING. Nie wykonywać retry d110c171.
+Przed nowym deployem potrzebna osobna zgoda na abort tej operacji i nowe bajty MTAR.
+
+Podczas poleceń MultiApps usuwać z procesu **DEBUG i CF_TRACE**. `DEBUG=1` uruchamia HTTP trace
+pluginu niezależnie od CF_TRACE=false (potwierdzone cf mta-ops --help). Nie publikować surowych nagłówków.
+Odczyty/logi filtrować przed zapisem/wyświetleniem. Ustawienia te dotyczą procesu CLI, nie env aplikacji.
+
+### Historia naprawy typów i poprzednie bajty — nie używać do następnej próby
 
 **AKTUALIZACJA: NO-GO dla poprzednich MTAR.** Pierwsza próba właściciela została odrzucona przy
 scalaniu deskryptorów (operacja `30401273-ddf4-11f1-ab29-eeee0a9dd8f2`, ERROR).

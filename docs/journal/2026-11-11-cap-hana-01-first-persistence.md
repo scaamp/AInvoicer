@@ -2,11 +2,16 @@
 title: "CAP-HANA-01 — final review INT-03 i przygotowanie pierwszej persystencji"
 date: 2026-11-11
 type: journal
-status: deployment-failed-descriptor-fixed-offline-new-approval-pending
+status: approved-deployment-staging-failed-portable-zip-fix-pending
 tags: [ainvoicer, int-03, cap-hana-01, hana, hdi, security, deployment]
 ---
 
 # CAP-HANA-01 — stan i dowody sesji
+
+**Najnowszy stan LIVE:** po nowej zgodzie wykonano abort i deployment poprawionego deskryptora.
+Merge przeszedł; operacja d110c171… zakończyła się ERROR przy stagingu przez uprawnienia ZIP Windows.
+HDI1 app binding do STOPPED deployera; CAP HANA NOT DEPLOYED. Naprawa przenośnych ZIP w toku walidacji.
+Pozostałe akapity wstępu są historią; aktualny zapis jest na końcu.
 
 **Najnowszy stan: NO-GO, pierwsza próba deploymentu odrzucona przy scalaniu deskryptorów.**
 Nie doszło do stagingu/bindingu HDI. Wcześniejsze GO i hashe nie są już rekomendacją użycia.
@@ -374,3 +379,57 @@ Kopia extension w checkoutcie wydania ma inne zakończenia linii; nie zastępuje
 NO-GO wykonawcze do zatwierdzonego abort operacji ERROR i nowej zgody na zestaw/SHA.
 Dokładne przyszłe polecenia są na początku runbooka. Nie wykonano żadnej z tych mutacji.
 Logi module-type-fix-tests/smoke/hana.log i nowe release-evidence są ignorowane w Git.
+
+## Zatwierdzony abort i deployment — 2026-11-11
+
+**OWNER-REPORTED:** właściciel odpowiedział „tak zatwierdzam” na konkretne abort30401273…,
+nowy MTAR0.7.3/SHA6a92fb787ccc… i ten sam extension f11b3196… . Zgoda nie obejmowała
+syntetycznych DML, testowego restartu CAP, zmian usług/entitlementów ani kolejnych zmienionych archiwów.
+Przed mutacją ponowiono target/hash/verify:hana/verify:release i CI658dbf2 SUCCESS.
+CF potwierdził plan free, właściwy database_id, HANA serviceStopped=false i0 bindingów HDI.
+
+**VERIFIED LIVE:** wykonano abort30401273… o17:51:17Z (18:51:17 CET), stan ABORTED i brak na liście
+aktywnych operacji potwierdzono osobnym odczytem. Lokalna pierwsza kontrola targetu odmówiła przez
+zbyt ścisły regex końca wiersza space; po poprawie samego warunku i ponownym potwierdzeniu targetu
+uruchomiono dokładnie zatwierdzone cf deploy dla MTAR6a92fb78… i extension f11b3196… .
+
+Nowa operacja `d110c171-ddf8-11f1-8764-eeee0a818911`, start17:53:35Z (18:53:35 CET).
+Deskryptor został przyjęty, wykryto deployed0.7.1/new0.7.3, utworzono deployer i jego binding HDI.
+Staging Node buildpack1.9.6/fs4 pobrał Python3.13.17; przed instalacją Node odmówił odczytu
+`/tmp/app/package.json: permission denied`, supply script exit14/staging exit223.
+Narzędzie wykonało3 automatyczne ponowienia tej samej fazy; agent nie wywoływał retry.
+Proces zakończył się ERROR. Node24/SapMachine25 nowego wariantu nadal niepotwierdzone.
+
+Własny odczyt CAPI po błędzie: CAP/AppRouter STARTED1/1, stare droplety/checksumy, dwa dotychczasowe
+bindingi i te same trasy. Deployer STOPPED/fs4, brak tras, jeden app binding HDI; nie uruchomił HDI.
+Nie tworzono nowych usług/entitlementów/service keys. Nie wykonywano DML, restartu CAP, rollbacku,
+undeploy ani abort nowej operacji. Docelowe0.7.3/HANA **NOT DEPLOYED**; JDBC i persystencja PENDING.
+
+Diagnostyka została ograniczona do CAPI metadata i wybranych linii STG z cf logs --recent,
+bez credentiali/VCAP. Oczyszczone logi live-0.7.3-deploy-redacted.log i deployer-staging-redacted.log
+są wyłącznie w ignorowanym deploy/build worktree wydania. Poprzednie MTAR6a92fb78…/66014221…
+i evidence zachowano po kontroli SHA w build/rejected-d110c171, bez transferu między checkoutami.
+
+Trace pluginu wynika z DEBUG=1 (cf mta-ops --help), więc samo CF_TRACE=false było niewystarczające.
+Filtr usuwał Authorization/JWT/cookies przed wyświetleniem; później usunięto oba env z procesu CLI.
+Nie zmieniano globalnej konfiguracji użytkownika ani env aplikacji. W dalszych poleceniach usuwać
+DEBUG i CF_TRACE, nie wyświetlać raw HTTP i nie archiwizować nagłówków.
+
+### Druga przyczyna pakowania i poprawka offline
+
+W ZIP-ach wszystkich3 modułów stwierdzono creatorOS10 oraz pliki100666, w AppRouterze dodatkowo
+katalogi40666. Zewnętrzny MTAR MBT ma creatorUnix3, więc kontrola samego MTAR nie wykrywa tego.
+Go archive/zip Mode() rozpoznaje Unix3 oraz wybrane inne identyfikatory; creator10 zwraca000.
+To odtwarza utratę uprawnień zgodną z logiem stagingu; nowe staging LIVE nadal wymaga testu.
+
+Dodano portable-zip.mjs: Unix creator3, pliki100644, katalogi40755, bez zmiany zawartości.
+Oba generatory normalizują wszystkie payloady przed zapisaniem ZIP, walidator sprawdza je przy
+odczycie MTAR. Regresje obejmują Windows creator10, katalog bez traverse, niedozwolone tryby,
+niezmienność bajtów oraz niezależny Go archive/zip (CI Go1.26.10, bez nowego runtime produktu).
+Lokalnie npm test:32 testy,31 PASS/1 Go skipped, brak Go/WSL Linux; nie instalowano WSL.
+CI musi wykonać rzeczywisty czytnik Go. Odbudowa i nowe SHA PENDING.
+
+Źródła: [Go archive/zip](https://github.com/golang/go/blob/master/src/archive/zip/struct.go)
+i lokalny adm-zip0.6.1 (EntryHeader wybiera na Windows creator0x0a; attr korzysta ze stat.mode).
+Następny krok: odbudować oba MTAR z czystego commita, potwierdzić nagłówki nested ZIP i CI,
+przedstawić nowe SHA oraz osobną zgodę na abort d110c171… i deployment. Bez ponawiania starego pakietu.

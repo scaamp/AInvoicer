@@ -17,7 +17,13 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
 - [x] **HDI provisioning:** właściciel utworzył `ainvoicer-db`; **VERIFIED LIVE** CF `hana/hdi-shared`,
   create succeeded, 0 bindingów, free=true, database_id z brokera. Cloud Central RUNNING/zgodny ID
   **OWNER-REPORTED**. [Pełna historia i ograniczenia PAYG](journal/2026-11-11-hdi-shared-provisioning.md).
-- [ ] **CAP-HANA-01 LIVE — NO-GO po odrzuconym deploymentcie / NOT DEPLOYED:**
+- [x] **CAP-HANA-01 — zgoda i wykonanie:** abort30401273… potwierdzony ABORTED; deployment0.7.3
+  zatwierdzonego SHA6a92fb78… uruchomiony przez agenta. Deskryptor przyjęty, utworzony deployer/binding HDI.
+- [ ] **CAP-HANA-01 LIVE — staging ERROR / HANA NOT DEPLOYED:** operacja d110c171… zakończona ERROR:
+  package.json permission denied, Windows ZIP creator10/Go mode000. Naprawiona normalizacja Unix3/0644/0755,
+  lokalnie31 PASS/1 Go skipped, Go1.26.10 dodany wyłącznie jako niezależny czytnik ZIP w CI.
+  Nowe MTAR/SHA/CI i kolejna zgoda PENDING. HDI1 binding do STOPPED deployera, CAP nadal bez HDI.
+  Historia poprzedniej naprawy:
   Naprawione mapowanie typów projektu do typów CF,29/29 testów wraz z SAP MBT mtad-gen PASS.
   Odbudowa obu MTAR/nowe SHA/verify PASS z czystego e2df55a; Maven423 PASS/6 skipped,
   gotowy JAR CF10/10, UI5 CF13/13 i AppRouter10/10 PASS. Zakończenie operacji ERROR
