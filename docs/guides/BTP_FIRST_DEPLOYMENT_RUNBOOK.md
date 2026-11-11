@@ -1,12 +1,20 @@
 ---
 title: "BTP — runbook pierwszego kontrolowanego wdrożenia (CAP-07.1)"
-date: 2026-11-09
+date: 2026-11-11
 type: guide
 status: smoke-live-nowy-build-niewdrozony
 tags: [ainvoicer, btp, cloud-foundry, deployment, xsuaa, hana, approuter, sso, cap-07]
 ---
 
 # Runbook pierwszego wdrożenia na SAP BTP Cloud Foundry
+
+**Aktualizacja INT-03, 2026-11-11:** HANA Free Tier `ainvoicer-hana-dev` istnieje i została potwierdzona
+read-only w CF; HDI i binding CAP nadal nie istnieją, oferta `hana/hdi-shared` niedostępna.
+**HANA Free Tier LIVE / HDI NOT CONFIGURED / CAP HANA NOT CONNECTED.** Dla tego środowiska stosować
+[nowy runbook HANA](HANA_CLOUD_CAP_DEPLOYMENT.md) i generowany wariant `ainvoicer_0.7.3.mtar`
+z trzema existing-service; źródłowy pełny MTA poniżej jest szablonem historycznym tworzącym usługi.
+Nie uruchamiać go bezpośrednio. Żaden nowy deploy/restart/provisioning nie został zatwierdzony ani wykonany.
+Wpisy „HANA niedostępna” z9 listopada pozostają historią ówczesnego inventory, nie aktualnym stanem.
 
 **Aktualizacja 2026-11-09 (CAP-07C):** poprzedni build identity-smoke działa w CF EU20, XSUAA/Destination i aplikacje istnieją; HANA nie jest dostępna. Nowy powtarzalny MTAR oraz fix publicznego indeksu pozostają niewdrożone. Build i późniejszy redeploy/rollback opisuje §3.1. Stany „nic nie wdrożono” niżej dotyczą historycznej sesji 2026-11-08; nie oznaczają dzisiejszego inventory.
 

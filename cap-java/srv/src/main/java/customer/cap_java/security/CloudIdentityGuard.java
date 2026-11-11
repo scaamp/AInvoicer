@@ -44,6 +44,7 @@ public class CloudIdentityGuard {
             throw new IllegalStateException("Cloud runtime requires exactly one XSUAA service binding (found "
                     + xsuaaBindings + "); no mock authentication fallback");
         }
+        DedicatedTenantPolicy.expectedTenant(runtime);
     }
 
     static boolean isCloudRuntime(Environment environment) {

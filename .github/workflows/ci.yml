@@ -63,6 +63,14 @@ jobs:
       # W środku: Maven clean verify (CDS/JWT/startup/writeback mock), UI5 CF i AppRouter.
       - name: Build and validate undeployed identity-smoke MTAR
         run: npm run build:btp:smoke --prefix deploy
+      - name: Build and validate undeployed HANA readiness MTAR (no credentials or CF)
+        run: |
+          npm run build:btp:hana --prefix deploy
+          npm run verify:hana --prefix deploy
+      - name: Official Azure storage emulator contract (loopback only)
+        run: |
+          npm ci --prefix deploy/storage --ignore-scripts
+          npm test --prefix deploy/storage
       - name: UI5 development build
         working-directory: sapui5/ainvoicer
         run: |

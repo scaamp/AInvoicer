@@ -32,7 +32,6 @@ public class InboundOverviewHandler implements EventHandler {
     /** CAP wykonuje projekcję i count w DB; AND z grantem obejmuje listę, klucz oraz /$count. */
     @Before(event = CqnService.EVENT_READ, entity = "KsefService.InboundInvoiceOverview")
     public void secureRead(CdsReadEventContext context) {
-        verifyDedicatedTenant(context);
         for (String option : Set.of("$apply", "$search", "$expand", "$compute")) {
             if (context.getParameterInfo().getQueryParameter(option) != null) { throw invalid(); }
         }
@@ -63,23 +62,6 @@ public class InboundOverviewHandler implements EventHandler {
             }
             @Override public long top(long top) { return Math.min(top, 100); }
         }));
-    }
-
-    /** Dedicated XSUAA: tenant tokenu musi odpowiadać bindingowi, także przy poprawnym audience/podpisie. */
-    private static void verifyDedicatedTenant(CdsReadEventContext context) {
-        var bindings = context.getCdsRuntime().getEnvironment().getServiceBindings()
-            .filter(b -> b.getServiceName().map("xsuaa"::equals).orElse(false) || b.getTags().contains("xsuaa"))
-            .toList();
-        if (bindings.isEmpty()) { return; } // Lokalny mock bez XSUAA; guard CF nie dopuszcza tego wariantu.
-        Object tenant = bindings.size() == 1 ? bindings.getFirst().getCredentials().get("tenantid") : null;
-        if (tenant == null && bindings.size() == 1) { tenant = bindings.getFirst().getCredentials().get("identityzoneid"); }
-        // W single-tenant CAP getTenant() pozostaje null. Provider identity nadpisuje atrybut "tenant"
-        // z token.getAppTid() już po xs.user.attributes, więc użytkownik nie może go podmienić atrybutem roli.
-        var actual = context.getUserInfo().getAttributeValues("tenant");
-        if (!(tenant instanceof String expected) || expected.isBlank() || actual == null
-                || actual.size() != 1 || !expected.equals(actual.getFirst())) {
-            throw new ServiceException(ErrorStatuses.FORBIDDEN, "INBOX_TENANT_FORBIDDEN");
-        }
     }
 
     /** V1: dokładnie jeden poprawny NIP i CompanyCode; spółka jest kontekstem, nie własnością dokumentu. */

@@ -1,0 +1,17 @@
+{
+  "kind": "READ_ONLY_CF_INVENTORY",
+  "date": "2026-11-11",
+  "region": "eu20-001",
+  "org": "National Center for Cryptography_dev-v2xzij9s",
+  "space": "dev",
+  "hanaCloud": [{ "name": "ainvoicer-hana-dev", "offering": "hana-cloud", "plan": "hana-free", "boundApps": [] }],
+  "hanaOfferingAvailable": false,
+  "hdiSharedAvailable": false,
+  "hdiContainers": [],
+  "capHanaBinding": false,
+  "capAndApprouter": "STARTED 1/1; XSUAA and Destination bound",
+  "commands": ["cf target", "cf services", "cf marketplace -e hana", "cf marketplace -e hana-cloud", "cf apps"],
+  "hanaSql": "NOT EXECUTED by INT-03; owner SQL evidence in HANA_CLOUD_FREE_TIER_SETUP.md",
+  "deployment": "NOT EXECUTED",
+  "credentialsRead": false
+}

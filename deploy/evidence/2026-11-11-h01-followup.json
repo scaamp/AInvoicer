@@ -1,0 +1,72 @@
+{
+  "kind": "LIVE_H01_READ_ONLY_FOLLOWUP",
+  "generatedAt": "2026-11-11T09:15:01.810Z",
+  "extensionVersion": "2.13.3",
+  "package": {
+    "name": "ZAINVOICER",
+    "recordChanges": false
+  },
+  "binding": {
+    "name": "ZUI_AINV_INV_H_O4",
+    "version": "0001",
+    "published": true,
+    "protocol": "V4"
+  },
+  "authContext": "existing_same_origin_adt_oauth; not AppRouter session",
+  "metadata": {
+    "httpStatus": 200,
+    "sha256": "fecf05295ba1105454fae8db18b1b0d3fd133625760a0f19492420debf196345",
+    "entitySets": [
+      {
+        "name": "InvoiceItems",
+        "keys": [
+          "ItemUUID"
+        ]
+      },
+      {
+        "name": "InvoiceReferences",
+        "keys": [
+          "RefUUID"
+        ]
+      },
+      {
+        "name": "Invoices",
+        "keys": [
+          "InvoiceUUID"
+        ]
+      }
+    ]
+  },
+  "read": {
+    "httpStatus": 200,
+    "headers": 4,
+    "items": 9,
+    "references": 6,
+    "hasMore": false,
+    "parentKeysConsistent": true,
+    "withinExpectedSyntheticScope": true
+  },
+  "iam": {
+    "roleAssignmentCounts": [
+      {
+        "role": "SAP_BR_ADMINISTRATOR",
+        "users": 1
+      },
+      {
+        "role": "SAP_BR_DEVELOPER",
+        "users": 1
+      },
+      {
+        "role": "ZBR_AINV_READ_1000",
+        "users": 1
+      }
+    ],
+    "visibleUsers": 1,
+    "note": "#CHECK applies; this is the current identity's visible set, not proof that no other user exists."
+  },
+  "existingTraceRuns": 0,
+  "auditViewDiscovery": "No matches for I_SecurityAuditLog* and I_*SecurityAudit*; not an exhaustive audit capability inventory",
+  "principalPropagation": "BLOCKED: no existing request-correlated H01 principal evidence; MCP READ alone is not that evidence",
+  "liveAB": "BLOCKED: no second least-privilege session or reviewed existing foreign-scope fixtures available",
+  "writesPerformed": false
+}

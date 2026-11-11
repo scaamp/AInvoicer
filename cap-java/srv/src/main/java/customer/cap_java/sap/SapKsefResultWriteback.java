@@ -68,7 +68,7 @@ public class SapKsefResultWriteback implements EventHandler {
             Thread.ofPlatform().daemon(true).name("sap-lease-", 0).factory());
 
     public SapKsefResultWriteback(PersistenceService db,
-            @Qualifier("SapResultOutbox") OutboxService outbox,
+            @org.springframework.context.annotation.Lazy @Qualifier("SapResultOutbox") OutboxService outbox,
             CdsRuntime runtime, SapKsefResultWriteAdapter adapter, Clock clock,
             @Value("${ainv.sap-write.lease:PT2M}") Duration lease,
             @Value("${ainv.sap-write.max-attempts:5}") int maxAttempts,
@@ -91,6 +91,8 @@ public class SapKsefResultWriteback implements EventHandler {
      * PROCESSING obejmuje przejęcie przerwane restartem (po wygaśnięciu dzierżawy zostanie odzyskane). */
     @EventListener(ApplicationReadyEvent.class)
     public void resumePendingWrites() {
+        // INT-03: wariant HANA służy tylko persystencji; nie budzi kolektora i nie zmienia kolejki.
+        if (hanaReadiness) { return; }
         inNewTransaction(() -> {
             if (!db.run(Select.from(WRITES).columns("ID")
                     .where(r -> r.get("state").in(PENDING, PROCESSING)).limit(1)).list().isEmpty()) {
@@ -99,6 +101,9 @@ public class SapKsefResultWriteback implements EventHandler {
             return null;
         });
     }
+
+    @Value("${ainv.deployment.hana-readiness:false}")
+    private boolean hanaReadiness;
 
     @On(service = "SapResultOutbox", event = "wakeCollector")
     public void wakeCollector(OutboxMessageEventContext context) {

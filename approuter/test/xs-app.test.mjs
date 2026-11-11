@@ -12,6 +12,31 @@ const xsApp = JSON.parse(readFileSync(join(root, 'xs-app.json'), 'utf8'));
 const mta = readFileSync(join(root, '..', 'mta.yaml'), 'utf8');
 const routeFor = (path) => xsApp.routes.find((route) => new RegExp(route.source).test(path));
 
+test('CAP-07D: metadata/count/klucze i tabele prywatne zachowują właściwą granicę JWT', () => {
+  for (const tail of ['$metadata', 'InvoiceIntegrationStatus/$count',
+    'InboundInvoiceOverview(10000000-0000-4000-8000-000000000001)', 'KsefInboundDocuments']) {
+    const route = routeFor('/odata/v4/KsefService/' + tail);
+    assert.equal(route.destination, 'ainvoicer-cap');
+    assert.equal(route.authenticationType, 'xsuaa');
+    assert.equal(route.csrfProtection, true);
+  }
+  for (const tail of ['$metadata', 'Invoices/$count', 'InvoiceItems', 'InvoiceReferences']) {
+    assert.equal(routeFor('/rap-ui/' + tail).destination, 'AINV_H01_UI_USER');
+  }
+  for (const path of ['/actuator/env', '/v3/api-docs', '/odata/v4/KsefServiceEvil/X',
+    '/odata/v4/customer.cap_java/KsefInboundDocuments', '/rap-ui-evil/Invoices']) {
+    assert.equal(routeFor(path).destination, undefined, path);
+  }
+});
+
+test('CAP-07D: logout jawny, sesja ograniczona, brak tras do tokenów i bindingów', () => {
+  assert.deepEqual(xsApp.logout, { logoutEndpoint: '/do/logout' });
+  assert.match(mta, /SESSION_TIMEOUT: 15/);
+  for (const path of ['/oauth/token', '/token_keys', '/VCAP_SERVICES', '/destinations/']) {
+    assert.equal(routeFor(path).destination, undefined, path);
+  }
+});
+
 test('każda trasa jest jawnie uwierzytelniana; bez Basic i bez anonimowych danych', () => {
   assert.equal(xsApp.authenticationMethod, 'route');
   for (const route of xsApp.routes) {

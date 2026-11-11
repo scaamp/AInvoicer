@@ -98,6 +98,10 @@ class XsuaaJwtODataContractTest {
         operation(NIP_A, "1000");
         foreignOperation = operation(NIP_B, "2000");
         operation(NIP_A, "2000");
+        for (var row : java.util.List.of(Map.of("ID", invoice, "taxpayerNip", NIP_A, "companyCode", "1000", "direction", "OUTBOUND"),
+                Map.of("ID", foreignOperation, "taxpayerNip", NIP_B, "companyCode", "2000", "direction", "OUTBOUND"))) {
+            db.run(Insert.into("customer.cap_java.KsefInvoices").entry(row));
+        }
     }
 
     // ---- Uwierzytelnienie: 401 bez wiarygodnego tokenu -------------------------------------------
@@ -180,7 +184,7 @@ class XsuaaJwtODataContractTest {
     }
 
     @Test void tokenForAnotherApplicationIsRejected() throws Exception {
-        String token = security.getPreconfiguredJwtGenerator()
+        String token = trustedTenant()
             .withClaimValue("client_id", "sb-foreign-app!t9")
             .withClaimValues("aud", "sb-foreign-app!t9")
             .withClaimValue("azp", "sb-foreign-app!t9")
@@ -190,10 +194,141 @@ class XsuaaJwtODataContractTest {
         assertEquals(401, get("Bearer " + token, "InvoiceIntegrationStatus").statusCode());
     }
 
+    /** CAP-07D: token H01 nie daje dostępu do CAP; testowa sygnatura nie zastępuje audience aplikacji. */
+    @Test void rapAudienceCannotBeUsedForCapEvenWithOperatorScope() throws Exception {
+        String token = operator(NIP_A, "1000").withClaimValue("client_id", "sb-h01-offline!t9")
+            .withClaimValue("azp", "sb-h01-offline!t9").withClaimValues("aud", "sb-h01-offline!t9")
+            .createToken().getTokenValue();
+        for (String path : new String[]{"$metadata", "InvoiceIntegrationStatus", "InboundInvoiceOverview"}) {
+            assertEquals(401, get("Bearer " + token, path).statusCode(), path);
+        }
+    }
+
+    /** Obcy tenant i audience: odmowa przed odczytem każdej publicznej projekcji. */
+    @Test void foreignTenantAndAudienceAreRejectedAcrossCap() throws Exception {
+        String token = operator(NIP_A, "1000").withClaimValue("zid", "foreign-test-tenant")
+            .withClaimValue("app_tid", "foreign-test-tenant").withClaimValue("client_id", "sb-foreign!t9")
+            .withClaimValue("azp", "sb-foreign!t9").withClaimValues("aud", "sb-foreign!t9")
+            .createToken().getTokenValue();
+        for (String path : new String[]{"$metadata", "InvoiceIntegrationStatus/$count", "KsefOperations",
+                "InboundInvoiceOverview"}) {
+            assertEquals(401, get("Bearer " + token, path).statusCode(), path);
+        }
+    }
+
+    /** INT-03: zaufany podpis i audience nie zastępują tenant isolation na żadnym publicznym odczycie. */
+    @Test void dedicatedTenantIsRequiredAcrossAllPublicSurfaces() throws Exception {
+        String token = operator(NIP_A, "1000").withClaimValue("zid", "foreign-test-tenant")
+            .withClaimValue("app_tid", "foreign-test-tenant").createToken().getTokenValue();
+        for (String entity : new String[]{"KsefOperations", "KsefInvoices", "InvoiceIntegrationStatus", "InboundInvoiceOverview"}) {
+            for (String suffix : new String[]{"", "/$count", "?$count=true", "?$select=*", "?$filter=1%20eq%201", "?$expand=*"}) {
+                var response = get("Bearer " + token, entity + suffix);
+                assertEquals(401, response.statusCode(), entity + suffix);
+                assertSafeError(response);
+            }
+        }
+        for (String path : new String[]{"$metadata", "", "KsefOperations(" + foreignOperation + ")",
+                "KsefInvoices(" + invoice + ")", "InvoiceIntegrationStatus(" + foreignOperation + ")",
+                "InboundInvoiceOverview(" + InboundFixtures.OWN + ")"}) {
+            assertEquals(401, get("Bearer " + token, path).statusCode(), path);
+        }
+        for (String path : new String[]{"requestSend", "$batch", "KsefOperations"}) {
+            var response = http.send(HttpRequest.newBuilder(uri(path)).header("Authorization", "Bearer " + token)
+                .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString("{}"))
+                .build(), HttpResponse.BodyHandlers.ofString());
+            assertEquals(401, response.statusCode(), path);
+            assertSafeError(response);
+        }
+    }
+
+    @Test void inconsistentMissingOrSpoofedTenantClaimsFailClosed() throws Exception {
+        for (String claim : new String[]{"zid", "app_tid", "zone_uuid"}) {
+            for (String value : new String[]{"foreign-test-tenant", ""}) {
+                String token = operator(NIP_A, "1000").withClaimValue(claim, value).createToken().getTokenValue();
+                assertEquals(401, get("Bearer " + token, "InvoiceIntegrationStatus").statusCode(), claim);
+            }
+            String array = operator(NIP_A, "1000").withClaimValues(claim, "offline-test-tenant").createToken().getTokenValue();
+            assertEquals(401, get("Bearer " + array, "InvoiceIntegrationStatus").statusCode(), claim);
+        }
+        var spoof = new DefaultJsonObject("{\"taxpayerNips\":[\"" + NIP_A
+            + "\"],\"companyCodes\":[\"1000\"],\"tenant\":[\"offline-test-tenant\"]}");
+        String token = operatorBase().withClaimValue("zid", "foreign-test-tenant")
+            .withClaimValue("app_tid", "foreign-test-tenant").withClaimValue("xs.user.attributes", spoof)
+            .createToken().getTokenValue();
+        assertEquals(401, get("Bearer " + token, "InvoiceIntegrationStatus").statusCode());
+    }
+
+    @Test void trustedTenantStillCannotReadForeignInvoicesOrExpandPrivateReferences() throws Exception {
+        String authorization = "Bearer " + operator(NIP_A, "1000").createToken().getTokenValue();
+        assertEquals(200, get(authorization, "KsefInvoices(" + invoice + ")?$select=taxpayerNip,companyCode").statusCode());
+        assertEquals(404, get(authorization, "KsefInvoices(" + foreignOperation + ")").statusCode());
+        assertEquals("0", get(authorization, "KsefInvoices/$count?$filter=ID%20eq%20" + foreignOperation).body());
+        var expanded = get(authorization, "KsefOperations?$expand=invoice");
+        assertEquals(400, expanded.statusCode()); // nawigacja do prywatnego XML/reference nie należy do publicznego modelu.
+    }
+
+    @Test void batchPreservesTrustedTenantAndRowScopeForEveryInnerRead() throws Exception {
+        String token = operator(NIP_A, "1000").createToken().getTokenValue();
+        String boundary = "batch_int03";
+        String payload = "--" + boundary + "\r\nContent-Type: application/http\r\nContent-Transfer-Encoding: binary\r\n\r\n"
+            + "GET /odata/v4/KsefService/KsefInvoices(" + invoice + ")?$select=taxpayerNip,companyCode HTTP/1.1\r\nAccept: application/json\r\n\r\n"
+            + "\r\n--" + boundary + "\r\nContent-Type: application/http\r\nContent-Transfer-Encoding: binary\r\n\r\n"
+            + "GET /odata/v4/KsefService/KsefInvoices(" + foreignOperation + ") HTTP/1.1\r\nAccept: application/json\r\n\r\n"
+            + "\r\n--" + boundary + "--\r\n\r\n";
+        var response = http.send(HttpRequest.newBuilder(uri("$batch")).header("Authorization", "Bearer " + token)
+            .header("Content-Type", "multipart/mixed;boundary=" + boundary)
+            .POST(HttpRequest.BodyPublishers.ofString(payload)).build(), HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode(), response::body);
+        assertTrue(response.body().contains("200 OK"));
+        assertTrue(response.body().contains("404 Not Found"));
+        assertTrue(response.body().contains(NIP_A));
+        assertFalse(response.body().contains(NIP_B));
+    }
+
+    /** Zalogowany operator nie odczytuje tabel technicznych także przez zgadywany inny service root. */
+    @Test void privateTablesAndTechnicalEndpointsStayClosedForAuthenticatedOperator() throws Exception {
+        String authorization = "Bearer " + operator(NIP_A, "1000").createToken().getTokenValue();
+        for (String entity : new String[]{"KsefInboundDocuments", "KsefInboundAccessGrants", "KsefInboundSyncCheckpoints",
+                "KsefInboundSyncLeases", "SapResultWrites", "KsefSubmissions", "KsefInvoiceReservations"}) {
+            var response = get(authorization, entity);
+            assertEquals(404, response.statusCode(), entity);
+            assertSafeError(response);
+        }
+        for (String path : new String[]{"/", "/h2-console/", "/actuator/env", "/actuator/beans", "/v3/api-docs",
+                "/odata/v4/customer.cap_java/KsefInboundDocuments"}) {
+            var response = http.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
+                .header("Authorization", authorization).GET().build(), HttpResponse.BodyHandlers.ofString());
+            assertTrue(Set.of(401, 403, 404).contains(response.statusCode()), path + ": " + response.statusCode());
+            assertSafeError(response);
+        }
+    }
+
+    /** Bezpieczne błędy 401/403/404 nie ujawniają bindingów, stosu ani danych syntetycznej faktury. */
+    @Test void accessFailuresReturnSafeBodies() throws Exception {
+        var unauthenticated = get("Bearer malformed", "InvoiceIntegrationStatus");
+        assertEquals(401, unauthenticated.statusCode());
+        assertSafeError(unauthenticated);
+        String noRole = trustedTenant().createToken().getTokenValue();
+        var forbidden = get("Bearer " + noRole, "InboundInvoiceOverview");
+        assertEquals(403, forbidden.statusCode());
+        assertSafeError(forbidden);
+        var missing = get("Bearer " + operator(NIP_A, "1000").createToken().getTokenValue(),
+            "InvoiceIntegrationStatus(" + foreignOperation + ")");
+        assertEquals(404, missing.statusCode());
+        assertSafeError(missing);
+    }
+
+    private void assertSafeError(HttpResponse<String> response) {
+        for (String secret : new String[]{"clientsecret", "VCAP_SERVICES", "stackTrace", "java.lang.",
+                "jdbc:", "xmlStorageRef", "FOREIGN-B", invoice}) {
+            assertFalse(response.body().contains(secret), "unsafe error body: " + secret);
+        }
+    }
+
     // ---- Autoryzacja: rola z tokenu i zakres z xs.user.attributes ----------------------------------
 
     @Test void authenticatedUserWithoutOperatorScopeIsForbidden() throws Exception {
-        String token = security.getPreconfiguredJwtGenerator().withClaimValue("user_name", "jwt-no-role")
+        String token = trustedTenant().withClaimValue("user_name", "jwt-no-role")
             .withClaimValue("xs.user.attributes", attributes(new String[]{NIP_A}, new String[]{"1000"}))
             .createToken().getTokenValue();
         assertEquals(403, get("Bearer " + token, "InvoiceIntegrationStatus").statusCode());
@@ -272,7 +407,7 @@ class XsuaaJwtODataContractTest {
     @Test void inboxJwtAuthenticationAndRoleAreRequired() throws Exception {
         assertEquals(401, get(null, "InboundInvoiceOverview").statusCode());
         assertEquals(401, get("Bearer invalid", "InboundInvoiceOverview").statusCode());
-        String noRole = security.getPreconfiguredJwtGenerator().withClaimValue("user_name", "inbox-c")
+        String noRole = trustedTenant().withClaimValue("user_name", "inbox-c")
             .createToken().getTokenValue();
         assertEquals(403, get("Bearer " + noRole, "InboundInvoiceOverview").statusCode());
         String expired = operator(NIP_A, "1000").withExpiration(Instant.now().minusSeconds(3600))
@@ -464,8 +599,8 @@ class XsuaaJwtODataContractTest {
     @Test void inboxRejectsAnotherTenantEvenWithBoundSignatureAndAudience() throws Exception {
         String token = operator(NIP_A, "1000").withClaimValue("zid", "foreign-test-tenant")
             .withClaimValue("app_tid", "foreign-test-tenant").createToken().getTokenValue();
-        assertEquals(403, inboxGet(token, "InboundInvoiceOverview?$count=true").statusCode());
-        assertEquals(403, inboxGet(token, "InboundInvoiceOverview(" + InboundFixtures.OWN + ")").statusCode());
+        assertEquals(401, inboxGet(token, "InboundInvoiceOverview?$count=true").statusCode());
+        assertEquals(401, inboxGet(token, "InboundInvoiceOverview(" + InboundFixtures.OWN + ")").statusCode());
     }
 
     private String inboxToken() { return operator(NIP_A, "1000").createToken().getTokenValue(); }
@@ -482,8 +617,10 @@ class XsuaaJwtODataContractTest {
             .GET().build(), HttpResponse.BodyHandlers.ofString());
     }
 
+    private JwtGenerator trustedTenant() { return security.getPreconfiguredJwtGenerator().withClaimValue("zid", "offline-test-tenant").withClaimValue("app_tid", "offline-test-tenant"); }
+
     private JwtGenerator operatorBase() {
-        return security.getPreconfiguredJwtGenerator().withClaimValue("user_name", "jwt-operator")
+        return trustedTenant().withClaimValue("user_name", "jwt-operator")
             .withClaimValue("zid", "offline-test-tenant")
             .withClaimValue("app_tid", "offline-test-tenant")
             .withLocalScopes("KsefOperator");
