@@ -14,6 +14,15 @@ tags: [ainvoicer, cap-java, status]
 
 ## Current Phase
 
+**CAP-HANA-01S — CAP STOPPED po nieudanym stagingu (2026-11-11, VERIFIED LIVE).**
+Zatwierdzony abort `d110c171…` wykonany (ABORTED); deployment `40b8e964…`: HDI make SUCCEEDED, staging CAP
+BuildpackCompileFailed — `srv/data.zip` opakowywał JAR. `ainvoicer-srv` STOPPED, AppRouter na starym droplecie,
+operacja aktywna ERROR; rollback 0.7.2 `00e31c97…` ma tę samą wadę. Poprawka `fe0a0c1` i nowe MTAR
+0.7.3 `54a89984…` / rollback 0.7.2 `5295f257…` zweryfikowane offline; abort `40b8e964…` + deployment
+czekają na zgodę. [Bramka](guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md#cap-hana-01s--incydent-40b8e964-i-nowa-bramka-1111-2140-cet) ·
+[dziennik](journal/2026-11-11-cap-hana-01-first-persistence.md#cap-hana-01s--incydent-40b8e964-i-poprawka-claude-code-2140-cet).
+Persystencja HANA w CAP nadal **PENDING**.
+
 **ORCH-04 — PR #13 (KSEF-IN-03A) i PR #14 (CAP-HANA-01R) MERGED do main (2026-11-11).**
 Niezależny review obu PR bez blokerów; CI `offline` SUCCESS na dokładnych HEAD `8d69d74` i `7e9735a`.
 Scalono `--no-ff` dokładne SHA (merge `528a973`, `be97a20`), bez innych gałęzi.
