@@ -1,0 +1,29 @@
+{
+  "kind": "LIVE_EXISTING_FOREIGN_IDENTITY_READ_ONLY",
+  "at": "2026-11-11T09:14:31.031Z",
+  "checks": [
+    {
+      "id": "Existing CF user token outside CAP identity: $metadata",
+      "at": "2026-11-11T09:14:30.764Z",
+      "correlationId": "b5f580f4-6ac6-445a-9320-e0045b299e19",
+      "requestId": "334dea10-97e3-400d-6e25-ad9d51c66d44",
+      "status": 401,
+      "contractExposed": false,
+      "sensitiveError": false,
+      "bodyLimitExceeded": false,
+      "result": "PASS"
+    },
+    {
+      "id": "Existing CF user token outside CAP identity: InvoiceIntegrationStatus?$top=1",
+      "at": "2026-11-11T09:14:30.926Z",
+      "correlationId": "d99945a3-3cae-4701-9e6e-ee85ae077008",
+      "requestId": "f183f5aa-a37a-4c04-4889-d8ceebb24133",
+      "status": 401,
+      "contractExposed": false,
+      "sensitiveError": false,
+      "bodyLimitExceeded": false,
+      "result": "PASS"
+    }
+  ],
+  "note": "Existing Cloud Controller user token only; no token issued/exported; rejection does not isolate audience from signature/issuer checks."
+}

@@ -12,6 +12,14 @@ tags: [ainvoicer, security, xsuaa, cloud-foundry, approuter, rap, iam, cap-07d]
 Aktualny LIVE backend ujawnia indeks CAP pod `/`. Principal H01 i izolacja A/B pozostają **BLOCKED**.
 Build nie stanowi akceptacji bezpieczeństwa ani zgody na wdrożenie.
 
+**Wznowienie LIVE po przywróceniu dostępów (11 listopada, od10:05 CET):** CF i MCP H01 działają.
+Potwierdzono inventory/dedicated bindingi, dostępność fs5 oraz RAP UI200/4/9/6. Principal trasy
+AppRouter i A/B nadal BLOCKED. Starsze komunikaty o wygasłym CLI/503 poniżej opisują pierwszy pomiar.
+Aktualne dowody: [CF](../../deploy/evidence/2026-11-11-cf-live-readiness.json),
+[H01](../../deploy/evidence/2026-11-11-h01-followup.json),
+[foreign identity401](../../deploy/evidence/2026-11-11-foreign-identity.json),
+[powtórka publicznego HTTP](../../deploy/evidence/2026-11-11-public-read-followup.json).
+
 [As-built LIVE](CAP_07B_2_BTP_IDENTITY_SSO_LIVE.md) · [Runbook](BTP_FIRST_DEPLOYMENT_RUNBOOK.md) ·
 [ADR-0006](../decisions/ADR-0006-btp-identity-xsuaa.md) · [RAP IAM](RAP_UI_IAM_MODEL.md) ·
 [Dziennik CAP-07D](../journal/2026-11-11-cap-07d.md)
@@ -38,7 +46,7 @@ nie pobierają credentiali ani tokenów BTP/KSeF i nie wywołują SAP WRITE/KSeF
 | C02 | Malformed JWT na tych samych GET → 401 | PASS | **PASS 5/5** |
 | C03 | Brak `KsefOperator` → 403 | PASS, podpisany JWT | BLOCKED: brak dostępnej sesji kontrolnego usera |
 | C04 | Brak NIP lub CompanyCode → pusta lista/count0, brak key | PASS | BLOCKED: brak kontrolnych ról/sesji |
-| C05 | Obce audience (także syntetyczne H01) → 401 | PASS | BLOCKED: nie pozyskiwano realnych obcych tokenów |
+| C05 | Obce audience (także syntetyczne H01) → 401 | PASS | **PASS2/2**: istniejący token użytkownika CF odrzucony401; nie izoluje samego walidatora audience od podpisu/issuer |
 | C06 | Obcy tenant + obce audience → 401 | PASS | BLOCKED |
 | C07 | Obcy tenant przy zaufanym podpisie i własnym audience → odmowa | Inbox **PASS403**; starsze projekcje **KNOWN GAP** | NOT TESTED |
 | C08 | ≥2 NIP i ≥2 spółki → fail closed; inbox wymaga jednej pary | PASS | BLOCKED |
@@ -48,20 +56,23 @@ nie pobierają credentiali ani tokenów BTP/KSeF i nie wywołują SAP WRITE/KSeF
 | C12 | Błędy 401/403/404 bez stack trace/bindingów/danych | PASS | Bezpieczne anonimowe odpowiedzi; auth403/404 NOT TESTED |
 | R01 | Świeża anonimowa sesja AppRouter → login/401, bez danych CAP/RAP | Test tras PASS | **PASS5/5** (XHR401; bez cookie jar) |
 | R02 | CAP JWT wyłącznie do CAP; RAP przez `AINV_H01_UI_USER` | PASS struktury tras/destinations | Runtime config BLOCKED; relacja 10 listopada w as-built |
-| R03 | GET RAP obsługiwany przez business principal H01 | Nie do udowodnienia mockiem | **BLOCKED**, patrz niżej |
+| R03 | GET RAP obsługiwany przez business principal H01 | Nie do udowodnienia mockiem | **BLOCKED**: MCP READ200/4/9/6 nie dowodzi kontekstu AppRoutera |
 | R04 | User bez Business Role → 403 lub count0 także dla dzieci | Harness + procedura | **BLOCKED**, brak sesji kontrolnej |
 | R05 | A/B, obcy NIP, BUK i bezpośrednie dzieci DCL | CAP JWT A/B PASS; **nie jest testem DCL SAP** | **BLOCKED** |
 | R06 | Nowe logowanie w osobnej sesji przeglądarki | Harness przygotowany | NOT EXECUTED; historyczny functional PASS10 listopada |
 | R07 | Logout i idle expiry15min → ponowny GET niedostępny | Helper/testy PASS | BLOCKED; nie kończono sesji właściciela |
-| F01 | Profil CF, XSUAA/mock/HANA guards, SEND/WRITE/sweeper/auth OFF guards | Testy executable JAR | CF env BLOCKED (wygasłe logowanie) |
+| F01 | Profil CF, XSUAA/mock/HANA guards, SEND/WRITE/sweeper/auth OFF guards | Testy executable JAR | Core smoke env **VERIFIED**; INBOUND env UNSET w starszym runtime; nowy artefakt ma jawne false |
 | F02 | Inbox runtime nie uruchamia synchronizacji; UI CF disabled | PASS | Starszy smoke, nie INT-02 |
-| F03 | cflinuxfs5 + system buildpack/JDK25 w naszym org/space | Kolektor gotowy | **BLOCKED**, nie odczytano aktualnego inventory |
+| F03 | cflinuxfs5 + system buildpack/JDK25 w naszym org/space | Kolektor gotowy | fs5 **AVAILABLE**, Node1.9.6/fs5 enabled, Java2.76.0 enabled bez ograniczenia stack w CAPI; staging kombinacji fs5/JDK25 **NOT TESTED** |
 
 Zbiorczy wynik HTTP: **25 PASS / 1 FAIL**, 11 listopada, ok.08:13 CET.
 [Raport z bezpiecznymi request ID](../../deploy/evidence/2026-11-11-public-read.json).
 Indeks: `x-vcap-request-id=c6399869-6f56-45fa-54ba-2a0cd3f6d90c`, HTTP200,
 `contractExposed=true`. Nie zapisano body, cookie, redirect URL ani Authorization.
 Żaden z tych anonimowych testów nie jest dowodem autoryzowanego żądania do H01.
+Ponowny pomiar po przywróceniu CF: ponownie **25 PASS / 1 FAIL** (CAP index200).
+Osobny test istniejącego tokena użytkownika Cloud Controller dał **2/2 HTTP401** na metadata/liście CAP.
+Nie wystawiono nowego tokena ani credentiali. Raport nie zawiera Authorization ani samego tokena.
 
 ### Ograniczenie polityki tenantów
 
@@ -86,6 +97,7 @@ Z katalogu repo, Node22/24:
 npm ci --prefix deploy
 npm test --prefix deploy
 node deploy/scripts/live-security.mjs https://ainvoicer-v2xzij9s-srv.cfapps.eu20-001.hana.ondemand.com https://ainvoicer-v2xzij9s-approuter.cfapps.eu20-001.hana.ondemand.com
+node deploy/scripts/existing-cf-identity.mjs
 $env:AINV_CF_CLI = "$env:USERPROFILE\tools\cf8\x\cf.exe"
 npm run readiness:cf --prefix deploy
 ```
@@ -97,6 +109,19 @@ Nie wypisuje `VCAP_SERVICES`, clientid/clientsecret, innych env, logów ani raw 
 Parametry usługi nie dowodzą przypisań Role Collection ani zawartości subaccount Destination;
 kolektor oznacza tę granicę jawnie. Błąd/brak dostępu daje BLOCKED, a nie pusty inventory PASS.
 Nie tworzy OAuth/service keys i nie aktualizuje XSUAA/Destination.
+
+Broker `ainvoicer-auth` zwraca **CF120004 / ServiceFetchInstanceParametersNotSupported**.
+To BLOCKED odczytu deskryptora, a nie sześć negatywnych kontroli polityki. Kolektor rozpoznaje
+`errors` nawet przy exit0 `cf curl`; nie interpretuje brakujących pól jako false. Odczyt istniejących
+bindingów potwierdza dla obu aplikacji jeden XSUAA, `tenantmode=dedicated`, oczekiwaną rodzinę aplikacji
+i tę samą aplikację/strefę. Nie dowodzi to scopes, template, atrybutów, redirectów ani przypisań ról.
+Wartości credentiali/xsappname/tenantid nie są kopiowane do raportu. Brak detect_output JRE oznacza
+wersję UNKNOWN, nie negatywny wynik zgodności Java25.
+
+`existing-cf-identity.mjs` jest osobnym, jawnym testem negatywnym. Po weryfikacji targetu czyta
+istniejący AccessToken CF wyłącznie do pamięci i wysyła dwa GET na ustalony własny direct CAP.
+Nie wykonuje OAuth grant/redeem, nie ma parametru dowolnego originu, nie podąża za redirectem.
+Nie uruchamiać go jako testu uprawnień business usera CAP lub principal propagation H01.
 
 `live-security.mjs` wykonuje tylko bounded GET, bez credentiali i bez redirectów. Wymaga originów
 HTTPS bez userinfo/query/path. Wynik FAIL/BLOCKED daje niezerowy exit; raport pozostaje w
@@ -133,11 +158,16 @@ Nie używać auto-refresh/pollingu podczas pomiaru idle expiry. Nie eksportować
 
 ## Principal H01, IAM i negatywna macierz DCL
 
-**Principal H01: BLOCKED.** `abapfs_odata_resolve_service(H01,ZUI_AINV_INV_H_O4)` i odczyt istniejących
-trace runs zwróciły503. Dostęp ADT/MCP nie dowodzi tożsamości trasy AppRoutera. CF login wygasł.
-Browser host narzędzia nie był dostępny; oba znalezione okna Chrome były zminimalizowane i odczyt
-stanu CUA się nie powiódł. Nie uruchamiano formularzy logowania i nie przejmowano credentiali.
-[Raport CF BLOCKED](../../deploy/evidence/2026-11-11-cf-readiness.json).
+**Principal H01: BLOCKED.** Po odzyskaniu dostępu proces ABAP FS2.13.3 potwierdził pakiet
+ZAINVOICER/recordChanges=false oraz aktywny published binding UI V4/0001. Metadata200 ma ten sam hash;
+READ z `_Items/_References`: **4/9/6**, poprawne powiązania i oczekiwany zakres syntetyczny.
+To kontekst istniejącego ADT OAuth, nie sesja AppRoutera.
+Lista istniejących trace runs jest pusta. Discovery `I_SecurityAuditLog*`/`I_*SecurityAudit*` nie znalazło
+CDS (nie jest to dowód braku wszystkich funkcji audytu). Brak autorytatywnego request-correlated dowodu
+principala w dostępnych odczytach. Nie uruchamiano nowych traces ani diagnostyki ABAP.
+Browser host nadal niedostępny; natywna Opera nie zwróciła AX, screenshot zakończył się FrameArrived timeout.
+Nie obsługiwano formularzy logowania ani nie przejmowano cookies. Pierwsze503/wygasły CLI pozostają
+wyłącznie historycznymi wynikami w [raporcie początkowym](../../deploy/evidence/2026-11-11-cf-readiness.json).
 
 Preferowana procedura administratora po odzyskaniu odczytu:
 
@@ -154,6 +184,10 @@ Preferowana procedura administratora po odzyskaniu odczytu:
 
 **A/B: BLOCKED.** Nie potwierdzono dostępności drugiego least-privilege usera i danych obcego zakresu.
 Nie utworzono usera, ról ani faktur. Konto A ma historycznie admin/developer, więc nie dowodzi least privilege.
+Aktualny released CDS `I_IAMBusinessUserBusinessRole` po odczycie aktywnej definicji potwierdza
+po jednym przypisaniu SAP_BR_ADMINISTRATOR, SAP_BR_DEVELOPER i ZBR_AINV_READ_1000 oraz jednego widocznego
+UserID (wyłącznie agregaty, bez identyfikatorów). Widok ma #CHECK, więc nie jest to dowód braku
+innych użytkowników w całym systemie ani zastępstwo drugiej sesji.
 
 | Test H01 w dwóch niezależnych profilach | Oczekiwany wynik |
 | --- | --- |
@@ -187,14 +221,14 @@ klas/adnotacji i nie utworzono/aktywowano niczego w H01.
 
 | Obszar | LIVE według pomiaru / relacji | Nowy artefakt z aktualnej bazy main |
 | --- | --- | --- |
-| Commit/droplet | Starszy smoke9 listopada wg właściciela; hash dropletu nieodczytany | Źródła main f093af5 + CAP-07D; hashe w release-evidence |
+| Commit/droplet | CF potwierdza oba droplety9 listopada, hashe w raporcie; nie zawierają potwierdzonego Git SHA | Źródła main f093af5 + CAP-07D; hashe w release-evidence |
 | CAP `/` | **200 z indeksem**, potwierdzone dziś | Wyłączony index/Fiori preview, executable JAR test |
 | INT-02 | Niewdrożony wg właściciela | Read model inbox w JAR, prywatny staging niewystawiony |
 | UI | Historyczny smoke | CF rap, Inbox disabled, wszystkie capabilities i external services OFF |
-| Usługi | XSUAA/Destination wg10 listopada | Tylko dwie `existing-service`, bez create/update XSUAA |
-| DB | H2 ephemeral, brak HANA wg właściciela | Jawny smoke/H2, bez HDI/deployera i bez retencji |
-| Flagi | Aktualne env BLOCKED | CF, smoke=true; SEND/INBOUND/WRITE/sweeper=false, platform=h2 |
-| Stack | cflinuxfs4 wg historycznego as-built | Brak automatycznej migracji; wymagana kontrola inventory i zgoda |
+| Usługi | Oczekiwane bindingi XSUAA/Destination obu aplikacji VERIFIED; deskryptor brokera BLOCKED | Tylko dwie `existing-service`, bez create/update XSUAA |
+| DB | CAP nadal H2 ephemeral; istnieje nieprzypięta usługa ainvoicer-hana-dev/hana-free (nowy odczyt) | Jawny smoke/H2, bez HDI/deployera i bez retencji |
+| Flagi | CF/smoke/H2 i SEND/WRITE/sweeperOFF VERIFIED; INBOUND UNSET w starszym smoke | CF, smoke=true; SEND/INBOUND/WRITE/sweeper=false, platform=h2 |
+| Stack | Obie aplikacje cflinuxfs4; fs5 AVAILABLE w aktualnym inventory | Brak automatycznej migracji; staging po osobnej zgodzie |
 
 ```powershell
 npm ci --prefix deploy
@@ -240,9 +274,11 @@ buildpacków; wskazuje też rollout regionalny. **Nie jest to dowód dostępnoś
 SAP opisuje `SAPMachineJRE` i `JBP_CONFIG_SAP_MACHINE_JRE: '{ version: 25.+ }`:
 [SapMachine w SAP Java Buildpack](https://help.sap.com/docs/btp/sap-business-technology-platform/sapmachine).
 
-Aktualne `cf stacks` i `cf buildpacks` odmówiły dostępu z powodu wygasłego tokena CLI.
-Kolektor sprawdza osobno dostępność fs5, włączony system buildpack/stack i rzeczywisty droplet.
-Historyczne `sap_java_buildpack_jakarta2.76.0` na fs4 nie dowodzi aktualnej obsługi fs5.
+Po przywróceniu CLI: **cflinuxfs5 AVAILABLE**, `nodejs_buildpack1.9.6` enabled dla fs5 i fs4,
+`sap_java_buildpack_jakarta2.76.0` enabled z polem stack=null. To brak ograniczenia stack w metadanych
+CAPI, a nie udany staging na fs5. Oba aktualne droplety są nadal na fs4 i uruchomione1/1 od9 listopada.
+SapMachine25.+ jest skonfigurowane; detect output dropletu nie ujawnia dokładnego JRE.
+Kolektor odróżnia metadane platformy, żądaną konfigurację i rzeczywisty dowód uruchomienia.
 Przed rekomendacją migracji: świeży inventory musi pokazać fs5 oraz pasujące systemowe
 `sap_java_buildpack_jakarta` i `nodejs_buildpack`; następnie **odrębnie zatwierdzone staging/testy**
 obu aplikacji. Lokalny Microsoft JDK25 nie jest testem SapMachine/Linux ABI.
@@ -262,7 +298,8 @@ Nie wykonano stagingu, restage, restartu, zmiany stacka ani migracji.
 - [ ] Osobna zgoda na redeploy dokładnego pliku/checksumy i zakres dwóch aplikacji; bez HANA/zmian XSUAA/Destination.
 
 Sam artefakt jest technicznie przygotowany do review kontrolowanego smoke redeployu.
-**Nie ma pełnego LIVE release sign-off**: C07, principal/A/B i aktualny inventory pozostają otwarte.
+**Nie ma pełnego LIVE release sign-off**: C07, principal/A/B, pełna polityka XSUAA/Destination
+i staging nowego wariantu na wybranym stacku pozostają otwarte. Inventory platformy jest już odczytane.
 Komenda wdrożenia dopiero po zgodzie: `cf deploy deploy/build/ainvoicer_0.7.2.mtar -e deploy/btp-dev-eu20.mtaext`.
 Nie uruchomiono jej w tej sesji.
 
@@ -286,8 +323,8 @@ poprzedniego MTAR oznacza BLOCKED rollback, nie polecenie losowego downgrade.
 
 ## Maksymalnie pięć czynności właściciela
 
-1. Przywrócić własne logowanie CF CLI/H01, umożliwić read-only inventory i potwierdzić aktualne flagi,
-   bindingi, stack/buildpack/JDK25 oraz konfigurację Destination; nie przesyłać credentiali.
+1. Potwierdzić w Cockpit pełny deskryptor/role XSUAA i Destination (FetchInstanceParameters niedostępne)
+   oraz planowany stack/JDK25; CF/MCP i podstawowy inventory są już zweryfikowane. Nie przesyłać credentiali.
 2. W istniejącym audycie H01 skorelować pojedynczy GET RAP z rzeczywistym business principal;
    jeśli narzędzia nie wystarczą, zrecenzować projekt diagnostyki przed osobną zgodą na zmianę ABAP.
 3. Zapewnić zatwierdzone konta A/B bez admin/developer i istniejące fixtures dwóch zakresów;
