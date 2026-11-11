@@ -431,5 +431,38 @@ CI musi wykonać rzeczywisty czytnik Go. Odbudowa i nowe SHA PENDING.
 
 Źródła: [Go archive/zip](https://github.com/golang/go/blob/master/src/archive/zip/struct.go)
 i lokalny adm-zip0.6.1 (EntryHeader wybiera na Windows creator0x0a; attr korzysta ze stat.mode).
-Następny krok: odbudować oba MTAR z czystego commita, potwierdzić nagłówki nested ZIP i CI,
+Historyczny następny krok: odbudować oba MTAR z czystego commita, potwierdzić nagłówki nested ZIP i CI,
 przedstawić nowe SHA oraz osobną zgodę na abort d110c171… i deployment. Bez ponawiania starego pakietu.
+
+### Odbudowa przenośnych payloadów — VERIFIED OFFLINE
+
+Build w tym samym worktree z czystego `4630f89e5887dc35a65f02e13b13b02dc178c630`,
+workingTreeDirty=false. Nowy sourceFilesSha256
+`99b81b165bd50531681249ce967b1fc47a416f78f4132b6bb39cd0bf4fd98b29`.
+Oba wcześniejsze zestawy zachowane w rejected-30401273 i rejected-d110c171; nie przenoszono MTAR
+między checkoutami. Wykonano npm test (32:31 PASS/1 Go skipped), build:btp:smoke, verify:release,
+build:btp:hana, verify:hana — PASS. W buildzie Maven clean verify429:423 PASS/6 Azurite skipped,
+gotowy JAR CF10/10, UI5 CF13/13, AppRouter10/10. Dodatkowo npm ci --prefix cap-java/db --ignore-scripts
+na Node24.13.0 PASS (29 packages,0 npm vulnerabilities), bez npm start i bez połączenia z HANA.
+
+| Nowy MTAR | Bajty | SHA-256 |
+| --- | --- | --- |
+| ainvoicer_0.7.3.mtar | 67562976 | `196b9b8cc85843f08b200aba9455e6f1c8b725a9ad3b765a3f883ba68b621570` |
+| ainvoicer_0.7.2.mtar | 67551647 | `00e31c977eb0d29cb86a4f6b7ecbdf115cfaf1a489f247955545b317f847f962` |
+
+HANA descriptor SHA pozostaje5c31959e… (mapowanie typów bez zmian), JAR
+`b88b1840bb7d57b40e428386410131e4a347b90eb0aa3f3eebe2a0bf03ad7bf6`, HDI payload
+`3909109a6950371fdfbe844f2a1feeeeb726249269435e2c67a792d33cc982d1`.
+Zewnętrzny extension pozostaje599B/f11b31967d12cc3f587b55a39aaf385791503b8f2b11af472f2d03bd37cfd14e.
+Niezależny Python zipfile odczytał rzeczywisty finalny HANA MTAR: creator3/0644/0755 we wszystkich
+payloadach: srv1 plik, AppRouter74 pliki/8 katalogów, HDI28 plików. Java/CDS/model14/6/4 i flagi bez zmian.
+
+Poprzedni CI budował na Linuxie, więc nie generował Windows creator10. Nowa regresja wymusza taki
+nagłówek niezależnie od hosta i czyta ZIP rzeczywistym Go archive/zip. Go1.26.10 jest przypiętym
+narzędziem testowym w CI; lokalnie bez Go ten jeden test jest jawnie skipped. Jego CI i cały nowy
+workflow pozostają PENDING do osobnego odczytu; poprzednie SUCCESS658dbf2 nie potwierdza tej naprawy.
+
+Nowy zestaw gotowy offline, nadal **HANA NOT DEPLOYED**. Potrzebna nowa zgoda na abort d110c171…
+i nowe bajty196b9b8c…/extension f11b3196… . Proponowany kolejny deploy ma --retries0, aby zatrzymać
+się po pierwszym błędzie zamiast3 domyślnych ponowień; możliwość potwierdzono cf deploy --help.
+Dokładne przyszłe polecenia/hashe są na początku runbooka. Nie wykonano żadnego z tych poleceń.

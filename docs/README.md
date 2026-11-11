@@ -10,7 +10,8 @@ tags: [ainvoicer, dokumentacja]
 
 **CAP-HANA-01 LIVE: zatwierdzony deployment przeszedł merge, ale staging deployera zakończył się ERROR.**
 Deployer utworzony i przypięty do HDI; CAP/AppRouter pozostają na poprzednim runtime, CAP HANA NOT DEPLOYED.
-Naprawa przenośności ZIP Windows→Unix w toku walidacji; [najnowszy wynik](journal/2026-11-11-cap-hana-01-first-persistence.md).
+Naprawa przenośności ZIP Windows→Unix odbudowana i zweryfikowana offline, nowe hashe w runbooku;
+CI i nowa zgoda PENDING. [Najnowszy wynik](journal/2026-11-11-cap-hana-01-first-persistence.md).
 Poniższe wpisy opisują wcześniejsze etapy.
 
 **CAP-HANA-01: pierwsza próba deploymentu odrzucona przed stagingiem; NO-GO dla poprzednich MTAR.**

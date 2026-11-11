@@ -24,7 +24,11 @@ STARTED1/1 na starych dropletach, CAP bez HDI. Docelowe0.7.3/HANA **NOT DEPLOYED
 Znaleziono nieprzenośny creator=10 w payloadach ZIP Windows oraz katalogi0666; Go archive/zip
 interpretuje creator10 jako mode000. Normalizacja do Unix creator3/pliki0644/katalogi0755
 zaimplementowana we wszystkich3 payloadach i walidatorze. Lokalnie31 PASS/1 Go skipped;
-niezależny czytnik Go1.26.10 wymagany w CI. Nowa odbudowa/SHA i CI PENDING.
+niezależny czytnik Go1.26.10 wymagany w CI. Czysta odbudowa4630f89 i verify obu MTAR PASS;
+Python potwierdził Unix3/0644/0755 w rzeczywistych payloadach. Nowe0.7.3 SHA256
+`196b9b8cc85843f08b200aba9455e6f1c8b725a9ad3b765a3f883ba68b621570`, rollback0.7.2
+`00e31c977eb0d29cb86a4f6b7ecbdf115cfaf1a489f247955545b317f847f962`.
+CI oraz nowa zgoda na abort d110c171…/nowy deployment PENDING.
 Nie wykonano nowego abort/retry/redeploy, DML ani restartu CAP. Stan historyczny poniżej.
 
 **CAP-HANA-01 — NO-GO, deployment odrzucony przed stagingiem (2026-11-11).**
