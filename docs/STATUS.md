@@ -30,7 +30,7 @@ czekają na zgodę. [Bramka](guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md#cap-
 [dziennik](journal/2026-11-11-cap-hana-01-first-persistence.md#cap-hana-01s--incydent-40b8e964-i-poprawka-claude-code-2140-cet).
 Persystencja HANA w CAP nadal **PENDING**.
 
-**ORCH-04 — PR #13 (KSEF-IN-03A) i PR #14 (CAP-HANA-01R) MERGED do main (2026-11-11).**
+**ORCH-04 — PR #13 (KSEF-IN-03A) i PR #14 (CAP-HANA-01R) MERGED do main (2026-11-11; stan sprzed CAP-HANA-01S).**
 Niezależny review obu PR bez blokerów; CI `offline` SUCCESS na dokładnych HEAD `8d69d74` i `7e9735a`.
 Scalono `--no-ff` dokładne SHA (merge `528a973`, `be97a20`), bez innych gałęzi.
 Regresja zintegrowanego drzewa i dowody: [dziennik ORCH-04](journal/2026-11-11-orch-04-integration.md).
@@ -327,6 +327,15 @@ SAPUI5 → RAP UI (dane i wynik biznesowy; live BLOCKED) + CAP (akcje/statusy) �
 
 ## Next Steps
 
+**Aktualne (2026-11-11, po CAP-HANA-01S):**
+
+- CAP-HANA-02 (osobne zgody): katalogowy SQL obiektów HDI, syntetyczne DML/SELECT, restart i trwałość,
+  CAS/lock/konkurencja na HANA; LIVE A/B/DCL/principal H01 i security sign-off; analiza WARN handlerów outbox.
+- KSEF-IN-03B: adapter HANA `ApiBudgetRepository` i test dwóch JVM, bez aktywacji INBOUND.
+- BLOB-LAB-01 pozostaje owner-led.
+
+Historyczna lista kroków:
+
 0. CAP-07: owner merge PR #1, review stacked PR CAP-07; zatrzymać lokalny CAP 8080 i powtórzyć `mvn clean verify` z JAR-em. CAP-07B wg [przewodnika BTP](guides/BTP_IDENTITY_SETUP.md#10-czynności-administratora-kolejno): entitlementy, decyzja DB, deploy po zgodzie, role collection, SSO do H01.
 1. CAP-04D po osobnej zgodzie: ograniczone nadanie, HTTP WRITE na uzgodnionych danych, commit/ETag/no-op, autoryzacja rzeczywistym principalem i pełne dwa równoległe wywołania akcji.
 2. Uzgodnić poprawne syntetyczne NIP-y i źródło PartyData, wykonać READ H01 oraz lokalne przygotowanie przez zintegrowany generator B. Następny LIVE send to osobny eksperyment; istniejący numer/UPO zachować.
@@ -366,6 +375,9 @@ Dla narzędzi agentowych: w następnej sesji Claude Code uruchomić `/reload-ski
 | KSeF TEST / UPO przez CAP | LIVE PASS 2026-10-29, Agent A: auth/XAdES/redeem/refresh, jedna syntetyczna faktura `1234563218-20261029-7DC8A1C00000-CD`, numer/hash, close, UPO 5528 bajtów i RESUME po restarcie. Oficjalny fixture + lokalna migawka, bez H01 i generatora B. |
 
 ## Last Updated
+
+2026-11-11 22:00 (Europe/Warsaw): CAP-HANA-01S — CAP na HANA Cloud wdrożony (`82250a52…` FINISHED), poprawka generatora
+MTAR scalona do main; SQL/DML/restart i security sign-off PENDING. Wcześniej tego dnia ORCH-04 (PR #13, #14).
 
 2026-10-30 (Europe/Warsaw): opublikowany binding UI i komplet obiektów IAM do katalogu włącznie potwierdzone READ H01. Obecna bramka: rola biznesowa, przypisanie użytkownika i testy READ/izolacji. Dodano model odpowiedzialności i zależności IAM; nie zmieniano SAP ani nadań przez agenta i nie powtarzano buildów aplikacji. Szczegóły oraz wcześniejsze testy: Current Phase i dziennik sesji. Historyczna trwała baza nadal wymaga osobnego kontrolowanego podejścia do migracji.
 

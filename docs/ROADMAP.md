@@ -38,9 +38,13 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
   ponownie zmierzone SHA 0.7.3/rollback/extension, `verifyArchive` PASS, bez odbudowy MTAR.
   [Bramka](guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md#cap-hana-01r--aktualna-bramka-recovery-1111-2035-cet) ·
   [Integracja ORCH-04](journal/2026-11-11-orch-04-integration.md).
-- [ ] **CAP-HANA-01R LIVE — decyzja właściciela:** A) abort `d110c171…`, B) deployment `196b9b8c…` +
-  extension `f11b3196…` z `--retries 0`. Następnie HDI make/JDBC/guardy/SQL katalogowy; DML, restart
-  i testy konkurencji osobno. Deployment i persystencja HANA **PENDING**.
+- [x] **CAP-HANA-01R/01S LIVE — CAP na HANA wdrożony (2026-11-11):** po zgodzie abort `d110c171…`; deployment
+  `196b9b8c…` (`40b8e964…`) — HDI make SUCCEEDED, staging CAP BuildpackCompileFailed (opakowany JAR), CAP STOPPED.
+  Poprawka generatora `fe0a0c1` + regresja, nowe 0.7.3 `54a89984…`; abort `40b8e964…` i deployment `82250a52…`
+  **FINISHED**: CAP/AppRouter STARTED, CAP→HDI przez pulę JDBC HANA, anonimowe GET CAP 401.
+  [Wynik i akceptacja](guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md#cap-hana-01s--wynik-live-deployment-82250a52-finished-1111-2140-cet).
+- [ ] **CAP-HANA-02 — akceptacja persystencji (osobne zgody):** katalogowy SQL obiektów HDI, syntetyczne DML/SELECT,
+  restart i trwałość, CAS/lock/konkurencja, LIVE A/B/DCL/principal H01, security sign-off; analiza WARN handlerów outbox.
 - [ ] **KSEF-STOR-02 — decyzja właściciela:** [ADR-0008](decisions/ADR-0008-document-storage-dev-test-proposal.md)
   proponuje limitowany BLOB DEV/TEST po CAP-HANA-01; brak implementacji. Object Store nadal OFF bez zgody kosztowej.
 
