@@ -8,6 +8,10 @@ tags: [ainvoicer, security, xsuaa, cloud-foundry, approuter, rap, iam, cap-07d]
 
 # CAP-07D — akceptacja bezpieczeństwa
 
+**Kontynuacja INT-03:** historyczny KNOWN GAP C07 opisany niżej usunięto w kodzie wspólnym tenant gate
+w decoderze SAP/Spring, z testami całego CAP. Nie wdrożono tej poprawki do CF i nie zamieniono
+historycznej macierzy LIVE na PASS. [Nowy audyt i wyniki](../audits/2026-11-11-int-03-security-persistence.md).
+
 **Werdykt: SECURITY ACCEPTANCE PENDING.** Narzędzia, testy i niewdrożony wariant smoke są przygotowane.
 Aktualny LIVE backend ujawnia indeks CAP pod `/`. Principal H01 i izolacja A/B pozostają **BLOCKED**.
 Build nie stanowi akceptacji bezpieczeństwa ani zgody na wdrożenie.

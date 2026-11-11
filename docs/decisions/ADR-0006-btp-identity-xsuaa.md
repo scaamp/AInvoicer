@@ -35,6 +35,13 @@ Zweryfikowane fakty (2026-11-08):
 
 ## Konsekwencje
 
+**Aktualizacja INT-03, 2026-11-11:** opisane niżej historyczne ryzyko dedicated tenant zostało zamknięte
+w kodzie wspólnym dekoratorem oficjalnego `JwtDecoder` SAP. Po bazowej walidacji wymagamy zgodnego `zid`
+z bindingiem; opcjonalne `app_tid`/`zone_uuid` nie mogą wskazywać innej strefy. Dotyczy także metadata,
+batch i przyszłych endpointów korzystających ze stosu Spring Security. Nie zmieniono kryptografii,
+audience ani SecurityFilterChain CAP. Szczegóły i ograniczenia LIVE:
+[audyt INT-03](../audits/2026-11-11-int-03-security-persistence.md).
+
 - Pozytywne: rzeczywista walidacja JWT (podpis z JWKS domeny bindingu, audience, ważność) przez oficjalny stos SAP; brak mock na CF; brak eskalacji przy wielu rolach.
 - Model zaufania XSUAA (zweryfikowany w CAP-07.1 w źródle `java-security` 4.1.2): `JwtValidatorBuilder` dla `Service.XSUAA` składa `JwtTimestampValidator` + `XsuaaJwtSignatureValidator` + `JwtAudienceValidator`; `JwtIssuerValidator` jest dodawany **tylko dla IAS**, więc claim `iss` nie jest walidowany (test `xsuaaTrustAnchorIsBoundKeySetNotIssuerClaim`: obcy `iss` + poprawny podpis → 200). Nagłówek `jku` jest w produkcji **ignorowany**: klucze pochodzą z `<uaadomain bindingu>/token_keys?zid=<app_tid>` (nagłówek `X-zid`), wybór po `kid`. Kotwica zaufania = `uaadomain` z bindingu + podpis + audience (`clientid`/`xsappname` bindingu) + ważność. Test „obcy JKU → 401” dowodzi tego tylko pośrednio (testowa fabryka JKU z `java-security-test`, zaufana wyłącznie dla localhost). README 4.1.2 opisuje `XsuaaJkuValidator`, którego nie ma w łańcuchu domyślnym — dokumentacja nieaktualna.
 - Zagrożenie rezydualne: token innej strefy XSUAA tej samej `uaadomain` (inny subaccount w regionie) ma ważny podpis kluczem swojej strefy; przed akceptacją chroni wyłącznie **audience** (identyfikator klienta naszej instancji, unikalny w landscape). Ewentualna dodatkowa kontrola `zid` == strefa bindingu jest możliwa przez oficjalny punkt rozszerzeń `JwtValidatorBuilder.with(...)`, ale nie jest wdrożona (decyzja przy CAP-07B; bez własnej kryptografii). Najnowsze wydanie biblioteki 4.3.1 (2026-11-06) nie zmienia walidacji issuer/jku; CAP 5.2.0 deklaruje 4.1.2 — bez aktualizacji.

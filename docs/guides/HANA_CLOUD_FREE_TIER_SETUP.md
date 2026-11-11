@@ -139,6 +139,11 @@ Zapytania o pamięć/dysk (aneks A) przygotowano, wyniku nie raportowano.
 - W dokumentacji nie zapisujemy loginu użytkownika BTP.
 
 ## 6. Następne kroki (nie wykonane)
+
+Aktualizacja INT-03: sesja CF działa; read-only inventory potwierdza HANA free i brak oferty `hana`/HDI.
+Przygotowano wariant wymagający istniejącego kontenera zamiast automatycznego provisioningu pełnym MTA.
+Poniższa lista zachowuje plan z konfiguracji właściciela; aktualna procedura/bramki:
+[HANA CAP deployment](HANA_CLOUD_CAP_DEPLOYMENT.md). BLOB pozostaje propozycją, nie zatwierdzoną zmianą AGENTS.md.
 1. **Entitlement HDI:** *SAP HANA Schemas & HDI Containers* (technical name `hana`), plan **`hdi-shared`** —
    przed przypisaniem potwierdzić w Add Service Plans/Discovery Center, że nie nalicza opłat.
 2. Odczyt `cf marketplace -e hana-cloud` / `-e hana` po `cf login --sso` (token CLI wygasł 2026-11-11).

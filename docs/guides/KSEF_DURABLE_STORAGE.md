@@ -8,6 +8,12 @@ tags: [ainvoicer, ksef, storage, object-store, azure-blob, cap-java, security, r
 
 # Trwały magazyn dokumentów KSeF (KSEF-STOR-01)
 
+**INT-03:** adapter zintegrowano, nadal bez aktywacji i zgody na koszt `standard`. Dodano deadline
+całej odpowiedzi HTTP (także po nagłówkach), limit body i powtarzalny emulator:
+`npm ci --prefix deploy/storage --ignore-scripts`, `npm test --prefix deploy/storage`.
+Losowe credentiale emulatora istnieją tylko w pamięci; nie korzysta on z kont Azure/BTP.
+[Audyt integracji](../audits/2026-11-11-int-03-security-persistence.md).
+
 [Dziennik KSEF-STOR-01](../journal/2026-11-11-ksef-stor-01.md) · [Staging INBOUND](KSEF_INBOUND_PERSISTENCE.md) ·
 [ADR-0007 — persystencja HANA Cloud](../decisions/ADR-0007-cap-persistence-hana-cloud.md)
 

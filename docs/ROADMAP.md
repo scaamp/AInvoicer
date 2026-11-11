@@ -1,12 +1,20 @@
 ---
 title: "AInvoicer — plan rozwoju"
-date: 2026-11-10
+date: 2026-11-11
 type: roadmap
 status: aktywny
 tags: [ainvoicer, roadmap, cap-java, ksef]
 ---
 
 # Plan rozwoju
+
+- [x] **INT-03 — integracja offline:** CAP-07D + storage + HANA as-built, wspólny tenant gate,
+  wariant HANA existing-service, storage body deadline, harness opt-in i CI emulatora.
+  [Wyniki/PR/CI](journal/2026-11-11-int-03-orchestration.md) · [Runbook HANA](guides/HANA_CLOUD_CAP_DEPLOYMENT.md).
+- [ ] **CAP-HANA-01 — BLOCKED:** HANA Free Tier LIVE, HDI NOT CONFIGURED, CAP HANA NOT CONNECTED.
+  Potwierdzić bezpłatny `hana/hdi-shared`, Database ID/mapowanie i osobno zatwierdzić HDI/deploy/testy.
+- [ ] **KSEF-STOR-02 — decyzja właściciela:** [ADR-0008](decisions/ADR-0008-document-storage-dev-test-proposal.md)
+  proponuje limitowany BLOB DEV/TEST po CAP-HANA-01; brak implementacji. Object Store nadal OFF bez zgody kosztowej.
 
 - [x] **KSEF-IN-01 — rdzeń offline:** metadata/XML przez SDK 3.0.29, bezpieczny parser FA(3), deduplikacja, planer HWM i kontrakt checkpointów; 77 nowych testów, brak LIVE/DB/schedulera. [Dziennik](journal/2026-11-09-ksef-in-01-inbound.md).
 - [x] **INT-01 — LOCAL + CI PASS dla kodu `18ca64e`:** CAP-07C + INBOUND bez konfliktów i utraty historii, 321 Maven oraz pełna regresja UI5/CF smoke; [PR #3](https://github.com/scaamp/AInvoicer/pull/3) i [Ubuntu CI](https://github.com/scaamp/AInvoicer/actions/runs/42685746135), bez merge/deploy/LIVE. Aktualne checks końcowego HEAD w PR. [Dziennik](journal/2026-11-09-int-01-branch-integration.md) · [Review/plan merge](audits/2026-11-09-int-01-integration-review.md).

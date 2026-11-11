@@ -8,6 +8,16 @@ tags: [ainvoicer, dokumentacja]
 
 # AInvoicer — baza wiedzy projektu
 
+Aktualizacja INT-03 (2026-11-11): [dziennik integracji i testy](journal/2026-11-11-int-03-orchestration.md),
+[audyt security/persistence](audits/2026-11-11-int-03-security-persistence.md),
+[HANA CAP deployment](guides/HANA_CLOUD_CAP_DEPLOYMENT.md),
+[HANA Free Tier as-built](guides/HANA_CLOUD_FREE_TIER_SETUP.md),
+[dziennik konfiguracji HANA](journal/2026-11-11-hana-cloud-free-tier.md),
+[storage](guides/KSEF_DURABLE_STORAGE.md), [dziennik STOR-01](journal/2026-11-11-ksef-stor-01.md),
+[CAP-07D acceptance](guides/CAP_07D_SECURITY_ACCEPTANCE.md), [dziennik CAP-07D](journal/2026-11-11-cap-07d.md),
+[propozycja ADR-0008 BLOB](decisions/ADR-0008-document-storage-dev-test-proposal.md).
+**HANA Free Tier LIVE / HDI NOT CONFIGURED / CAP HANA NOT CONNECTED.**
+
 AInvoicer to aplikacja SAP Fiori do faktur zakupowych i sprzedażowych, rozwijana w kierunku integracji z KSeF 2.0. Repozytorium zachowuje istniejące moduły ABAP, SAPUI5, Node.js i Python; backend powstaje w `cap-java/` na głównej gałęzi `main`. Dotychczasową linię `java-cap-ksef` promowano do `main`; oryginalny projekt zachowano na `archive/original-ainvoicer-2026-10-29`.
 
 ## Od czego zacząć

@@ -34,6 +34,13 @@ Zweryfikowane fakty (2026-11-08):
 
 ## Konsekwencje
 
+**Aktualizacja INT-03, 2026-11-11:** istnieje HANA Free Tier, ale HDI/binding/schemat CAP nadal nie.
+Wariant generowany wymaga istniejącego `ainvoicer-db` i nie tworzy HANA/HDI ani usług tożsamości.
+`CloudPersistenceGuard` wymaga teraz również dokładnie jednego bindingu `hana/hdi-shared`, przed
+weryfikacją produktu JDBC. Jawny readiness wyłącza oba rodzaje outbox, transporty i startup wake;
+wariant smoke zachowuje dotychczasowe reguły. [Runbook i bramki](../guides/HANA_CLOUD_CAP_DEPLOYMENT.md).
+Możliwość BLOB DEV/TEST jest odrębną, niezatwierdzoną [propozycją ADR-0008](ADR-0008-document-storage-dev-test-proposal.md).
+
 - Pozytywne: restart nie usuwa historii KSeF; brak cichego trybu w pamięci; jawny, testowany wyjątek dla smoke tożsamości.
 - Koszt: HANA Cloud wymaga entitlementu i instancji (największy koszt landscape); bez niej MTA się nie wdroży.
 - Do potwierdzenia na HANA (CAP-07B): migracja HDI, `lock()`/CAS i mapowanie konfliktów/timeoutów (np. timeout blokady HANA może trafić jako 500 zamiast 409), outbox po restarcie, wydajność indeksów.

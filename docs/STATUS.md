@@ -1,6 +1,6 @@
 ---
 title: "AInvoicer — aktualny stan"
-date: 2026-11-10
+date: 2026-11-11
 type: status
 status: w-trakcie
 tags: [ainvoicer, cap-java, status]
@@ -13,6 +13,21 @@ tags: [ainvoicer, cap-java, status]
 [Project Home](README.md) · [Roadmapa](ROADMAP.md) · [Workflow abapGit](guides/ABAPGIT_WORKFLOW.md) · [Model RAP faktur](guides/ABAP_RAP_INVOICE_MODEL.md) · [Dziennik próby tworzenia ABAP FS](journal/2026-10-25-abapfs-create-probe.md) · [Dziennik kompozycji RAP](journal/2026-10-24-abap-rap-composition.md) · [Dziennik pierwszego eksportu](journal/2026-10-24-abapgit-rap-initial-export.md) · [Dziennik bootstrapu](journal/2026-10-23-cap-java-bootstrap.md) · [Weryfikacja Phase 1](journal/2026-10-24-cap-java-bootstrap-verification.md) · [Model KsefOperations](journal/2026-10-24-ksef-operations-model.md) · [Usługa i CRUD OData](journal/2026-10-24-ksef-service-definition.md) · [Walidacja i autoryzacja KsefOperations](journal/2026-10-24-ksef-operations-validation-authorization.md)
 
 ## Current Phase
+
+**INT-03 (2026-11-11) — integracja security/storage/HANA, LOCAL PASS, PR #8.**
+Osobny worktree `D:\AInvoicer-int-03`, trzy merge bez konfliktów. Wspólny tenant gate dekoruje
+oficjalny decoder SAP dla całego HTTP CAP; znana luka CAP-07D poza Inbox usunięta w kodzie.
+Storage Azure pozostaje opcjonalny/OFF; poprawiono deadline body. Wariant HANA MTAR wymaga
+istniejących XSUAA/Destination/HDI, bez provisioning i bez delivery outbox/transportów.
+**HANA Free Tier LIVE / HDI NOT CONFIGURED / CAP HANA NOT CONNECTED.** Własny inventory CF potwierdza
+`ainvoicer-hana-dev/hana-free`, brak oferty `hana/hdi-shared` i bindingu CAP; SQL wersji pochodzi od właściciela.
+Pełne liczniki regresji, SHA, PR/CI i ograniczenia: [dziennik INT-03](journal/2026-11-11-int-03-orchestration.md).
+Maven425 (419 PASS/6 skipped), Azurite6/6, QUnit112, OPA21, Inbox16, CF JAR10 i oba MTAR PASS.
+[PR #8](https://github.com/scaamp/AInvoicer/pull/8) · [aktualny CI HEAD](https://github.com/scaamp/AInvoicer/pull/8/checks).
+[Audyt](audits/2026-11-11-int-03-security-persistence.md) · [HANA deployment](guides/HANA_CLOUD_CAP_DEPLOYMENT.md) ·
+[As-built](guides/HANA_CLOUD_FREE_TIER_SETUP.md) · [propozycja BLOB, niezatwierdzona](decisions/ADR-0008-document-storage-dev-test-proposal.md).
+Bez deployu, HDI creation, restartu, zapisów HANA/SAP i LIVE KSeF. Następny krok: bezpłatny entitlement
+HDI + Database ID/mapowanie + osobna zgoda CAP-HANA-01. Historyczne „brak HANA” niżej opisuje stan z wcześniejszej daty.
 
 **CAP-07B.2 LIVE (2026-11-10) — FUNCTIONAL PASS / SECURITY ACCEPTANCE PENDING.**
 W subaccount CF EU20: XSUAA `ainvoicer-auth` (2 bindingi), dedykowana rola
