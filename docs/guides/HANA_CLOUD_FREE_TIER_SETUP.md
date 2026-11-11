@@ -10,7 +10,7 @@ tags: [ainvoicer, btp, hana, hana-cloud, free-tier, cloud-foundry, persistence, 
 
 [Dziennik sesji](../journal/2026-11-11-hana-cloud-free-tier.md) · [ADR-0007 — trwałość CAP na CF](../decisions/ADR-0007-cap-persistence-hana-cloud.md) ·
 [Runbook wdrożenia BTP](BTP_FIRST_DEPLOYMENT_RUNBOOK.md) · [KSEF-STOR-01 — magazyn XML/UPO](KSEF_DURABLE_STORAGE.md)
-(plik z gałęzi `feature/ksef-stor-01-durable-storage`; link działa po jej merge)
+(zintegrowany w INT-03; provider pozostaje OFF)
 
 > **Stan 2026-11-11:** instancja **`ainvoicer-hana-dev`** (SAP HANA Cloud, SAP HANA Database, **free tier**)
 > istnieje w CF org `National Center for Cryptography_dev-v2xzij9s`, space `dev`, i odpowiada na SQL
@@ -147,8 +147,9 @@ Poniższa lista zachowuje plan z konfiguracji właściciela; aktualna procedura/
 1. **Entitlement HDI:** *SAP HANA Schemas & HDI Containers* (technical name `hana`), plan **`hdi-shared`** —
    przed przypisaniem potwierdzić w Add Service Plans/Discovery Center, że nie nalicza opłat.
 2. Odczyt `cf marketplace -e hana-cloud` / `-e hana` po `cf login --sso` (token CLI wygasł 2026-11-11).
-3. Wdrożenie pełnego MTA z zasobem `ainvoicer-db` (`com.sap.xs.hdi-container`, `hana`/`hdi-shared`) zamiast
-   identity-smoke — **osobna zgoda właściciela**, koordynacja z CAP-07D (Codex, `deploy/`, guardy).
+3. Po osobnej zgodzie utworzyć dedykowany HDI na jawnym `database_id`, a następnie wdrożyć wyłącznie
+   wariant `ainvoicer_0.7.3.mtar` generowany przez HANA readiness, z trzema existing-service.
+   Nie wdrażać bezpośrednio pełnego `mta.yaml`, który może tworzyć usługi.
 4. Testy z ADR-0007 na HANA: migracja HDI, `lock()`/CAS, mapowanie timeoutów/konfliktów, outbox po restarcie.
 5. ADR: XML/UPO w HANA (BLOB) zamiast Object Store — zmiana zasady AGENTS.md §4, koszt 0.
 6. Aktualizacja STATUS, ROADMAP, README i runbooka BTP (wpis „brak `hana-free`” z 2026-11-09 jest nieaktualny) w zadaniu integracyjnym.

@@ -116,19 +116,9 @@ class HanaPersistenceIT {
     void seed() {
         assertTrue(new CqnSyncCheckpointRepository(persistence()).find(scope()).isEmpty(), "scope must be isolated and unused");
         assertTrue(persistence().tx(() -> db.run(Select.from(InboundPersistence.LEASES).matching(key())).list().isEmpty()));
-        persistence().tx(() -> {
-            db.run(Insert.into(OPS).entry(operation(runId)));
-            db.run(Insert.into(DOCS).entry(Map.ofEntries(Map.entry("ID", docId()), Map.entry("environment", "TEST"),
-                Map.entry("ksefNumber", runId.substring(0, 35)), Map.entry("invoiceNumber", MARKER + runId),
-                Map.entry("sellerNip", nip), Map.entry("buyerIdentifierType", "NIP"), Map.entry("sha256", "0".repeat(64)),
-                Map.entry("grossAmount", new BigDecimal("123456789.12")), Map.entry("sizeBytes", 4294967297L), Map.entry("acquisitionDate", NOW))));
-            // Bez wywoływania submit/delivery: bada wyłącznie trwałość tabeli outbox.
-            db.run(Insert.into("cds.outbox.Messages").entry(Map.of("ID", runId, "target", "INT03_NO_DELIVERY",
-                "msg", MARKER + runId, "timestamp", NOW, "attempts", 0)));
-            return true;
-        });
+        seedRows();
         var checkpoint = new CqnSyncCheckpointRepository(persistence());
-        assertTrue(checkpoint.commit(scope(), 0, NOW.atOffset(ZoneOffset.UTC), NOW));
+        assertEquals(1L, checkpoint.find(scope()).orElseThrow().version());
         assertFalse(checkpoint.commit(scope(), 0, NOW.plusSeconds(1).atOffset(ZoneOffset.UTC), NOW));
         // Test rzeczywistego constraint w osobnej transakcji; bez SQLState specyficznego dla H2.
         var conflict = assertThrows(ServiceException.class, () -> persistence().tx(() -> { db.run(Insert.into(OPS).entry(operation(UUID.randomUUID().toString()))); return true; }));
@@ -148,6 +138,25 @@ class HanaPersistenceIT {
         }));
         assertTrue(persistence().tx(() -> db.run(Select.from(OPS).byId(rollbackId)).list().isEmpty()));
         recover();
+    }
+
+    /** Atomowy seed po preflight; konflikt rezerwacji scope nie zostawia częściowych danych runu. */
+    void seedRows() {
+        persistence().tx(() -> {
+            db.run(Insert.into(OPS).entry(operation(runId)));
+            db.run(Insert.into(DOCS).entry(Map.ofEntries(Map.entry("ID", docId()), Map.entry("environment", "TEST"),
+                Map.entry("ksefNumber", runId.substring(0, 35)), Map.entry("invoiceNumber", MARKER + runId),
+                Map.entry("sellerNip", nip), Map.entry("buyerIdentifierType", "NIP"), Map.entry("sha256", "0".repeat(64)),
+                Map.entry("grossAmount", new BigDecimal("123456789.12")), Map.entry("sizeBytes", 4294967297L), Map.entry("acquisitionDate", NOW))));
+            // Bez submit/delivery: wyłącznie trwałość tabeli outbox.
+            db.run(Insert.into("cds.outbox.Messages").entry(Map.of("ID", runId, "target", "INT03_NO_DELIVERY",
+                "msg", MARKER + runId, "timestamp", NOW, "attempts", 0)));
+            var checkpointRow = new HashMap<String, Object>(key());
+            checkpointRow.putAll(Map.of("continuationFrom", new java.time.format.DateTimeFormatterBuilder()
+                .appendInstant(9).toFormatter().format(NOW), "version", 1L, "committedAt", NOW));
+            db.run(Insert.into(InboundPersistence.CHECKPOINTS).entry(checkpointRow));
+            return true;
+        });
     }
 
     Map<String, Object> operation(String id) {
@@ -178,6 +187,12 @@ class HanaPersistenceIT {
         var claim = leases.claim(scope(), Duration.ofMinutes(1));
         if (claim.isPresent()) {
             leases.requireOwned(claim.get());
+            p.tx(() -> {
+                var row = db.run(Select.from(InboundPersistence.LEASES).matching(key()).lock()).single();
+                assertEquals(claim.get().token().toString(), row.get("claimToken"));
+                db.run(Update.entity(InboundPersistence.LEASES).matching(key()).data("lastCode", MARKER + runId));
+                return true;
+            });
             var stale = new CqnInboundSyncLeaseRepository.Claim(scope(), UUID.randomUUID());
             assertThrows(IllegalStateException.class, () -> leases.requireOwned(stale));
             assertFalse(leases.fenced(new CqnSyncCheckpointRepository(p), stale).commit(scope(), 1, NOW.plusSeconds(2).atOffset(ZoneOffset.UTC), NOW));
@@ -212,6 +227,16 @@ class HanaPersistenceIT {
     void cleanup() {
         recover();
         persistence().tx(() -> {
+            // Walidacja pod blokadą w tej samej transakcji co DELETE: zmiana HWM lub właściciela = odmowa.
+            var checkpoint = db.run(Select.from(InboundPersistence.CHECKPOINTS).matching(key()).lock()).single();
+            assertEquals(1L, ((Number) checkpoint.get("version")).longValue(), "checkpoint changed; cleanup refused");
+            assertEquals(NOW, Instant.parse(checkpoint.get("continuationFrom").toString()));
+            assertEquals(NOW, checkpoint.get("committedAt"));
+            var lease = db.run(Select.from(InboundPersistence.LEASES).matching(key()).lock()).first();
+            lease.ifPresent(row -> assertEquals(MARKER + runId, row.get("lastCode"), "foreign lease; cleanup refused"));
+            assertEquals(MARKER + runId, db.run(Select.from(OPS).byId(runId).lock()).single().get("sapDocumentRef"));
+            assertEquals(MARKER + runId, db.run(Select.from(DOCS).byId(docId()).lock()).single().get("invoiceNumber"));
+            assertEquals(MARKER + runId, db.run(Select.from("cds.outbox.Messages").byId(runId).lock()).single().get("msg"));
             db.run(Delete.from("cds.outbox.Messages").byId(runId));
             db.run(Delete.from(DOCS).byId(docId()));
             db.run(Delete.from(OPS).byId(runId));

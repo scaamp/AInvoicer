@@ -132,3 +132,22 @@ LIVE HANA CAP, schema deployment, HDI creation, CF deploy/restart, SAP WRITE, SE
 Następny najmniejszy krok: właściciel potwierdza bezpłatny `hdi-shared` i Database ID/mapowanie,
 następnie osobno zatwierdza CAP-HANA-01 (dedykowany HDI + konkretny MTAR/SHA + syntetyczny harness).
 LIVE principal/DCL/A/B i decyzja ADR-0008 pozostają odrębnymi bramkami przed workflow KSeF.
+
+## Final review przed merge — CAP-HANA-01
+
+W nowym zleceniu właściciel warunkowo autoryzował merge PR #8 po review i aktualnym CI PASS.
+Odczyt GitHub: main nadal f093af5, PR #8 c195527 OPEN/mergeable, run43025816235 SUCCESS we wszystkich
+krokach; brak review threads/reviews. PR #7 nadal OPEN, HEAD2455c3f jest przodkiem INT-03.
+Sprawdzono ponownie dekorację oficjalnego JwtDecoder, verified zid/aliasy, fail-closed endpointy i
+NIP/CompanyCode oraz konfigurację HANA/existing-service i brak side effects. LIVE A/B nie jest zaliczone.
+
+Znaleziono i poprawiono usterkę harnessu: częściowy seed po przegranej rezerwacji checkpointu oraz
+cleanup scope z lease innego właściciela. Seed zapisuje checkpoint w tej samej transakcji co pozostałe
+rekordy. Cleanup blokuje checkpoint/lease i własne rekordy, sprawdza ich wersje/markery przed DELETE;
+contend znakuje wyłącznie własny lease. Dodano HanaHarnessSafetyTest na prywatnej H2.
+Usunięto także sprzeczną historyczną instrukcję wdrożenia pełnego MTA z przewodnika Free Tier.
+`mvn -B -f cap-java/pom.xml test -Dtest=HanaHarnessSafetyTest
+-Dsurefire.failIfNoSpecifiedTests=false -Dcds.cds.skipVersionCheck=true`: **4/4 PASS na H2**;
+regresja obejmuje także zachowanie rekordów innego runu/scope po cleanup. Deploy `npm ci`/`npm test`:
+**27/27 PASS**, 0 npm advisories. Bieżące CI poprawionego HEAD jest osobnym warunkiem merge.
+Nie wykonano żadnej fazy IT na HANA ani operacji mutujących BTP.

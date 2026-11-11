@@ -89,6 +89,11 @@ Obejmuje CQN, unique/SQLState, typy, rollback, CAS/HWM, lease/fencing, locks i r
 Rzeczywiste timeout/deadlock SQLState, E2E dostawa do bezpiecznego consumera i recovery dwóch instancji
 po outage pozostają do potwierdzenia w CAP-HANA-01. Bez dowodu nie rozszerzamy mapowania błędów H2.
 
+Final review wykrył osobny commit checkpointu po seedzie oraz cleanup lease bez dowodu runu.
+Seed jest teraz atomowy z rezerwacją checkpointu; cleanup sprawdza pod blokadą niezmieniony checkpoint,
+markery własnych rekordów i znacznik właściciela lease. Lokalna regresja H2 obejmuje konflikt rezerwacji
+z pełnym rollbackiem, obcy lease i zmianę checkpointu. Wyniki bieżącego HEAD w dzienniku i CI PR #8.
+
 HANA Free Tier ma ograniczenia retencji i ochrony danych, opisane w runbooku; BLOB nie daje backupu.
 [Proponowany ADR-0008](../decisions/ADR-0008-document-storage-dev-test-proposal.md) rekomenduje mały,
 limitowany adapter relacyjny tylko dla odtwarzalnych DEV/TEST po osobnej akceptacji. Nie został zaimplementowany.

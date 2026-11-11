@@ -15,6 +15,8 @@ tags: [ainvoicer, cap-java, status]
 ## Current Phase
 
 **INT-03 (2026-11-11) — integracja security/storage/HANA, LOCAL PASS, PR #8.**
+Final review przed merge: poprawiono atomowość seed i odmowę cleanup dla obcego lease/zmienionego
+checkpointu; nowa lokalna regresja H2 **4/4 PASS**. Merge wymaga CI PASS poprawionego HEAD.
 Osobny worktree `D:\AInvoicer-int-03`, trzy merge bez konfliktów. Wspólny tenant gate dekoruje
 oficjalny decoder SAP dla całego HTTP CAP; znana luka CAP-07D poza Inbox usunięta w kodzie.
 Storage Azure pozostaje opcjonalny/OFF; poprawiono deadline body. Wariant HANA MTAR wymaga

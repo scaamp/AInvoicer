@@ -143,6 +143,12 @@ node deploy/scripts/hana-integration.mjs
 | Restart DB | Właściciel osobno zatwierdza stop/start; bez restartu przez harness. Podczas outage startup ma odmówić; po powrocie `recover` |
 | `cleanup` | Wyłącznie klucze własnego run UUID i zarezerwowanego scope; bez drop/truncate/delete całych tabel |
 
+Final review: seed operacji/dokumentu/outbox/checkpointu jest atomowy. Cleanup blokuje i weryfikuje
+checkpoint (wersja/HWM/czas) oraz znaczniki runu w operacji, dokumencie i outbox. Istniejący lease musi
+mieć znacznik tego runu zapisany przez zwycięski `contend`; obcy lease lub zmieniony checkpoint przerywa
+cały cleanup. Po przerwanym seed/contend nie poprawiać znaczników ręcznie: zebrać stan i uzgodnić recovery.
+Scope pozostaje zarezerwowany do końca testu; nie uruchamiać w nim innych workerów.
+
 Nie wykonywano żadnej fazy na HANA. Dostawy outbox/workflow pozostają OFF; harness testuje trwałość
 rekordu i brak duplikacji, **nie udaje E2E delivery**. Test faktycznej dostawy do lokalnego bezpiecznego
 consumera po restarcie dwóch instancji oraz zebranie SQLState timeout/deadlock HANA są osobnym krokiem
