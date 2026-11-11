@@ -50,6 +50,8 @@ nawet podobny host dashboardu nie zastępuje odczytu Database ID z Cloud Central
 Z czystego checkoutu zatwierdzonego commita, JDK25/Maven3.9.16/Node24:
 
 ```powershell
+# Zweryfikowane wydanie tej sesji powstaje w odizolowanym worktree; główny target ma blokadę JAR.
+Set-Location D:\AInvoicer-cap-hana-01-build
 npm ci --prefix deploy
 npm test --prefix deploy
 npm run build:btp:smoke --prefix deploy
@@ -62,16 +64,22 @@ Get-FileHash deploy/build/ainvoicer_0.7.3.mtar -Algorithm SHA256
 
 Wydanie: **`deploy/build/ainvoicer_0.7.3.mtar`**, rollback: **`ainvoicer_0.7.2.mtar`**.
 Dokładne SHA i sourceCommit są w dzienniku oraz `hana-release-evidence.json`/`release-evidence.json`.
-Zatwierdzany zestaw z czystego `368314cdcec0d054f3e6a54b0b814418f94313f7`:
+Zatwierdzany zestaw z czystego `220a512874b1479aa016b30a820735003231502c`,
+`D:\AInvoicer-cap-hana-01-build\deploy\build`:
 
 | Plik | Bajty | SHA-256 |
 | --- | --- | --- |
-| `ainvoicer_0.7.3.mtar` | 67 563 132 | `c7108b044eaa2d13e937818eeccb5aa17fc053f59843a3a70779ea55ff5cf5a0` |
-| `ainvoicer_0.7.2.mtar` | 67 551 806 | `4a1164b7f947d456883fef4f8396f37b059b783314f9e72d1c5fca06b4beb501` |
+| `ainvoicer_0.7.3.mtar` | 67 562 982 | `be7bdbe6757f80e5498cbce033e560bb49d8c4dcd552bb7c181f8218c5bf2b81` |
+| `ainvoicer_0.7.2.mtar` | 67 551 656 | `aec601f9283bc92e6151562ea72c76e910eb9e00c813360a40b910f1988c8902` |
 
 Po odbudowie timestampy ZIP/JAR mogą zmienić SHA: nowe bajty wymagają ponownego zatwierdzenia.
 Archiwa i logi builda są ignorowane w Git; administrator zachowuje zatwierdzone pliki i evidence
 w kontrolowanym rejestrze wydania przed deploymentem.
+
+Wszystkie dalsze polecenia względne wykonywać z tego samego worktree wydania. Nie przenosić samych
+manifestów do checkoutu o innych bajtach wejść: LF/CRLF zmienia sourceFilesSha256 i wymaga własnego
+builda. Odrzucona kopia z INT-03 w głównym checkoutcie została odłożona pod
+`deploy/build/int-03-transfer-rejected/`; nie jest zestawem do zatwierdzenia deploymentu.
 
 Generator, nie pełny `mta.yaml`, jest wejściem deploymentu. Wariant ma trzy existing-service,
 HDI deployer bez publicznej trasy, brak CSV/hdbtabledata/undeploy listy, kolejność
@@ -123,7 +131,9 @@ database_id, plan i brak cudzych danych. Sama nazwa nie jest dowodem poprawnego 
 ```powershell
 # MUTACJA — wyłącznie po osobnej zgodzie na ten kontener i zatwierdzeniu kosztu.
 $hanaDatabaseId = Read-Host 'Potwierdzony Database ID z HANA Cloud Central'
-if ($hanaDatabaseId -notmatch '^[0-9a-fA-F-]{36}$') { throw 'Database ID wymaga weryfikacji administratora' }
+if ($hanaDatabaseId -notmatch '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$') {
+    throw 'Database ID wymaga weryfikacji administratora'
+}
 $hdiParamsPath = Join-Path ([IO.Path]::GetTempPath()) ('ainv-hdi-' + [guid]::NewGuid() + '.json')
 try {
     [IO.File]::WriteAllText($hdiParamsPath, (@{ database_id = $hanaDatabaseId } | ConvertTo-Json),
@@ -240,13 +250,15 @@ Po osobnej zgodzie na rollback aplikacji, z zachowanego i zweryfikowanego artefa
 
 ```powershell
 npm run verify:release --prefix deploy
-& $cfCliPath deploy deploy/build/ainvoicer_0.7.2.mtar -e deploy/btp-dev-eu20.mtaext
+& $cfCliPath deploy deploy/build/ainvoicer_0.7.2.mtar -e deploy/btp-dev-eu20.mtaext --version-rule ALL
 & $cfCliPath apps
 & $cfCliPath mta ainvoicer
 ```
 
 Nie przekazywać `--delete-services`. Zachować HDI i jego dane. MTA/HDI mogą pozostać w historii
 deploymentu; po rollback sprawdzić bindingi i brak działającego deployera, bez automatycznego kasowania.
+`--version-rule ALL` jawnie dopuszcza zatwierdzony downgrade0.7.3→0.7.2; opcję potwierdzono
+w lokalnym `cf deploy --help` multiapps3.12.0. Nie służy omijaniu zgody ani odtwarzaniu schematu.
 Smoke musi skutecznie ustawić identity-smoke=true/H2 i zachować mutacje OFF; ewentualne pozostałe
 bindingi/env rozstrzyga administrator przed dodatkowym restartem/unbind. Nie obiecywać, że downgrade
 MTA sam usunie wszystkie bindingi modułu. Smoke z nowym H2 nie przywraca poprzedniej pamięciowej bazy

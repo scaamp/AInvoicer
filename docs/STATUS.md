@@ -30,7 +30,10 @@ pozostają niezweryfikowane: **COST VERIFICATION BLOCKED**. LIVE A/B/principal H
 Runbook zawiera provisioning po zgodzie, konkretny MTAR/SHA, deployment, testy, rollback i outage.
 Harness wymaga osobno zatwierdzonego runnera z toolchain/bindingami w sieci CF; nie jest w produkcyjnym JAR.
 Kopia artefaktów między worktree została prawidłowo odrzucona przez hash wejść (49 plików tylko LF/CRLF);
-świeży build głównego checkoutu ma odrębny manifest/checksumy opisane w dzienniku.
+główny build dodatkowo blokuje zastany JAR. Wydanie **PASS** z czystego220a512 w izolowanym worktree
+`D:\AInvoicer-cap-hana-01-build`: Maven429/CF10/UI5 CF13/AppRouter10, smoke/HANA build i verify PASS.
+HANA MTAR SHA256 `be7bdbe6757f80e5498cbce033e560bb49d8c4dcd552bb7c181f8218c5bf2b81`;
+pozostałe manifesty/checksumy i ograniczenia opisano w dzienniku.
 
 [Dziennik CAP-HANA-01](journal/2026-11-11-cap-hana-01-first-persistence.md) ·
 [Wykonywalny runbook i bramki](guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md) ·

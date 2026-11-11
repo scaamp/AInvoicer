@@ -151,3 +151,12 @@ Usunięto także sprzeczną historyczną instrukcję wdrożenia pełnego MTA z p
 regresja obejmuje także zachowanie rekordów innego runu/scope po cleanup. Deploy `npm ci`/`npm test`:
 **27/27 PASS**, 0 npm advisories. Bieżące CI poprawionego HEAD jest osobnym warunkiem merge.
 Nie wykonano żadnej fazy IT na HANA ani operacji mutujących BTP.
+
+Final review poprawionego368314c: **PASS bez blockerów merge**. CI run43052235875 COMPLETED/SUCCESS,
+wszystkie kroki zielone, w tym osobny Azurite, QUnit/OPA i Inbox HTTP. Lokalnie pełny pipeline:
+Maven429 (423 PASS/6 skipped), CF JAR10, UI5 CF13, AppRouter10 i oba MTAR/evidence PASS.
+PR #8 scalono jako `e2696ab2bee91399423ce9565a7f467194894215` po kontroli expected head.
+Main lokalny zaktualizowano fast-forward, tree identyczne z368314c. GitHub oznaczył #7 merged przez
+zawartą historię; nie uruchamiano osobnego merge. Dalsza praca na branchu CAP-HANA-01 z nowego main:
+[dziennik i bieżące artefakty/bramki](2026-11-11-cap-hana-01-first-persistence.md),
+[runbook](../guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md). LIVE nadal NO-GO.

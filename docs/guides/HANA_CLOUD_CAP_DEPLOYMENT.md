@@ -8,6 +8,11 @@ tags: [ainvoicer, hana, hdi, deployment, security, int-03]
 
 # HANA Cloud / CAP — wariant przygotowany, niewdrożony
 
+Aktualny zestaw po final review/merge INT-03, dokładne artefakty i wykonywalne komendy:
+[runbook CAP-HANA-01](CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md) ·
+[dziennik CAP-HANA-01](../journal/2026-11-11-cap-hana-01-first-persistence.md).
+Poniższy opis pozostaje kontraktem generatora; historyczne checksumy INT-03 nie zastępują nowego wydania.
+
 **HANA Free Tier LIVE / HDI NOT CONFIGURED / CAP HANA NOT CONNECTED.**
 Build MTAR nie daje zgody na tworzenie HDI, deploy, restart, zapis do HANA/SAP ani KSeF.
 [As-built](HANA_CLOUD_FREE_TIER_SETUP.md) · [Audyt](../audits/2026-11-11-int-03-security-persistence.md) ·

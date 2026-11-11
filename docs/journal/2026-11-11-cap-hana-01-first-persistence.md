@@ -65,6 +65,8 @@ Automatyczny CI main po merge jest oddzielnym przebiegiem, nie deklaracją jego 
 Wykonano portable CF8.19.0 `target`, `services`, `marketplace -e hana`, `marketplace -e hana-cloud`,
 `apps`, `stacks`, `buildpacks`, `service ainvoicer-hana-dev`, `plugins`, `space dev --guid` oraz
 CAPI GET metadanych apps/droplets/current/processes/service_credential_bindings bez `/details`.
+`cf deploy --help` potwierdził obsługę `--version-rule ALL` dla jawnego rollbacku aplikacji;
+nie uruchamiano polecenia deploymentu.
 Nie pobierano `/env`, `cf env`, VCAP_SERVICES, service keys ani parametrów brokera z credentialami.
 
 | Obszar | Własny odczyt 11 listopada |
@@ -107,7 +109,7 @@ Npm UI5 ma zastane74 advisories toolingu; nie przeprowadzano szerokiej migracji 
 Ostrzeżenia CDS importu RAP, Mockito self-attach i Node DEP0190 nie przerwały builda; sterowane argumenty
 skryptów builda nie zawierają poświadczeń ani danych wejściowych użytkownika.
 
-## Artefakty offline
+## Pierwsze artefakty INT-03 — historyczne, niewybierane do nowego deploymentu
 
 Build z **czystego368314c**, workingTreeDirty=false, sourceFilesSha256
 `b1343aa72d795f2ba87f9da4942357116f57c462166f649abacafe2dca8ba8af`.
@@ -128,10 +130,44 @@ Próba skopiowania paczek do głównego checkoutu: walidacja archiwum PASS, ale 
 wejść **FAIL**. Porównanie wykazało49 plików różniących się wyłącznie LF/CRLF, bez zmiany treści;
 surowy sourceFilesSha256 głównego checkoutu to fea6d9825dbcf5621a2865b8f364bed509add2257bb1ed6e8c78218d1478c341.
 Nie zmieniano ani nie obchodzono walidatora. Docelowe paczki głównego checkoutu wymagają świeżego
-builda z czystego commita; wynik i docelowe checksumy zostaną dopisane po tym buildzie.
+builda z czystego commita. Próba `build:btp:smoke` w D:\AInvoicer na czystym220a512 zakończyła się
+**FAIL środowiskowym**: Maven clean nie mógł usunąć zastanego target/cap-java-exec.jar.
+Nie zatrzymywano zastanych procesów ani nie obchodzono clean. Utworzono izolowany detached worktree
+`D:\AInvoicer-cap-hana-01-build` z tego samego220a512 i uruchomiono pełny pipeline offline tam.
+Odrzucone kopie artefaktów w głównym checkoutcie przeniesiono do build/int-03-transfer-rejected;
+nie należy ich zatwierdzać ani wdrażać.
 Inspekcja archiwów: brak fixture, CSV, hdbtabledata, lokalnych konfiguracji/bindingów/test identity,
 node_modules/testów UI oraz auto-undeploy; deployment tylko existing-service. Azure adapter OFF,
 brak Object Store i BLOB, outbox persistent/inMemory OFF, SEND/INBOUND/SAP WRITE/sweeper OFF.
+
+## Docelowe wydanie CAP-HANA-01 — OFFLINE PASS
+
+W izolowanym `D:\AInvoicer-cap-hana-01-build` wykonano od nowa wszystkie sześć wymaganych poleceń:
+npm ci/test deploy, build:btp:smoke, verify:release, build:btp:hana, verify:hana — **PASS**.
+Maven429 (423 PASS/6 emulatora skipped), CF executable JAR10/10, UI5 CF13/13, AppRouter10/10,
+deploy27/27; model HANA14 tabel/6 indeksów/4 widoki. Żadnego połączenia z prawdziwą HANA.
+Nowy scan2637 plików i diff whitespace PASS. Lokalnych QUnit/OPA nie powtarzano w tej kopii:
+ich dowód to CI368314c, obejmujący identyczny kod Git. Faza IT nadal wyłącznie skompilowana.
+
+SourceCommit **`220a512874b1479aa016b30a820735003231502c`**, workingTreeDirty=false;
+sourceFilesSha256 **`b9171c48cad43e7b804b2b52042af2b1364c47b09562f3f2d274cd8f4e1d64ed`**.
+Zmiany dalszej dokumentacji nie wchodzą do hash wejść runtime; evidence zachowuje prawdziwy commit
+budowy zamiast udawać build późniejszego HEAD. Odbudowane paczki i manifesty wyłącznie w izolowanym
+worktree; główny target nadal nie jest katalogiem wydania.
+
+| Docelowy artefakt | Bajty | SHA-256 |
+| --- | --- | --- |
+| ainvoicer_0.7.3.mtar | 67562982 | `be7bdbe6757f80e5498cbce033e560bb49d8c4dcd552bb7c181f8218c5bf2b81` |
+| ainvoicer_0.7.2.mtar | 67551656 | `aec601f9283bc92e6151562ea72c76e910eb9e00c813360a40b910f1988c8902` |
+| HANA descriptor | — | `2c5ec8adf4a874ac1ba902a179e825548285d8fb141ea4177ea46a0bb98fffe4` |
+| CAP JAR | — | `1bf34b316850316f9f1f8e2d7d0e732a5e5e6c5d50b0b66610f76247386f4bd0` |
+| HDI payload | — | `bbf5d8ed95b41e5f37709100c488f48be7a69a8cf5f58f844e00f2eb5c327b99` |
+
+Extension pozostaje `4c6afb70c98f3f4bbe851865bdd8eb0c4f2ebd5a28b37d1b31419634fd3405b7`.
+Aktualne logi/evidence: `D:\AInvoicer-cap-hana-01-build\deploy\build\cap-hana-01-smoke.log`,
+`cap-hana-01-hana.log`, `release-evidence.json`, `hana-release-evidence.json`.
+Kolejny dokumentacyjny commit i draft PR CAP-HANA-01 nie zmieniają modeli, guardów ani konfiguracji
+runtime. CI main/nowego PR należy odczytywać jako osobne wyniki; nie zastępują zgody LIVE.
 
 ## Blockery / Next Steps
 
