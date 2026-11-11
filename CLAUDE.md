@@ -5,6 +5,10 @@
 **Najpierw przeczytaj i stosuj [AGENTS.md](./AGENTS.md).**
 To jedyne źródło prawdy o architekturze, granicach komponentów, bezpieczeństwie KSeF, testach i sposobie pracy. Ten plik zawiera jedynie dodatkowe wskazówki dla Claude Code. Jeżeli coś jest sprzeczne, traktuj AGENTS.md jako nadrzędne, o ile bieżące polecenie użytkownika nie ustala inaczej.
 
+## BLOB-LAB-01 — zastrzeżona praca samodzielna właściciela
+
+Zanim zmienisz cokolwiek związanego z edukacyjnym BLOB/HDI/XML/PDF, przeczytaj [BLOB-LAB-01](docs/guides/BLOB_LAB_01_OWNER_LED_HDI.md). **Nie przejmuj autonomicznie implementacji, HDI provisioningu, deployu ani testów.** Właściciel chce wykonać je sam; pomagaj jedynie wyjaśnieniami, review, diagnostyką i małymi, wyraźnie zamówionymi fragmentami kodu. Nie utożsamiaj zgody na snippet z uprawnieniem do realizacji kolejnych etapów. Osobny KSEF-STOR-02 nie jest w ten sposób zatwierdzony.
+
 ## Kontekst w 30 sekund
 
 - Repo: `scaamp/AInvoicer`; główna gałąź rozwoju: `main` (zawiera dotychczasowe `java-cap-ksef`). Nowe feature z `main`. Oryginalny projekt: `archive/original-ainvoicer-2026-10-29`. Konfigurację gałęzi abapGit w SAP sprawdzaj oddzielnie według AGENTS.md.
