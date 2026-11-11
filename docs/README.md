@@ -8,6 +8,9 @@ tags: [ainvoicer, dokumentacja]
 
 # AInvoicer — baza wiedzy projektu
 
+**Owner-led learning:** [BLOB-LAB-01 — samodzielne ćwiczenie CAP Java / HDI / HANA BLOB](guides/BLOB_LAB_01_OWNER_LED_HDI.md). Codex i Claude Code nie mogą realizować tego laboratorium autonomicznie; mogą pomagać wyłącznie w zakresie wskazanym przez właściciela. Laboratorium nie zostało rozpoczęte ani zatwierdzone do LIVE deployu.
+
+
 **CAP-HANA-01 LIVE: zatwierdzony deployment przeszedł merge, ale staging deployera zakończył się ERROR.**
 Deployer utworzony i przypięty do HDI; CAP/AppRouter pozostają na poprzednim runtime, CAP HANA NOT DEPLOYED.
 Naprawa przenośności ZIP Windows→Unix odbudowana i zweryfikowana offline, nowe hashe w runbooku;
