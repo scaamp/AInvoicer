@@ -216,6 +216,22 @@ Walidator odrzuca dodatkowe usługi/env, mutating flags, UI SEND/Inbox opt-in, n
 lokalne bindingi, `application-test.yaml` i bibliotekę `java-security-test` w JAR.
 Nie pakuje narzędzi diagnostycznych/testów do runtime. Zależności HANA w JAR nie tworzą HANA/HDI.
 
+**Własny finalny build 11 listopada08:39 CET: PASS**, czysty commit
+`ba2f92a57e9230b118a85b3b4db135f7c1fbf213`, `workingTreeDirty=false`, 67 511 674 bajty.
+SHA256 MTAR: `6cf4b86f9aa8000dcef0276c2cd4af076ae26a5000362ac65e75abd611411286`.
+`verify:release` potwierdził archiwum, payloady i niezmienione wejścia.
+Weryfikacja lokalna: Maven373/373, executable CF JAR10/10, deploy19/19,
+AppRouter10/10, UI5 CF13/13, runner4/4, QUnit112/659, OPA21/150 i lokalny inbox E2E16/73 PASS.
+Pełny [CI dla ba2f92a](https://github.com/scaamp/AInvoicer/actions/runs/42980498482): **SUCCESS**,
+łącznie z rzeczywistym loopback HTTP CAP/UI5, negatywami A/B i restartem.
+Późniejsze commity wyłącznie dokumentacyjne nie zmieniają tych wejść/payloadu;
+manifest lokalnego artefaktu nadal wskazuje rzeczywisty commit jego budowy.
+Aktualny wynik CI konkretnego HEAD jest w [checks PR7](https://github.com/scaamp/AInvoicer/pull/7/checks).
+
+Kontrakt CAPI kolektora sprawdzono względem
+[Cloud Controller API3.233.0](https://v3-apidocs.cloudfoundry.org/version/3.233.0/index.html):
+użyte zasoby są odczytami GET; nie oznacza to ponownej weryfikacji ich uprawnień LIVE.
+
 ### cflinuxfs5 / SAP Java Buildpack / JDK25
 
 Oficjalny komunikat SAP podaje GA cflinuxfs5 na **9 listopada2026** i obsługę systemowych
