@@ -20,7 +20,7 @@ Nie uruchomiono HDI deployera, CAP/AppRouter nie zostały zaktualizowane. HANA0.
 Windows adm-zip zapisał creator10 i katalogi0666; Go archive/zip dla creator10 zwraca tryb000.
 Generator normalizuje teraz wszystkie payloady CF do Unix creator3, plików0644 i katalogów0755;
 walidator odrzuca nieprzenośne metadane. Regresja Go1.26.10 w CI czyta prawdziwe ZIP-y,
-lokalnie bez Go jest jawnie skipped. Odbudowa/nowe SHA/verify PASS; CI PENDING. Nie wykonywać retry d110c171.
+lokalnie bez Go jest jawnie skipped. Odbudowa/nowe SHA/verify oraz CI1ea445a PASS. Nie wykonywać retry d110c171.
 Przed nowym deployem potrzebna osobna zgoda na abort tej operacji i nowe bajty MTAR.
 
 Podczas poleceń MultiApps usuwać z procesu **DEBUG i CF_TRACE**. `DEBUG=1` uruchamia HTTP trace
@@ -31,8 +31,11 @@ Odczyty/logi filtrować przed zapisem/wyświetleniem. Ustawienia te dotyczą pro
 
 **VERIFIED OFFLINE:** czysty sourceCommit4630f89, oba buildy/verify PASS; Maven423 PASS/6 skipped,
 CF JAR10/10, UI5 CF13/13, AppRouter10/10. Deploy tests31 PASS/1 Go skipped lokalnie;
-Go1.26.10 ma być niezależnie wykonany w CI. Python zipfile odczytał rzeczywisty MTAR Windows:
-wszystkie payloady Unix creator3, pliki0644, katalogi0755. CI tego zestawu PENDING.
+Go1.26.10 niezależnie wykonany w CI. Python zipfile odczytał rzeczywisty MTAR Windows:
+wszystkie payloady Unix creator3, pliki0644, katalogi0755.
+[CI43075836717](https://github.com/scaamp/AInvoicer/actions/runs/43075836717) dla1ea445a:
+COMPLETED/SUCCESS, wszystkie kroki SUCCESS, także Go reader, oba MTAR, Azurite, QUnit/OPA i Inbox HTTP.
+Późniejszy commit zapisuje wyłącznie ten wynik dokumentacyjny, bez zmiany wejść runtime/CI.
 
 | Plik do zatwierdzenia | Bajty | SHA-256 |
 | --- | --- | --- |
@@ -41,7 +44,7 @@ wszystkie payloady Unix creator3, pliki0644, katalogi0755. CI tego zestawu PENDI
 | `D:\AInvoicer\deploy\btp-dev-eu20-hana-first.mtaext` | 599 | `f11b31967d12cc3f587b55a39aaf385791503b8f2b11af472f2d03bd37cfd14e` |
 
 Dotychczasowa zgoda została wykorzystana na poprzednie bajty. **NO-GO wykonawcze do nowej zgody**
-na poniższe operacje i hashe. W propozycji jawnie wyłączamy automatyczne retry (--retries0,
+na poniższe operacje i hashe. W propozycji jawnie wyłączamy automatyczne retry (`--retries 0`,
 obsługa potwierdzona cf deploy --help); nie uruchomiono tych poleceń:
 
 ```powershell

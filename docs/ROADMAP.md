@@ -23,7 +23,8 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
   package.json permission denied, Windows ZIP creator10/Go mode000. Naprawiona normalizacja Unix3/0644/0755,
   lokalnie31 PASS/1 Go skipped, Go1.26.10 dodany wyłącznie jako niezależny czytnik ZIP w CI.
   Nowe MTAR z czystego4630f89/verify/Python metadata PASS, hashe w runbooku.
-  CI i kolejna zgoda PENDING. HDI1 binding do STOPPED deployera, CAP nadal bez HDI.
+  CI1ea445a SUCCESS (także niezależny Go reader); kolejna zgoda PENDING.
+  HDI1 binding do STOPPED deployera, CAP nadal bez HDI.
   Historia poprzedniej naprawy:
   Naprawione mapowanie typów projektu do typów CF,29/29 testów wraz z SAP MBT mtad-gen PASS.
   Odbudowa obu MTAR/nowe SHA/verify PASS z czystego e2df55a; Maven423 PASS/6 skipped,

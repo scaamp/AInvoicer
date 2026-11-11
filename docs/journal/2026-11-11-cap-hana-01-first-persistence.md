@@ -463,6 +463,17 @@ narzędziem testowym w CI; lokalnie bez Go ten jeden test jest jawnie skipped. J
 workflow pozostają PENDING do osobnego odczytu; poprzednie SUCCESS658dbf2 nie potwierdza tej naprawy.
 
 Nowy zestaw gotowy offline, nadal **HANA NOT DEPLOYED**. Potrzebna nowa zgoda na abort d110c171…
-i nowe bajty196b9b8c…/extension f11b3196… . Proponowany kolejny deploy ma --retries0, aby zatrzymać
+i nowe bajty196b9b8c…/extension f11b3196… . Proponowany kolejny deploy ma `--retries 0`, aby zatrzymać
 się po pierwszym błędzie zamiast3 domyślnych ponowień; możliwość potwierdzono cf deploy --help.
 Dokładne przyszłe polecenia/hashe są na początku runbooka. Nie wykonano żadnego z tych poleceń.
+
+### Końcowy odczyt CI poprawki ZIP
+
+**VERIFIED OFFLINE:** [CI43075836717](https://github.com/scaamp/AInvoicer/actions/runs/43075836717)
+dla dokładnego HEAD `1ea445aa4179aa466bf7c60aaa20f851969b98f5`: COMPLETED/SUCCESS, wszystkie kroki
+SUCCESS. Go1.26.10 faktycznie uruchomił niezależny archive/zip reader (nie skipped): Windows creator10
+daje000, znormalizowany plik0644/katalog0755. Oba buildy/verify MTAR, pełna regresja, Azurite,
+QUnit/OPA i Inbox HTTP SUCCESS. Późniejszy commit uzupełnia wyłącznie dokumentację tego wyniku;
+wejścia runtime/workflow/testów pozostają identyczne. Nie jest to dowód stagingu/HANA/persystencji LIVE.
+Końcowy CAPI read potwierdził nadal stare droplety CAP/AppRoutera1/1, deployer STOPPED/0, HDI1 app
+binding i0 key bindings. Nowej mutacji CF nie wykonywano; potrzebna zgoda na nowy zestaw196b9b8c… .

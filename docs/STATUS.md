@@ -28,7 +28,9 @@ niezależny czytnik Go1.26.10 wymagany w CI. Czysta odbudowa4630f89 i verify obu
 Python potwierdził Unix3/0644/0755 w rzeczywistych payloadach. Nowe0.7.3 SHA256
 `196b9b8cc85843f08b200aba9455e6f1c8b725a9ad3b765a3f883ba68b621570`, rollback0.7.2
 `00e31c977eb0d29cb86a4f6b7ecbdf115cfaf1a489f247955545b317f847f962`.
-CI oraz nowa zgoda na abort d110c171…/nowy deployment PENDING.
+[CI43075836717](https://github.com/scaamp/AInvoicer/actions/runs/43075836717) dla kodu HEAD1ea445a
+**SUCCESS**, także niezależny Go ZIP reader i pełna regresja. Nowa zgoda na abort d110c171…/
+deployment196b9b8c… z `--retries 0` pozostaje PENDING.
 Nie wykonano nowego abort/retry/redeploy, DML ani restartu CAP. Stan historyczny poniżej.
 
 **CAP-HANA-01 — NO-GO, deployment odrzucony przed stagingiem (2026-11-11).**

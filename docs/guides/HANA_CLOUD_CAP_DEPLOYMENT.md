@@ -12,7 +12,7 @@ tags: [ainvoicer, hana, hdi, deployment, security, int-03]
 Merge przeszedł; staging deployera zakończył się ERROR (`package.json: permission denied`).
 HDI ma1 app binding do STOPPED deployera bez trasy; CAP nadal nie ma HDI i działa na starym droplecie.
 Naprawa metadanych ZIP creator10→Unix3/0644/0755 odbudowana i zweryfikowana offline.
-Nowe hashe są na początku runbooka; CI oraz osobna zgoda na nowy deployment PENDING.
+Nowe hashe są na początku runbooka; CI poprawki1ea445a SUCCESS, osobna zgoda na nowy deployment PENDING.
 Bez DML/restartu CAP. Aktualne dowody są na końcu dziennika; starsze stany poniżej są historią.
 
 **NO-GO dla dotychczasowych artefaktów:** pierwsza próba została odrzucona przed stagingiem przez
