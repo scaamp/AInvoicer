@@ -14,9 +14,13 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
 - [x] **CAP-HANA-01 — przygotowanie offline:** branch z aktualnego main, poprawiony harness, świeży CF
   preflight, buildy MTAR i [runbook](guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md) z testami/rollbackiem.
   [Dowody i ograniczenia](journal/2026-11-11-cap-hana-01-first-persistence.md).
-- [ ] **CAP-HANA-01 LIVE — NO-GO:** HDI NOT CONFIGURED, CAP HANA NOT CONNECTED.
-  COST VERIFICATION BLOCKED dla hana/hdi-shared; Database ID/mapowanie, runner CF/testy i staging,
-  A/B/principal oraz osobne zgody HDI/deploy/DDL/DML/restart nadal wymagane.
+- [x] **HDI provisioning:** właściciel utworzył `ainvoicer-db`; **VERIFIED LIVE** CF `hana/hdi-shared`,
+  create succeeded, 0 bindingów, free=true, database_id z brokera. Cloud Central RUNNING/zgodny ID
+  **OWNER-REPORTED**. [Pełna historia i ograniczenia PAYG](journal/2026-11-11-hdi-shared-provisioning.md).
+- [ ] **CAP-HANA-01 LIVE — GO do zatwierdzenia kontrolowanego DEV / NOT DEPLOYED:**
+  MTAR/SHA i CI zweryfikowane offline; propozycja osobnego extension przypina wszystkie moduły do fs4.
+  CAP HANA NOT CONNECTED. Wymagana zgoda na konkretny deploy/DDL/bindingi/przerwę;
+  runner, DML/restart, staging, LIVE A/B/DCL/principal i Costs and Usage nadal PENDING.
 - [ ] **KSEF-STOR-02 — decyzja właściciela:** [ADR-0008](decisions/ADR-0008-document-storage-dev-test-proposal.md)
   proponuje limitowany BLOB DEV/TEST po CAP-HANA-01; brak implementacji. Object Store nadal OFF bez zgody kosztowej.
 

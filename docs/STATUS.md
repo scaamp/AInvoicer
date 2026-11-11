@@ -23,11 +23,17 @@ CI osobno zaliczył Azurite, QUnit/OPA oraz Inbox HTTP. PR #7 GitHub oznaczył m
 nie wykonywano jego niezależnego merge. Main lokalny zsynchronizowany; nowy branch
 `feature/cap-hana-01-first-persistence` bazuje na e2696ab.
 
-**HANA Free Tier istnieje / HDI NOT CONFIGURED / CAP HANA NOT CONNECTED / NO-GO LIVE.**
-Świeży read-only CF potwierdza hana-free, brak oferty hana/hdi-shared i kontenera/bindingu HDI,
-CAP/AppRouter1/1 z historycznymi dropletami fs4. Bieżący SQL health/Database ID i koszt planu
-pozostają niezweryfikowane: **COST VERIFICATION BLOCKED**. LIVE A/B/principal H01 PENDING.
-Runbook zawiera provisioning po zgodzie, konkretny MTAR/SHA, deployment, testy, rollback i outage.
+**CAP-HANA-01: HDI VERIFIED LIVE / CAP HANA NOT CONNECTED / NOT DEPLOYED.**
+Nowy odczyt CF potwierdził `ainvoicer-db`, `hana/hdi-shared`, `create succeeded`, 0 bindingów
+(również service keys), `free=true`. Broker HDI zwraca jawny Database ID; właściciel potwierdził
+zgodny ID i RUNNING w Cloud Central (**OWNER-REPORTED**). Broker HANA: `serviceStopped=false`.
+Plan jest free w CF i SAP Help; Costs and Usage/indywidualna stawka PAYG pozostają **PENDING**.
+CAP/AppRouter1/1 nadal na starych dropletach fs4, bez HANA; bieżący JDBC/SQL **PENDING**.
+**GO do zatwierdzenia kontrolowanego deploymentu DEV**, bez zgody wykonawczej i bez DML.
+Proponowany osobny extension `deploy/btp-dev-eu20-hana-first.mtaext` przypina trzy moduły do fs4;
+nie zmienia istniejącego extension ani MTAR. fs4 jest deprecated; staging i migracja fs5 to osobne wyniki.
+LIVE A/B/DCL/principal H01 i końcowy security sign-off pozostają **PENDING**.
+Runbook zawiera konkretny MTAR/SHA, deployment, testy, rollback i outage.
 Harness wymaga osobno zatwierdzonego runnera z toolchain/bindingami w sieci CF; nie jest w produkcyjnym JAR.
 Kopia artefaktów między worktree została prawidłowo odrzucona przez hash wejść (49 plików tylko LF/CRLF);
 główny build dodatkowo blokuje zastany JAR. Wydanie **PASS** z czystego220a512 w izolowanym worktree
@@ -39,8 +45,11 @@ pozostałe manifesty/checksumy i ograniczenia opisano w dzienniku.
 [Wykonywalny runbook i bramki](guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md) ·
 [Audyt INT-03](audits/2026-11-11-int-03-security-persistence.md) ·
 [Propozycja ADR-0008, bez implementacji](decisions/ADR-0008-document-storage-dev-test-proposal.md).
-Nie wykonano HDI creation, deploy/restart, DDL/DML HANA, SAP WRITE ani LIVE KSeF; storage i oba outbox OFF.
-Następny krok właściciela: koszt/dostępność hdi-shared + Database ID, potem osobne zgody HDI/deploy/testy.
+Właściciel utworzył HDI ręcznie; agent wykonał tylko odczyty CF i testy offline.
+[Historia provisioningu i kosztów](journal/2026-11-11-hdi-shared-provisioning.md).
+Nie wykonano deploy/restart, DDL/DML HANA, SAP WRITE ani LIVE KSeF; storage i oba outbox OFF.
+Następny krok właściciela: zatwierdzić dokładną operację z runbooka (MTAR, nowy extension, fs4,
+przerwa aplikacji i jawne ryzyka security), potem osobno runner/testy/DML/restart.
 Historyczne wpisy poniżej opisują stan z wcześniejszych dat.
 
 **CAP-07B.2 LIVE (2026-11-10) — FUNCTIONAL PASS / SECURITY ACCEPTANCE PENDING.**

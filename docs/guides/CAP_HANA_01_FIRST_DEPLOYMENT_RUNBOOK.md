@@ -2,44 +2,51 @@
 title: "CAP-HANA-01 — pierwsze HDI i kontrolowany deployment CAP"
 date: 2026-11-11
 type: guide
-status: approval-gate-no-go
+status: preflight-ready-deployment-approval-pending
 tags: [ainvoicer, cap-hana-01, hana, hdi, cloud-foundry, deployment, recovery]
 ---
 
 # CAP-HANA-01 — runbook do osobnego zatwierdzenia
 
-**NO-GO dla LIVE.** Przygotowanie offline nie upoważnia do provisioningu, deploymentu, DDL/DML,
-restartu, zmian IAM/Destination/routingu ani włączenia KSeF. Wszystkie mutujące komendy poniżej
-są procedurą przyszłą. Nie wykonano ich w tej sesji.
+**GO do zatwierdzenia kontrolowanego pierwszego deploymentu DEV; NOT DEPLOYED.**
+To ocena przygotowania konkretnej operacji, nie zgoda wykonawcza ani końcowy security sign-off.
+Właściciel musi osobno zatwierdzić polecenie w §4, DDL/bindingi i przerwę CAP/AppRoutera.
+LIVE DML, restart testowy, rollback i KSeF nie są objęte tą zgodą. Brak zgody = nie uruchamiać deployu.
 
 [Wariant HANA i guardy](HANA_CLOUD_CAP_DEPLOYMENT.md) ·
 [Dziennik i checksumy tego wydania](../journal/2026-11-11-cap-hana-01-first-persistence.md) ·
 [Security acceptance](CAP_07D_SECURITY_ACCEPTANCE.md) ·
 [ADR-0007](../decisions/ADR-0007-cap-persistence-hana-cloud.md).
 
-## Stan początkowy i bramki
+## Stan po ręcznym provisioningu HDI i bramki
 
 Świeży read-only CF inventory 11 listopada: EU20 API `https://api.cf.eu20-001.hana.ondemand.com`,
 org `National Center for Cryptography_dev-v2xzij9s`, space `dev`. Istnieją `ainvoicer-auth`
-(`xsuaa/application`), `ainvoicer-destination` (`destination/lite`) i nieprzypięta
-`ainvoicer-hana-dev` (`hana-cloud/hana-free`). Oferta `hana` jest niewidoczna, `ainvoicer-db` nie istnieje.
+(`xsuaa/application`), `ainvoicer-destination` (`destination/lite`), nieprzypięta
+`ainvoicer-hana-dev` (`hana-cloud/hana-free`) i nowy `ainvoicer-db` (`hana/hdi-shared`).
+**VERIFIED LIVE:** HDI create succeeded 16:49:24Z, 0 credential bindings (aplikacje i service keys),
+plan free=true; jawny parametr brokera database_id zgodny z bazą wskazaną przez właściciela.
+**OWNER-REPORTED:** w tej sesji właściciel potwierdził RUNNING i zgodny Database ID w Cloud Central.
+Broker HANA zwraca serviceStopped=false; nie jest to test SQL.
 CAP i AppRouter STARTED 1/1, tylko dwa bindingi identity/Destination, droplety z 9 listopada bez zmiany
 checksum względem CAP-07D. To potwierdza brak przejścia CAP na HDI, a nie bieżący SQL health HANA.
 
-Historyczny inventory efektywnych env potwierdził H2 identity-smoke. W tej sesji nie pobierano
-`cf env`, endpointu `/env`, pełnego `VCAP_SERVICES`, service keys ani parametrów brokera z credentialami.
-Aktualnych nadpisań env nie potwierdzono niezależnie; administrator sprawdza wyłącznie bezpieczne
-właściwości w Cockpit. `create succeeded` usługi HANA to wynik provisioningu z 08:57 UTC, nie ping SQL.
-Ostatni SQL wersji i parametry bazy to dowód właściciela opisany w [as-built](HANA_CLOUD_FREE_TIER_SETUP.md).
+**VERIFIED LIVE:** osobny CAPI GET `environment_variables` potwierdza profil cf, identity-smoke=true,
+SEND/WRITE/sweeper=false, bez obecnych kluczy nadpisania JAVA_OPTS/JDK_JAVA_OPTIONS/JAVA_TOOL_OPTIONS,
+SPRING_DATASOURCE_*, SPRING_CONFIG_*, CDS_SECURITY_* i SPRING_APPLICATION_JSON.
+To flagi konfiguracyjne, nie pomiar nowego runtime. Nie pobierano `cf env`, systemowego `/env`,
+pełnego VCAP_SERVICES, credentiali bindingu ani service keys. Wybrane niesekretne parametry brokera
+odczytano z `/parameters`, bez publikacji surowej odpowiedzi.
+[Historia HDI, mapowanie i koszty](../journal/2026-11-11-hdi-shared-provisioning.md).
 
 | Klasa | Warunek przed wykonaniem |
 | --- | --- |
-| COST | **COST VERIFICATION BLOCKED**: potwierdzić dla tego konta dostępność i rozliczenie `hana/hdi-shared`; dokumentacja ogólna nie wystarcza. Bez płatnego planu HANA/Object Store. |
-| INFRA | Administrator potwierdza Database ID w HANA Cloud Central, bieżący status RUNNING i mapowanie do właściwego org/space; zatwierdza dedykowany pusty HDI. |
-| SECURITY | LIVE A/B, DCL i request-correlated principal H01 nadal PENDING. Właściciel musi rozstrzygnąć tę bramkę przed ekspozycją nowego runtime; workflow KSeF pozostaje OFF. |
-| RUNTIME | Zatwierdzić staging/stack i sprawdzić efektywne bezpieczne flagi, brak nadpisań Spring oraz brak credentiali transportów; wybrać środowisko wykonania IT. |
+| COST | VERIFIED LIVE plan free=true i quota FREE_QUOTA4096 MB; bez nowych usług/entitlementów. Costs and Usage/stawka kontraktowa PAYG PENDING; brak gwarancji kosztów całego konta. |
+| INFRA | HDI/database_id/org/space VERIFIED LIVE; Cloud Central RUNNING/zgodny ID OWNER-REPORTED. Nie wykonywano katalogowego SQL: pusty schemat nie jest niezależnie potwierdzony. |
+| SECURITY | LIVE A/B, DCL i request-correlated principal H01 PENDING. Dotychczasowy indeks CAP publiczny: FAIL; poprawka zawarta w nowym JAR. Zgoda dotyczy wyłącznie kontrolowanego DEV z tymi jawnymi ograniczeniami; końcowa akceptacja nadal wstrzymana. |
+| RUNTIME | Propozycja: wszystkie moduły jawnie fs4, bez migracji istniejących aplikacji. Nowy staging/JDBC/guardy i efektywne flagi sprawdzić po deployu. Runner IT nadal niedostępny. |
 | DATABASE | SQLState timeout/deadlock, lock/CAS/lease oraz restart/reconnect niepotwierdzone na HANA. Są przedmiotem przyszłych testów. |
-| PERMISSION | Oddzielne zgody na HDI, konkretny MTAR/SHA z DDL/bindingami/przerwą, syntetyczne DML, restart aplikacji i ewentualny stop/start bazy oraz rollback. |
+| PERMISSION | HDI utworzony przez właściciela. PENDING zgoda na konkretny MTAR/SHA/extension z DDL/bindingami/przerwą; osobno syntetyczne DML, restart, ewentualny stop/start bazy i rollback. |
 
 Brak planu w CF nie jest dowodem braku planu w global account. Nie zmieniać entitlementów automatycznie.
 Nie podawać DBADMIN do CAP. Database ID nie jest automatycznie GUID-em service instance CF;
@@ -116,49 +123,49 @@ Node24.22.1 dla fs4/fs5; nadal wymagany pomiar rzeczywistego stagingu SAP.
 CAP wymaga SapMachine25.+; AppRouter dopuszcza22/24, deployer wymaga24, HDI deploy5.7.0 z locka.
 Domyślny buildpack Node22 nie spełnia deployera: staging musi uszanować `engines.node=^24.0.0`.
 
-Nie zmieniać stacka niejawnie. Descriptor HANA nie przypina stacka: istniejące aplikacje mogą zachować
-fs4, nowy deployer otrzymać domyślny fs5. Plan tych trzech modułów musi być zatwierdzony przed deployem.
+Nie zmieniać stacka niejawnie. Sam descriptor HANA nie przypina stacka. Propozycja osobnego extension
+z §4 jawnie wybiera fs4 dla trzech modułów i usuwa zależność od domyślnego stacka nowej aplikacji.
+Oryginalny extension bez pinów nie zastępuje nowego w zatwierdzanej operacji HANA.
 Jeśli potrzebna jest zmiana deskryptora/extension, przygotować ją offline, wykonać review i ponownie
 zatwierdzić zestaw plików oraz checksumy. Nie traktować lokalnego Microsoft JDK jako dowodu SapMachine.
 
-## 3. Utworzenie HDI — TYLKO po osobnej zgodzie i koszcie
+## 3. HDI już istnieje — nie powtarzać provisioningu
 
-Najpierw administrator udostępnia zatwierdzony bezpłatny `hana/hdi-shared`, jeśli nie jest dostępny.
-Nie wybierać płatnego `hana-cloud/hana` jako obejścia. Następnie ręcznie potwierdzić Database ID,
-mapowanie i brak `ainvoicer-db`. Jeżeli kontener już istnieje, **nie tworzyć ponownie**: ustalić właściciela,
-database_id, plan i brak cudzych danych. Sama nazwa nie jest dowodem poprawnego celu.
-
-```powershell
-# MUTACJA — wyłącznie po osobnej zgodzie na ten kontener i zatwierdzeniu kosztu.
-$hanaDatabaseId = Read-Host 'Potwierdzony Database ID z HANA Cloud Central'
-if ($hanaDatabaseId -notmatch '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$') {
-    throw 'Database ID wymaga weryfikacji administratora'
-}
-$hdiParamsPath = Join-Path ([IO.Path]::GetTempPath()) ('ainv-hdi-' + [guid]::NewGuid() + '.json')
-try {
-    [IO.File]::WriteAllText($hdiParamsPath, (@{ database_id = $hanaDatabaseId } | ConvertTo-Json),
-        [Text.UTF8Encoding]::new($false))
-    & $cfCliPath create-service hana hdi-shared ainvoicer-db -c $hdiParamsPath
-    if ($LASTEXITCODE -ne 0) { throw 'Provisioning przerwany; sprawdź stan przed ponowieniem' }
-} finally { Remove-Item -LiteralPath $hdiParamsPath -ErrorAction SilentlyContinue }
-& $cfCliPath service ainvoicer-db
-```
-
-Wynik musi być `create succeeded`, offering `hana`, plan `hdi-shared`, właściwy Database ID potwierdzony
-bez ujawniania credentiali. Provisioning jest asynchroniczny: czekać na wynik z rozsądnym odstępem,
-nie ponawiać create przy timeout/niejednoznacznym wyniku. Nie tworzyć service key. Bindingi tworzy
-zatwierdzony MTA w następnym kroku; nie wywoływać dodatkowego ręcznego bind/restage.
+**VERIFIED LIVE:** `ainvoicer-db`, `hana/hdi-shared`, create succeeded, bez bindingów.
+Pełna sekwencja Cockpit, decyzja kosztowa i rozróżnienie dowodów:
+[dziennik HDI](../journal/2026-11-11-hdi-shared-provisioning.md).
+Nie wykonywać create-service, zmian entitlementów, service keys ani DBADMIN.
+W razie zmiany/niezgodności Database ID lub właściciela kontenera przerwać preflight.
+Pierwszy HDI deployer musi raportować brak nieoczekiwanych istniejących obiektów i destrukcyjnych zmian.
 
 ## 4. Deployment — druga osobna bramka
 
-Przed zgodą: zatwierdzone oba MTAR/SHA i extension `deploy/btp-dev-eu20.mtaext`, puste HDI, bieżąca HANA,
-plan stacków, security acceptance/ryzyka oraz akceptacja utraty H2 i przerwy w sesjach. Zabezpieczyć
-rollback artefaktu smoke przed rozpoczęciem. Poprzedni droplet nie jest kopią MTAR.
+Przed zgodą: zatwierdzone oba MTAR/SHA i nowy, odrębny extension
+`D:\AInvoicer\deploy\btp-dev-eu20-hana-first.mtaext`, dedykowany HDI, bieżąca HANA,
+plan stacków, jawne ryzyka security i akceptacja utraty H2/przerwy w sesjach.
+Extension SHA-256: `f11b31967d12cc3f587b55a39aaf385791503b8f2b11af472f2d03bd37cfd14e`.
+Zawiera tylko ten sam host prefix oraz `stack: cflinuxfs4` dla wszystkich trzech modułów.
+Oryginalny `btp-dev-eu20.mtaext` i oba MTAR pozostają niezmienione; nowy extension jest osobnym
+wejściem deploymentu do zatwierdzenia, spoza historycznego sourceFilesSha256 MTAR.
+Nie kopiować MTAR do głównego checkoutu. Polecenie wykonuje się z worktree wydania:
+`D:\AInvoicer-cap-hana-01-build`. Zabezpieczyć rollback smoke przed rozpoczęciem;
+poprzedni droplet nie jest kopią MTAR.
+
+Plan: CAP SapMachine25.+/SAP Java buildpack2.76, AppRouter Node22 lub24/buildpack1.9.6,
+HDI deployer Node24/buildpack1.9.6 — wszystko fs4. fs4 jest DEPRECATED, jawnie zachowany
+na pierwszy deploy; nie oznacza akceptacji długoterminowej. Node1.9.6 upstream zawiera Node24.22.1
+na fs4/fs5, ale dokładne wersje stagingu SAP pozostają PENDING. AppRouter ma zakres22||24,
+więc nie deklarować Node24 bez pomiaru. Migracja fs5/JDK25 wymaga osobnego stagingu/review.
+
+Rekomendacja **GO do zatwierdzenia kontrolowanego DEV** opiera się na gotowych artefaktach i nowym
+HDI; nie zamyka LIVE A/B/principal. Obecny runtime ma publiczny indeks (25/26 negatywnych prób PASS,
+1 FAIL); nowy JAR zawiera poprawkę i tenant gate. Po deployu odmowy anonimowe są obowiązkową bramką.
+Brak dowodu wycieku danych między tenantami w tej sesji nie zalicza testu izolacji.
 
 ```powershell
 # MUTACJA — dopiero po zatwierdzeniu dokładnych bajtów MTAR i extension.
 npm run verify:hana --prefix deploy
-& $cfCliPath deploy deploy/build/ainvoicer_0.7.3.mtar -e deploy/btp-dev-eu20.mtaext
+& $cfCliPath deploy deploy/build/ainvoicer_0.7.3.mtar -e D:\AInvoicer\deploy\btp-dev-eu20-hana-first.mtaext
 # Odczyt diagnostyczny po zakończeniu lub błędzie:
 & $cfCliPath mta-ops
 & $cfCliPath mta ainvoicer
@@ -191,6 +198,17 @@ Mavena, źródeł testowych ani gwarantowanego JDK/Node. Administrator musi wcze
 przypiętym SDK MF oraz zarządzanymi bindingami HDI i XSUAA. Nie tworzyć nowego publicznego mikroserwisu,
 service key, tunelu ani reguły sieciowej jako skrótu. **RUNTIME/PERMISSION BLOCKED**, dopóki runner
 nie jest dostępny i binding nie jest dostarczony przez platformę. Nie kopiować VCAP na laptop lub do repo.
+
+Najmniejszy wariant do przygotowania, jeśli pełny runner nadal nie istnieje (**PENDING, nie jest
+gotowym poleceniem**): zbudować offline oddzielny pakiet skompilowanego `HanaPersistenceIT`,
+konfiguracji testowej, zależności i launchera JUnit, następnie uruchomić go przez zatwierdzony
+mechanizm task/SSH w istniejącym kontenerze CAP z platformowym HDI/XSUAA. Nie wymaga Mavena
+w produkcyjnym JAR, nowego endpointu ani nowej usługi. Dostarczenie pakietu i dostępność task/SSH
+muszą być najpierw zweryfikowane; nie zakładać istnienia tych plików w obecnym droplecie.
+Najpierw faza check (HDB/model), następnie osobno zatwierdzony seed→recover→restart CAP→recover→cleanup
+z jednym UUID. Pakiet jest testowy i nie wchodzi do publicznego API ani zatwierdzanego MTAR0.7.3.
+Jeżeli platforma nie pozwala bezpiecznie dostarczyć/uruchomić pakietu w obecnej aplikacji,
+pozostawić test PENDING i uzgodnić pełny runner — bez service keys, otwierania sieci i improwizowanego DML.
 
 W takim zatwierdzonym środowisku wykonać poniższe fazy kolejno, bez zapisywania sekretów w skrypcie:
 

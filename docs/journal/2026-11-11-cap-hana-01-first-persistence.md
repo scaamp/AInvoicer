@@ -2,11 +2,16 @@
 title: "CAP-HANA-01 — final review INT-03 i przygotowanie pierwszej persystencji"
 date: 2026-11-11
 type: journal
-status: przygotowanie-offline-live-zablokowane
+status: preflight-pass-deployment-approval-pending
 tags: [ainvoicer, int-03, cap-hana-01, hana, hdi, security, deployment]
 ---
 
 # CAP-HANA-01 — stan i dowody sesji
+
+**Aktualizacja LIVE preflight 11 listopada:** HDI **VERIFIED LIVE**, provisioning wykonany przez
+właściciela; CAP→HANA **NOT DEPLOYED**. **GO do zatwierdzenia kontrolowanego DEV**, bez DML.
+[Historia HDI i kosztów](2026-11-11-hdi-shared-provisioning.md).
+Poniższa wcześniejsza część zachowuje historię przed utworzeniem HDI; aktualne wyniki są na końcu.
 
 ## Date / Branch / Goal
 
@@ -181,5 +186,121 @@ runtime. CI main/nowego PR należy odczytywać jako osobne wyniki; nie zastępuj
 - PERMISSION: konkretne zgody na deployment/DDL/bindingi, syntetyczne DML oraz restart/outage/rollback.
 
 **NO-GO LIVE.** Runbook jest przygotowany do review; CAP-HANA LIVE nie został wykonany.
-Następny najmniejszy krok właściciela: potwierdzić hdi-shared/koszt i Database ID; następnie zatwierdzać
+Historyczny następny krok właściciela: potwierdzić hdi-shared/koszt i Database ID; następnie zatwierdzać
 osobno HDI, konkretny MTAR i środowisko/testy. Nie zmieniano BTP/H01/sieci/IAM/Destination ani routingu.
+
+## Kontynuacja 2026-11-11 — HDI istnieje, końcowy preflight przed zgodą
+
+### Zakres i GitHub
+
+**VERIFIED OFFLINE:** sesja rozpoczęta na czystym
+`feature/cap-hana-01-first-persistence=5f04def0f09988055a7df31681893abb3361e937`.
+`git ls-remote` i GitHub PR potwierdzają ten sam HEAD oraz main
+`e2696ab2bee91399423ce9565a7f467194894215`. PR #9 OPEN/DRAFT, mergeable, dwa wcześniejsze commity
+zmieniały wyłącznie dokumentację (8 plików); brak niezatwierdzonych zmian runtime przy starcie.
+GitHub Releases zwróciło pustą listę: MTAR są lokalnymi wydaniami, nie opublikowanymi assets.
+
+**VERIFIED OFFLINE:** [CI43055194601](https://github.com/scaamp/AInvoicer/actions/runs/43055194601)
+dla dokładnego HEAD5f04def COMPLETED/SUCCESS, wszystkie kroki SUCCESS, także build HANA,
+Azurite, UI5/QUnit/OPA i Inbox HTTP. Zapytanie connectora o workflow runs commita main e2696ab
+zwróciło pustą listę; nie przypisujemy mu osobnego PASS. Kod main dziedziczy testowany INT-03,
+a PR HEAD ma własny jawny wynik. Zielone CI nie stanowi dowodu LIVE.
+
+### Nowe odczyty CF
+
+**VERIFIED LIVE:** target EU20/org `National Center for Cryptography_dev-v2xzij9s`/space `dev`.
+`ainvoicer-db` jest managed hana/hdi-shared, create succeeded16:49:24Z, 0 credential bindings,
+plan free=true. Broker HDI zwraca jawne database_id. HANA hana-free: serviceStopped=false,
+produkt2026.28.14/build4.00.000.00.1793723943. **OWNER-REPORTED:** właściciel potwierdził w tej sesji
+Cloud Central RUNNING i zgodność Database ID. Pełne źródła i rozróżnienie ID: nowy dziennik HDI.
+
+CAP/AppRouter nadal STARTED1/1, identyczne historyczne droplety/checksumy z9 listopada i fs4.
+Każda aplikacja ma wyłącznie XSUAA/Destination; HDI nie ma app/key bindings. Odczyt space GUID
+usług i aplikacji potwierdził tę samą przestrzeń. Quota FREE_QUOTA4096 MB, procesy1408 MB.
+Nie wykonywano nowych mutacji BTP ani testowego SQL.
+
+**VERIFIED LIVE:** whitelisted CAPI `/environment_variables` CAP: cf, identity-smoke=true,
+SEND/WRITE/sweeper=false; readiness/INBOUND/storage/sql-init nieobecne w custom env.
+Nie stwierdzono kluczy nadpisania JAVA_OPTS/JDK_JAVA_OPTIONS/JAVA_TOOL_OPTIONS, SPRING_DATASOURCE_*,
+SPRING_CONFIG_*, CDS_SECURITY_* ani SPRING_APPLICATION_JSON, ani pasujących kluczy credentiali transportów.
+Nie jest to audyt wszystkich możliwych sekretów/nadpisań. Nie pobierano systemowego `/env`, VCAP,
+credential binding details, service keys ani logów aplikacji. Odpowiedzi brokera filtrowano do
+niesekretnych pól; bez surowych danych w Git.
+
+### Weryfikacja wydania i stack
+
+**VERIFIED OFFLINE:** oba oryginalne MTAR są nadal w `D:\AInvoicer-cap-hana-01-build\deploy\build`.
+Ponowne Get-FileHash, verify:hana i verify:release PASS przed i po regresji. Nie odbudowano ani
+nie kopiowano MTAR. SourceCommit220a512, sourceFilesSha256b9171c48… i hashe z tabeli wcześniejszej
+są nadal prawdziwe; dokumentacyjny HEAD5f04def ma identyczne wejścia runtime w worktree wydania.
+Po regresji Maven integralność archiwalnego JAR/payloadów nadal PASS.
+
+**VERIFIED OFFLINE:** archiwum ma trzy existing-service auth/destination/db, kolejność HDI→CAP→AppRouter,
+no-route deployera, 14 hdbtable /6 hdbindex /4 hdbview (24 artefakty modelu), bez RAP tables/CSV/
+hdbtabledata/undeploy. To liczba **wygenerowana**, liczba **wdrożona PENDING**.
+Wszystkie wymagane flagi/OFF i outbox persistent/inMemory=false potwierdzone w deskryptorze i JAR.
+CAP5.2.0, Boot4.1.1, ngdbc2.30.11, SAP Security4.1.2, SDK MF3.0.29;
+AppRouter23.4.0, hdi-deploy5.7.0 z locka. Niczego nie aktualizowano.
+
+**VERIFIED LIVE:** fs4 DEPRECATED, fs5 ACTIVE; Java Jakarta2.76 dostępny bez ograniczenia stack,
+Node1.9.6 dostępny na fs4/fs5. **VERIFIED OFFLINE:** manifest upstream1.9.6 zawiera Node24.22.1
+na obu stackach, default22.x; SAP Help opisuje konfigurację SapMachine25.+ używaną przez MTA.
+To nie dowodzi nowego stagingu. Deployer wymaga Node24; AppRouter dopuszcza22||24 i nie obiecujemy24.
+
+Przygotowano **propozycję** nowego `deploy/btp-dev-eu20-hana-first.mtaext`, tylko dotychczasowy host prefix
+i jawny fs4 dla trzech modułów. SHA256
+`f11b31967d12cc3f587b55a39aaf385791503b8f2b11af472f2d03bd37cfd14e`.
+Oryginalny extension SHA4c6afb70… pozostaje nietknięty do historycznej weryfikacji/rollbacku.
+Nowy plik jest odrębnym zatwierdzanym wejściem, nie częścią historycznego sourceHash MTAR.
+Nie przenosimy go do worktree wydania i nie udajemy odbudowy na zmienionych wejściach.
+Pin fs4 zachowuje stack istniejących aplikacji; świadomy kompromis DEV to pozostanie na deprecated
+stacku do osobno zweryfikowanej migracji fs5. Nie zmienia to architektury/ADR.
+
+### Commands Executed / Tests & Results
+
+W worktree wydania, lokalnie JDK Microsoft25.0.4.1, Maven3.9.16, Node24.13.0:
+
+| Weryfikacja | Wynik | Klasa |
+| --- | --- | --- |
+| npm run verify:hana / verify:release --prefix deploy (ponownie po regresji) | PASS, zachowane oba SHA | VERIFIED OFFLINE |
+| npm test --prefix deploy, także w głównym checkoutcie | 27/27 PASS | VERIFIED OFFLINE |
+| npm run test:cf-runtime --prefix deploy, gotowy JAR wydania | 10/10 PASS | VERIFIED OFFLINE |
+| npm run test:config --prefix approuter | 10/10 PASS | VERIFIED OFFLINE |
+| mvn -B -ntp verify '-Dcds.cds.skipVersionCheck=true' '-Dspring-boot.repackage.skip=true' w cap-java | BUILD SUCCESS, 429 testów:423 PASS/6 Azurite skipped, 2:39 min | VERIFIED OFFLINE |
+| Osobny przegląd YAML nowego extension | PASS: dokładnie3 nazwy modułów i stacki, bez usług/flag/tras | VERIFIED OFFLINE |
+| check-secrets.mjs oraz git diff --check | PASS; scan heurystyczny, nie audyt credentiali | VERIFIED OFFLINE |
+| live-security.mjs do istniejącego CAP/AppRoutera, wyłącznie GET | 26 prób,25 PASS,1 FAIL: publiczny indeks CAP / HTTP200 | VERIFIED LIVE |
+| HANA JDBC/DDL/DML/constraints/CAS/lease/outbox/restart/cleanup | NIE WYKONANO | PENDING |
+
+Pierwsza próba Maven miała błąd parsowania niecytowanych właściwości `-D` przez PowerShell
+(`Unknown lifecycle phase .cds.skipVersionCheck=true`), bez uruchomienia testów. Powtórzenie z
+cytowanymi argumentami zakończyło się powyższym BUILD SUCCESS. Nie zmieniano POM ani runtime.
+QUnit/OPA/Azurite/Inbox HTTP nie powtarzano lokalnie: mają jawny PASS w CI dokładnego HEAD.
+Logi lokalne i oczyszczony raport HTTP pozostają w ignorowanym deploy/build worktree wydania,
+z prefiksem `cap-hana-live-preflight-*`; nie dodano ich do Git.
+
+### Security i granice GO
+
+**PENDING:** LIVE A/B/DCL i request-correlated principal H01, tenant isolation rzeczywistymi userami,
+nowy staging, CloudIdentityGuard/CloudPersistenceGuard na HANA i autoryzowany READ po zmianie.
+Publiczny indeks obecnego starego CAP jest rzeczywistym FAIL, nie zaliczonym testem. Poprawka
+indeksu i tenant gate znajdują się w proponowanym JAR; po deployu wymagany ponowny pomiar.
+Nie stwierdzono nowego krytycznego defektu przygotowanego wariantu, ale nie ma pełnego LIVE sign-off.
+
+Rekomendacja **GO wyłącznie do zatwierdzenia kontrolowanego DEV readiness**: trzy istniejące usługi,
+bez aktywacji transportów, z przerwą sesji i utratą dotychczasowej efemerycznej H2.
+Nie jest to akceptacja produkcyjna ani otwarcie workflow. Przy nowych niezgodnościach targetu,
+hashy, planu/kosztu, mapowania lub guardów wrócić do NO-GO bez ponawiania w ciemno.
+
+### Changed Files / Current State / Next Steps
+
+Nowe: journal HDI provisioning i osobny stack extension. Aktualizacje: STATUS/ROADMAP/README,
+niniejszy dziennik oraz trzy przewodniki CAP-HANA/HANA deployment/Free Tier. Bez zmian Java/CDS/UI5,
+tożsamości, Destination, sieci i sekretów. PR #9 pozostaje draft; brak merge.
+
+**NOT DEPLOYED.** HDI deployer nie był uruchamiany, CAP nie korzysta jeszcze z HANA, żadne rekordy
+nie przetrwały testowanego restartu — testu jeszcze nie było. Costs and Usage PENDING.
+Najmniejszy kolejny krok: osobna zgoda na dokładne polecenie/hashe/extension w runbooku §4.
+Po deployu read-only HDI/JDBC/security; potem przygotowanie runnera i oddzielna zgoda na
+syntetyczne DML/restart/cleanup. Rollback0.7.2 ma zweryfikowany SHA; wymaga osobnej decyzji,
+nie cofa schematu i nie odtwarza H2.
