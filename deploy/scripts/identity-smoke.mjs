@@ -122,8 +122,8 @@ export function verifyArchive(file) {
     assert.ok(Object.values(config.ksefCockpit.capabilities).every(v => v === false));
     assert.equal(config.ksefInbox.dataMode, 'disabled');
     assert.ok(Object.values(config.ksefInbox.capabilities).every(v => v === false));
-    assert.equal(config.ksefInbox.mock, undefined);
-    assert.equal(config.ksefInbox.cap?.entitySet, undefined);
+    assert.ok(config.ksefInbox.mock == null, 'Inbox fixture must be absent or explicitly null');
+    assert.ok(config.ksefInbox.cap?.entitySet == null, 'Inbox CAP entity must be absent or explicitly null');
     assert.deepEqual(JSON.parse(router.readAsText('xs-app.json')),
         JSON.parse(readFileSync(join(root, 'approuter/xs-app.json'), 'utf8')), 'artifact routes must match reviewed source');
     assert.deepEqual(config.ksefCockpit.externalServices,

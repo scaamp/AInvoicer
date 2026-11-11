@@ -13,7 +13,7 @@ function artifact(file, mutate = () => {}) {
     const manifest = { 'sap.ui5': { config: {
         ksefCockpit: { dataMode: 'rap', capabilities: { sendInvoice: false },
             externalServices: { ai: false, scanner: false, voice: false, tts: false } },
-        ksefInbox: { dataMode: 'disabled', capabilities: { syncInbound: false } }
+        ksefInbox: { dataMode: 'disabled', mock: null, cap: { entitySet: null }, capabilities: { syncInbound: false } }
     } } };
     const jar = new Zip(); jar.addFile('BOOT-INF/classes/application.yaml', Buffer.from('synthetic'));
     const router = new Zip();
@@ -54,6 +54,8 @@ test('archive rejects SEND, Inbox opt-in, changed routes and test identity in ru
         for (const mutate of [
             ({ manifest }) => { manifest['sap.ui5'].config.ksefCockpit.capabilities.sendInvoice = true; },
             ({ manifest }) => { manifest['sap.ui5'].config.ksefInbox.dataMode = 'cap'; },
+            ({ manifest }) => { manifest['sap.ui5'].config.ksefInbox.mock = { path: 'fixture.json' }; },
+            ({ manifest }) => { manifest['sap.ui5'].config.ksefInbox.cap.entitySet = 'InboundInvoiceOverview'; },
             ({ router }) => router.updateFile('xs-app.json', Buffer.from('{"routes":[]}')),
             ({ jar }) => jar.addFile('BOOT-INF/lib/java-security-test.jar', Buffer.from('synthetic')),
             ({ jar }) => jar.addFile('BOOT-INF/classes/default-env.json', Buffer.from('{}'))
