@@ -19,9 +19,14 @@ tags: [ainvoicer, dokumentacja]
 > Strategia przyjęta; model CAP CDS/HDI oraz walidacja offline istnieją, lecz nie jest to pełne IaC BTP ani mechanizm backupu. Bieżący stan runtime CAP/HANA sprawdzaj w [STATUS](STATUS.md) i [dzienniku CAP-HANA-01](journal/2026-11-11-cap-hana-01-first-persistence.md).
 
 
+**CAP-HANA-01S (2026-11-11): CAP na HANA Cloud wdrożony (VERIFIED LIVE)** — po nieudanym stagingu `40b8e964…`
+(opakowany JAR w `srv/data.zip`) poprawiono generator MTAR; deployment `82250a52…` FINISHED, CAP/AppRouter STARTED,
+CAP związany z HDI. SQL/DML/restart i security sign-off PENDING.
+[Wynik, incydent i akceptacja](guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md#cap-hana-01s--wynik-live-deployment-82250a52-finished-1111-2140-cet) ·
+[dziennik](journal/2026-11-11-cap-hana-01-first-persistence.md#cap-hana-01s--deployment-82250a52-finished-claude-code-2140-cet).
+
 **ORCH-04 (2026-11-11): PR #13 i PR #14 MERGED do main** — [review, integracja, regresja i bramka GO/NO-GO](journal/2026-11-11-orch-04-integration.md).
-- **CAP-HANA-01R:** preflight i weryfikacja MTAR zakończone; deployment LIVE i persystencja HANA **PENDING**
-  (osobna zgoda na abort + deploy). [Bramka runbooka](guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md#cap-hana-01r--aktualna-bramka-recovery-1111-2035-cet) ·
+- **CAP-HANA-01R:** preflight i weryfikacja MTAR zakończone; deployment wykonany później jako CAP-HANA-01S (powyżej). [Bramka runbooka](guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md#cap-hana-01r--aktualna-bramka-recovery-1111-2035-cet) ·
   [dziennik recovery](journal/2026-11-11-cap-hana-01-first-persistence.md#cap-hana-01r--niezależna-weryfikacja-codex-2035-cet).
 - **KSEF-IN-03A:** globalny budżet API INBOUND jako komponent offline; bez HANA adaptera, wiring i aktywacji INBOUND.
   [Przewodnik](guides/KSEF_IN_03A_GLOBAL_API_BUDGET.md) · [dziennik](journal/2026-11-11-ksef-in-03a-global-api-budget.md).

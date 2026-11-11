@@ -100,6 +100,22 @@ function run(command, args, cwd = root) {
     assert.equal(result.status, 0, command + ' failed');
 }
 
+/**
+ * CF rozpakowuje payload jako katalog aplikacji; SAP Java Buildpack (Java Main) wymaga manifestu
+ * Spring Boot w katalogu głównym. ZIP opakowujący `cap-java-exec.jar` kończy staging błędem
+ * „None of the available runtimes … supports the application” (operacja 40b8e964…, 2026-11-11).
+ */
+export function verifyJavaMainLayout(payload) {
+    const names = payload.getEntries().map(e => e.entryName);
+    assert.ok(!names.some(n => !n.includes('/') && /\.(jar|war)$/i.test(n)),
+        'CF Java payload must be the exploded executable JAR, not an archive wrapping a JAR');
+    assert.ok(names.includes('META-INF/MANIFEST.MF'), 'CF Java payload needs META-INF/MANIFEST.MF at root');
+    const manifest = payload.readAsText('META-INF/MANIFEST.MF');
+    assert.match(manifest, /^Main-Class: org\.springframework\.boot\.loader\.launch\.JarLauncher\r?$/m);
+    assert.match(manifest, /^Start-Class: customer\.cap_java\.Application\r?$/m);
+    assert.ok(names.some(n => n.startsWith('BOOT-INF/classes/')), 'CF Java payload needs BOOT-INF/classes');
+}
+
 /** Sprawdza zawartość archiwum po oficjalnym `mbt assemble`, bez modyfikacji MTAR. */
 export function verifyArchive(file) {
     const archive = new Zip(file);
@@ -110,10 +126,10 @@ export function verifyArchive(file) {
         'ainvoicer-approuter/data.zip', 'ainvoicer-srv/data.zip'
     ]);
     validate(YAML.parse(archive.readAsText('META-INF/mtad.yaml')));
-    const srv = new Zip(archive.readFile('ainvoicer-srv/data.zip'));
-    verifyPermissions(srv);
-    assert.deepEqual(srv.getEntries().map(e => e.entryName), ['cap-java-exec.jar']);
-    const jar = new Zip(srv.readFile('cap-java-exec.jar'));
+    // CAP-HANA-01S: payload modułu Java to bajty wykonywalnego JAR (jak w mbt), nie ZIP z plikiem JAR.
+    const jar = new Zip(archive.readFile('ainvoicer-srv/data.zip'));
+    verifyPermissions(jar);
+    verifyJavaMainLayout(jar);
     for (const entry of jar.getEntries()) {
         assert.ok(!/(^|\/)(default-env\.json|application-test\.yaml)|java-security-test|BOOT-INF\/classes\/.*Test\.class/.test(entry.entryName),
             'test identity or local binding in runtime JAR: ' + entry.entryName);
@@ -163,19 +179,20 @@ function main() {
         const assembly = join(stage, 'assembly');
         mkdirSync(assembly);
         writeFileSync(join(assembly, 'mtad.yaml'), YAML.stringify(mta));
-        const srv = join(stage, 'modules/ainvoicer-srv');
         const router = join(stage, 'modules/ainvoicer-approuter');
-        mkdirSync(srv, { recursive: true }); mkdirSync(router, { recursive: true });
-        cpSync(join(root, 'cap-java/srv/target/cap-java-exec.jar'), join(srv, 'cap-java-exec.jar'));
+        mkdirSync(router, { recursive: true });
+        // JAR Spring Boot ma już uniksowe metadane; kopiujemy jego bajty bez ponownego pakowania.
+        mkdirSync(join(assembly, 'ainvoicer-srv'));
+        const srvPayload = join(assembly, 'ainvoicer-srv/data.zip');
+        cpSync(join(root, 'cap-java/srv/target/cap-java-exec.jar'), srvPayload);
+        verifyPermissions(new Zip(srvPayload));
         for (const file of ['package.json', 'package-lock.json', 'xs-app.json']) {
             cpSync(join(root, 'approuter', file), join(router, file));
         }
         cpSync(join(root, 'sapui5/ainvoicer/dist-cf'), join(router, 'resources'), { recursive: true });
-        for (const [name, dir] of [['ainvoicer-srv', srv], ['ainvoicer-approuter', router]]) {
-            mkdirSync(join(assembly, name));
-            const zip = new Zip(); zip.addLocalFolder(dir);
-            normalizePermissions(zip).writeZip(join(assembly, name, 'data.zip'));
-        }
+        mkdirSync(join(assembly, 'ainvoicer-approuter'));
+        const routerZip = new Zip(); routerZip.addLocalFolder(router);
+        normalizePermissions(routerZip).writeZip(join(assembly, 'ainvoicer-approuter/data.zip'));
         run(process.execPath, [join(root, 'deploy/node_modules/mbt/bin/mbt'), 'assemble', '-s', assembly, '-t', out], assembly);
         verifyArchive(target);
         console.log('Undeployed artifact: ' + target);

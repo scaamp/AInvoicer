@@ -2,11 +2,83 @@
 title: "CAP-HANA-01 — pierwsze HDI i kontrolowany deployment CAP"
 date: 2026-11-11
 type: guide
-status: recovery-go-for-owner-approval-not-deployed
+status: hana-deployed-cap-running-sql-dml-pending
 tags: [ainvoicer, cap-hana-01, hana, hdi, cloud-foundry, deployment, recovery]
 ---
 
 # CAP-HANA-01 — runbook do osobnego zatwierdzenia
+
+## CAP-HANA-01S — wynik LIVE: deployment 82250a52 FINISHED (11.11, 21:40 CET)
+
+Zgoda właściciela: „zgadzam się – abort i deploy” (bramka poniżej, bez czekania na CI PR).
+Preflight 20:28 UTC PASS (target, HANA `serviceStopped=false`, SHA `54a89984…`/`f11b3196…`);
+abort `40b8e964…` → ABORTED, brak aktywnych operacji; ponowny HANA/SHA PASS.
+
+| Kontrola (VERIFIED LIVE, odczyt) | Wynik |
+| --- | --- |
+| Operacja `82250a52-de0e-11f1-ab29-eeee0a9dd8f2` (`--retries 0`, `-f` tylko bez promptu) | **FINISHED**; MTA `ainvoicer` 0.7.3 |
+| HDI | task `deploy` #2 SUCCEEDED 20:29:50 UTC (payload identyczny z #1); deployer STOPPED |
+| CAP `ainvoicer-srv` | STARTED 1/1, droplet `730e32a9` (20:31:22 UTC), SAP Java bp 2.76.0, fs4 |
+| AppRouter | STARTED 1/1, droplet `da231d8b` (20:33:13 UTC), Node bp 1.9.6, fs4 |
+| Bindingi | `ainvoicer-db` → deployer + **srv**; auth/destination → srv + approuter |
+| Start CAP (logi, filtrowane) | profil `cf`; DataSource `ds-ainvoicer-db`; `HikariPool-1` — połączenie `com.sap.db.jdbc.HanaConnection`; XSUAA; `Started Application` 5,7 s; guardy fail-closed nie zatrzymały startu |
+| Flagi env CAP | HANA_READINESS=true, IDENTITY_SMOKE=false, KSeF/INBOUND/SAP WRITE/sweeper=false, storage off, outbox OFF, SQL init never |
+| Anonimowe GET CAP | `/`, `$metadata`, `KsefOperations` → **401**, puste body (wcześniejszy FAIL indeksu 200 usunięty) |
+| Anonimowe GET AppRouter | bez XHR: 200 = strona przekierowania logowania XSUAA (~710 B, bez treści UI/OData); z `X-Requested-With` → 401 |
+
+Obserwacja: WARN `Failed to register handler method` dla handlerów outbox (CAP, KSeF worker, SAP writeback)
+— oczekiwane przy wyłączonych outboxach; do weryfikacji przy ich włączaniu.
+
+**Nadal PENDING:** katalogowy SQL obiektów HDI (brak autoryzowanego narzędzia — dowodem jest HDI make
+i działające połączenie JDBC, nie zapytanie), syntetyczne DML/SELECT, restart i trwałość po restarcie,
+testy CAS/lock/konkurencji, LIVE A/B/DCL/principal H01 i końcowy security sign-off. Merge poprawki
+generatora do `main` po PR i CI. Nie wykonano DML, restartu, rollbacku ani nowej mutacji po deploymencie.
+
+## CAP-HANA-01S — incydent 40b8e964 i nowa bramka (11.11, 21:40 CET)
+
+**Stan LIVE (VERIFIED, read-only): CAP `ainvoicer-srv` STOPPED — przerwa API.** Po zgodzie właściciela
+wykonano abort `d110c171…` (ABORTED) i deployment `196b9b8c…` (`--retries 0`; `-f` tylko dla pominięcia
+promptu, brak konfliktujących operacji). Operacja `40b8e964-de0c-11f1-ab29-eeee0a9dd8f2`: staging HDI
+deployera OK, task `deploy` **SUCCEEDED** (make OK, kontener `36F0829E…`, 20:14:08 UTC);
+`ainvoicer-srv` zatrzymany, staging **BuildpackCompileFailed** (SAP Java bp 2.76.0: *None of the
+available runtimes … supports the application*). Operacja aktywna **ERROR**. AppRouter niezaktualizowany
+(stary droplet, bez działającego backendu). CAP ma nowe env i bindingi auth/destination/HDI, bieżący
+droplet nadal z 09.11 (`944f83c7…`). Nie wykonano retry, restartu, rollbacku ani DML.
+
+**Przyczyna:** `ainvoicer-srv/data.zip` był ZIP-em z jednym plikiem `cap-java-exec.jar`; CF rozpakowuje
+payload jako katalog aplikacji, więc brakowało `META-INF/MANIFEST.MF` w katalogu głównym. Działający pakiet
+CF z 09.11 ma rozpakowany JAR (`META-INF/`, `BOOT-INF/`, `org/`). Ta sama wada dotyczy rollbacku 0.7.2
+`00e31c97…` — **wycofany z rekomendacji**. Weryfikator wymuszał błędny układ, a `test:cf-runtime`
+uruchamiał JAR z `target/`, więc defekt nie był wykrywalny offline ani w CI.
+
+**Poprawka (branch `fix/cap-hana-01s-srv-payload-layout`, `fe0a0c1`):** payload `srv` = bajty JAR Spring
+Boot (jak `mbt`); weryfikacja manifestu (`JarLauncher`, `Start-Class`), `BOOT-INF/classes`, metadanych Unix
+i zakazu opakowanego `.jar/.war`; regresja odrzuca stary `196b9b8c…`. Czysty build z `fe0a0c1`:
+Maven 468 (462 PASS/6 skipped), `cf-runtime` 10/10, UI5 CF 13/13, AppRouter 10/10, deploy 32 PASS/1 skipped,
+`verify:release` i `verify:hana` PASS.
+
+| Plik | Bajty | SHA-256 |
+| --- | --- | --- |
+| `D:\AInvoicer-cap-hana-01s\deploy\build\ainvoicer_0.7.3.mtar` | 67595231 | `54a899849073cbebc83e84c7d7780439efc3108dd7c1030750aa70afac0592c5` |
+| `D:\AInvoicer-cap-hana-01s\deploy\build\ainvoicer_0.7.2.mtar` (rollback, poprawiony) | 67583902 | `5295f2571413ed8a62f880d69154e9e04ba3ec82536049760084c0a74a1882ed` |
+| `D:\AInvoicer\deploy\btp-dev-eu20-hana-first.mtaext` (bez zmian, LF) | 599 | `f11b31967d12cc3f587b55a39aaf385791503b8f2b11af472f2d03bd37cfd14e` |
+
+Porównanie zawartości z `196b9b8c…`: `mtad.yaml` identyczny; HDI 28/28 i AppRouter 74/74 plików identycznych
+(ponowny HDI deploy bez zmiany schematu); CAP JAR różni się wyłącznie 15 klasami niepodłączonego
+`ksef.inbound.budget` (PR #13). Payload `srv`: 621 wpisów, katalog główny `BOOT-INF`/`META-INF`/`org`.
+
+### Dwie operacje do osobnej zgody — NIE WYKONANO
+
+```powershell
+& $cfCliPath deploy -i 40b8e964-de0c-11f1-ab29-eeee0a9dd8f2 -a abort
+# Potwierdzić ABORTED, brak aktywnych operacji, target, serviceStopped=false i SHA z tabeli.
+& $cfCliPath deploy D:\AInvoicer-cap-hana-01s\deploy\build\ainvoicer_0.7.3.mtar -e D:\AInvoicer\deploy\btp-dev-eu20-hana-first.mtaext --retries 0
+```
+
+Po deployu: FINISHED, nowe droplety CAP/AppRoutera, binding CAP→HDI, logi startu (JDBC HANA,
+CloudIdentityGuard/CloudPersistenceGuard), anonimowe GET; katalogowy SQL PENDING bez autoryzowanego
+narzędzia. DML, restart i testy konkurencji — osobna zgoda. Rollback wyłącznie poprawionym 0.7.2
+`5295f257…` (`--version-rule ALL --retries 0`) po osobnej decyzji; schematu HDI nie cofa.
 
 ## CAP-HANA-01R — aktualna bramka recovery (11.11, 20:35 CET)
 
