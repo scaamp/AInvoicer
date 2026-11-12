@@ -107,5 +107,62 @@ class HanaHarnessSafetyTest {
         assertEquals(1, count(InboundPersistence.CHECKPOINTS));
     }
 
+    /** CAP-HANA-02: kontrola po cleanup wykrywa własne pozostałości i ignoruje rekordy innego runu/scope. */
+    @Test void verifyCleanupFailsOnOwnLeftoversAndIgnoresOtherRun() {
+        String firstRun = HanaPersistenceIT.runId;
+        harness.seed();
+        assertThrows(AssertionError.class, harness::verifyCleanup, "seeded run must not pass verify-cleanup");
+        String otherRun = UUID.randomUUID().toString();
+        HanaPersistenceIT.runId = otherRun;
+        HanaPersistenceIT.nip = "9876543210";
+        harness.seed();
+        HanaPersistenceIT.runId = firstRun;
+        HanaPersistenceIT.nip = "1234567802";
+        harness.cleanup();
+        assertDoesNotThrow(harness::verifyCleanup);
+        HanaPersistenceIT.runId = otherRun;
+        HanaPersistenceIT.nip = "9876543210";
+        assertThrows(AssertionError.class, harness::verifyCleanup, "other run untouched");
+        harness.recover();
+    }
+
+    /** Bramka bez zmiennych środowiskowych procesu: zgoda read-only nie odblokowuje faz z DML. */
+    @Test void readOnlyConsentCannotUnlockDmlPhases() {
+        String savedRun = HanaPersistenceIT.runId;
+        String savedNip = HanaPersistenceIT.nip;
+        try {
+            for (String phase : new String[]{"check", "recover", "verify-cleanup"}) {
+                assertDoesNotThrow(() -> HanaPersistenceIT.validate(gateEnv(HanaPersistenceIT.READ_ONLY_CONSENT, phase)), phase);
+            }
+            for (String phase : new String[]{"seed", "contend", "cleanup"}) {
+                var error = assertThrows(IllegalStateException.class,
+                    () -> HanaPersistenceIT.validate(gateEnv(HanaPersistenceIT.READ_ONLY_CONSENT, phase)), phase);
+                assertEquals("HANA_TEST_WRITE_CONSENT_REQUIRED_FOR_PHASE", error.getMessage());
+            }
+            for (String phase : HanaPersistenceIT.PHASES) {
+                assertDoesNotThrow(() -> HanaPersistenceIT.validate(gateEnv(HanaPersistenceIT.WRITE_CONSENT, phase)), phase);
+            }
+            var ci = new java.util.HashMap<>(gateEnv(HanaPersistenceIT.READ_ONLY_CONSENT, "check"));
+            ci.put("GITHUB_ACTIONS", "true");
+            assertThrows(IllegalStateException.class, () -> HanaPersistenceIT.validate(ci));
+            assertThrows(IllegalStateException.class, () -> HanaPersistenceIT.validate(gateEnv("READ_ONLY", "check")));
+            assertThrows(IllegalStateException.class, () -> HanaPersistenceIT.validate(gateEnv(HanaPersistenceIT.WRITE_CONSENT, "drop")));
+            var dbadmin = new java.util.HashMap<>(gateEnv(HanaPersistenceIT.WRITE_CONSENT, "check"));
+            dbadmin.put("VCAP_SERVICES", dbadmin.get("VCAP_SERVICES").replace("\"synthetic-user\"", "\"DBADMIN\""));
+            assertThrows(IllegalStateException.class, () -> HanaPersistenceIT.validate(dbadmin));
+        } finally {
+            HanaPersistenceIT.runId = savedRun;
+            HanaPersistenceIT.nip = savedNip;
+        }
+    }
+
+    static Map<String, String> gateEnv(String consent, String phase) {
+        return Map.of("AINV_HANA_TEST_CONSENT", consent, "AINV_HANA_TEST_PHASE", phase,
+            "AINV_HANA_TEST_RUN_ID", "1e335114-c800-4ff3-9ed8-56a914126af8", "AINV_HANA_TEST_NIP", "7770002317",
+            "AINV_HANA_TEST_HDI_NAME", "ainvoicer-db",
+            "VCAP_SERVICES", "{\"hana\":[{\"label\":\"hana\",\"name\":\"ainvoicer-db\",\"plan\":\"hdi-shared\","
+                + "\"credentials\":{\"schema\":\"synthetic\",\"user\":\"synthetic-user\",\"password\":\"synthetic-only\"}}]}");
+    }
+
     long count(String entity) { return harness.persistence().tx(() -> (long) db.run(Select.from(entity)).list().size()); }
 }

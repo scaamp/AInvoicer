@@ -19,6 +19,10 @@ tags: [ainvoicer, dokumentacja]
 > Strategia przyjęta; model CAP CDS/HDI oraz walidacja offline istnieją, lecz nie jest to pełne IaC BTP ani mechanizm backupu. Bieżący stan runtime CAP/HANA sprawdzaj w [STATUS](STATUS.md) i [dzienniku CAP-HANA-01](journal/2026-11-11-cap-hana-01-first-persistence.md).
 
 
+**CAP-HANA-02 (2026-11-12): Faza 1 read-only i plan akceptacji persystencji** — stan CF/HANA/HDI/CI, metoda
+katalogowego SQL bez service key, ocena harnessu, WARN outbox, plan G0–G9; DML NO-GO.
+[Przewodnik](guides/CAP_HANA_02_PERSISTENCE_ACCEPTANCE.md) · [dziennik](journal/2026-11-12-cap-hana-02-persistence-acceptance.md).
+
 **CAP-HANA-01S (2026-11-11): CAP na HANA Cloud wdrożony (VERIFIED LIVE)** — po nieudanym stagingu `40b8e964…`
 (opakowany JAR w `srv/data.zip`) poprawiono generator MTAR; deployment `82250a52…` FINISHED, CAP/AppRouter STARTED,
 CAP związany z HDI. SQL/DML/restart i security sign-off PENDING.

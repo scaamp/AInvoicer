@@ -5,12 +5,20 @@ import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 import { root } from './identity-smoke.mjs';
 
+export const WRITE_CONSENT = 'WRITE_SYNTHETIC_DATA_TO_APPROVED_HDI';
+// CAP-HANA-02: węższa zgoda wyłącznie dla faz bez DML; nie odblokowuje seed/contend/cleanup.
+export const READ_ONLY_CONSENT = 'READ_ONLY_CHECK_APPROVED_HDI';
+export const READ_ONLY_PHASES = ['check', 'recover', 'verify-cleanup'];
+export const PHASES = ['check', 'seed', 'recover', 'contend', 'cleanup', 'verify-cleanup'];
+
 export function validateConsent(env) {
     assert.notEqual(env.GITHUB_ACTIONS, 'true', 'Real HANA tests cannot run in GitHub Actions');
-    assert.equal(env.AINV_HANA_TEST_CONSENT, 'WRITE_SYNTHETIC_DATA_TO_APPROVED_HDI', 'Separate owner consent required');
+    assert.ok([WRITE_CONSENT, READ_ONLY_CONSENT].includes(env.AINV_HANA_TEST_CONSENT), 'Separate owner consent required');
+    assert.ok(PHASES.includes(env.AINV_HANA_TEST_PHASE));
+    assert.ok(READ_ONLY_PHASES.includes(env.AINV_HANA_TEST_PHASE) || env.AINV_HANA_TEST_CONSENT === WRITE_CONSENT,
+        'Write consent required for DML phase');
     assert.match(env.AINV_HANA_TEST_RUN_ID || '', /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
     assert.match(env.AINV_HANA_TEST_NIP || '', /^[0-9]{10}$/);
-    assert.ok(['check', 'seed', 'recover', 'contend', 'cleanup'].includes(env.AINV_HANA_TEST_PHASE));
     assert.ok(['ainvoicer-db', 'ainvoicer-db-test'].includes(env.AINV_HANA_TEST_HDI_NAME));
     const services = JSON.parse(env.VCAP_SERVICES || '{}');
     const hana = Object.values(services).flat().filter(b => b.label === 'hana');

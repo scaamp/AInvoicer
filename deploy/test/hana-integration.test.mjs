@@ -12,3 +12,13 @@ test('HANA harness refuses absent consent, CI and incorrect binding before Maven
     assert.throws(() => validateConsent({ ...safe(), GITHUB_ACTIONS: 'true' }));
     assert.throws(() => validateConsent({ ...safe(), VCAP_SERVICES: safe().VCAP_SERVICES.replace('"synthetic","password"', '"DBADMIN","password"') }));
 });
+test('read-only consent unlocks only check/recover/verify-cleanup; write consent covers every phase', () => {
+    const readOnly = phase => ({ ...safe(), AINV_HANA_TEST_CONSENT: 'READ_ONLY_CHECK_APPROVED_HDI', AINV_HANA_TEST_PHASE: phase });
+    for (const phase of ['check', 'recover', 'verify-cleanup']) assert.doesNotThrow(() => validateConsent(readOnly(phase)), phase);
+    for (const phase of ['seed', 'contend', 'cleanup']) assert.throws(() => validateConsent(readOnly(phase)), phase);
+    for (const phase of ['check', 'seed', 'recover', 'contend', 'cleanup', 'verify-cleanup']) {
+        assert.doesNotThrow(() => validateConsent({ ...safe(), AINV_HANA_TEST_PHASE: phase }), phase);
+    }
+    assert.throws(() => validateConsent({ ...safe(), AINV_HANA_TEST_PHASE: 'drop' }));
+    assert.throws(() => validateConsent({ ...safe(), AINV_HANA_TEST_CONSENT: 'READ_ONLY' }));
+});
