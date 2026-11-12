@@ -69,34 +69,72 @@ The interface must **not** infer that an invoice was never sent simply because i
 
 ## Architecture
 
-**Key design decision:** **RAP is the system of record for invoice business data and the persisted KSeF business result; CAP owns integration execution, technical status and synchronization.** SAPUI5 reads invoices **directly from RAP OData V4**, rather than routing ordinary invoice-list requests through a CAP proxy.
+**Key design decision:** **RAP is the system of record for invoice business data and the persisted KSeF business result; CAP owns KSeF execution, technical status, inbound staging and synchronization.** SAPUI5 reads invoice business data directly from **RAP OData V4 through SAP AppRouter**, not through CAP as an invoice-list proxy. The AppRouter is a standalone Node.js reverse proxy based on `@sap/approuter`; it is **not** a CAP Node.js service. The official KSeF Java SDK is a library **inside** the CAP Java runtime, not another deployed microservice.
+
+The diagram separates **runtime/trust boundaries** and identifies flows that are implemented, locally tested or planned. **LIVE** means a scoped real-system verification; **TESTED** means code or an isolated/local test, not a production-ready end-to-end flow; **PLAN** means the integration or managed resource is not active in the target deployment.
 
 ```mermaid
 flowchart TB
-    UI["SAPUI5 / Fiori<br/>Invoice cockpit · AI filter · Scanner"]
-    RAPUI["SAP RAP OData V4 UI<br/>Invoices · Items · References<br/>Business status / KSeF number"]
-    CAP["CAP Java / Spring Boot<br/>KsefService · requestSend · status"]
-    RAPAPI["SAP RAP OData V4 Web API<br/>ZAPI_AINV_INV_H_O4 / ApplyKsefResult"]
-    SAPDB[("SAP ABAP Cloud<br/>Invoice business data")]
-    DB[("CAP persistence + outbox<br/>H2 dev / HANA Cloud target")]
-    SDK["Official MF KSeF Java SDK<br/>Authentication · encryption · sessions"]
-    KSEF["KSeF 2.0 API<br/>TEST → production target"]
-    STORE[("XML / UPO storage<br/>Local TEST / managed target")]
-    AI["Existing Python + Node.js AI services<br/>OpenAI · OCR/NLP · TTS"]
-    LF["Langfuse<br/>AI observability"]
+    subgraph BROWSER["01 · Browser / user runtime"]
+        USER["Business user"]
+        UI["SAPUI5 / Fiori cockpit<br/>Invoice list · Scanner · AI Assistant"]
+        USER --> UI
+    end
 
-    UI -->|"Business-user OData V4 read"| RAPUI
-    UI -->|"OData V4 actions + integration status"| CAP
-    UI -->|"Existing AI requests"| AI
-    RAPUI --> SAPDB
-    CAP -->|"SAP Cloud SDK Destination AINV_H01<br/>trusted system-to-system read/write"| RAPAPI
-    RAPAPI --> SAPDB
-    CAP <--> DB
-    CAP <--> STORE
-    CAP <--> SDK
-    SDK <--> KSEF
-    AI --> LF
+    subgraph ENTRY["02 · SAP BTP Cloud Foundry — entry and identity"]
+        AR["SAP AppRouter (Node.js @sap/approuter)<br/>UI5 static bundle · session · route proxy<br/>LIVE"]
+        XSUAA["BTP XSUAA<br/>User OAuth2 / KsefOperator / NIP + CompanyCode<br/>LIVE basic login; isolation pending"]
+        IAS["IAS / corporate IdP<br/>Federation / SSO target — PLAN"]
+        AR <-->|"login / token / session"| XSUAA
+        XSUAA <-.->|"identity trust — PLAN"| IAS
+    end
+
+    subgraph ABAP["03 · SAP BTP ABAP Environment (H01)"]
+        RAPUI["RAP OData V4 UI<br/>ZUI_AINV_INV_H_O4<br/>Business-user IAM + DCL READ — LIVE"]
+        RAPAPI["RAP OData V4 Web API<br/>ZAPI_AINV_INV_H_O4<br/>Technical READ — LIVE; ApplyKsefResult HTTP WRITE — PLAN"]
+        BUSINESS[("RAP invoice business data<br/>ZAINV_INV_H / I / REF (simulated)")]
+        SAPAPI["Future released FI/MM/SD APIs<br/>Posting / matching — PLAN"]
+        RAPUI --> BUSINESS
+        RAPAPI --> BUSINESS
+    end
+
+    subgraph CAP_RUNTIME["04 · SAP BTP Cloud Foundry — one CAP Java / Spring Boot runtime"]
+        CAP["CAP KsefService<br/>User-scoped actions / integration status<br/>LIVE endpoint; KSeF effects OFF on CF"]
+        OUT["OUTBOUND<br/>FA(3) · submission · polling · writeback<br/>TESTED locally; SAP-origin E2E pending"]
+        INB["INBOUND<br/>Metadata · XML · staging · deduplication<br/>Code/tests; CF sync OFF"]
+        SDK["Official MF KSeF Java SDK<br/>Auth · crypto · sessions<br/>Library within CAP Java"]
+        CAP --> OUT
+        CAP --> INB
+        OUT --> SDK
+        INB --> SDK
+    end
+
+    subgraph PERSIST["05 · Integration persistence and evidence"]
+        HANA[("CAP persistence<br/>HANA Cloud + HDI: LIVE CF connection 2026-11-11<br/>H2: local tests; restart/CAS validation pending")]
+        STORE[("Exact XML / UPO object storage<br/>Local TEST store; durable managed target — PLAN")]
+    end
+
+    subgraph EXT["06 · External / separately trusted services"]
+        KSEF["MF KSeF 2.0 REST API<br/>TEST SDK fixture verified; SAP E2E pending"]
+        AI["Legacy Python + Node.js AI services<br/>OpenAI OCR / NLP / TTS<br/>Separate endpoints; deployment-dependent"]
+        LF["Langfuse<br/>AI observability"]
+        AI --> LF
+    end
+
+    UI <-->|"HTTPS: UI5 assets + same-origin calls"| AR
+    AR -->|"/rap-ui/* via AINV_H01_UI_USER<br/>business-user identity (validation pending)"| RAPUI
+    AR -->|"/odata/v4/KsefService/* via ainvoicer-cap<br/>forward XSUAA user token"| CAP
+    CAP -->|"AINV_H01 Destination via SAP Cloud SDK<br/>separate technical communication principal"| RAPAPI
+    CAP <--> HANA
+    CAP -.->|"durable storage integration — PLAN"| STORE
+    SDK <-->|"HTTPS · KSeF credentials / JWT (not XSUAA JWT)"| KSEF
+    INB -.->|"future FI/MM document matching / posting"| SAPAPI
+    UI -.->|"Legacy direct AI REST (not AppRouter-proxied)"| AI
 ```
+
+**Identity separation:** (1) XSUAA JWT authorizes browser → CAP; (2) the business-user SAP identity, IAM and DCL authorize AppRouter → RAP UI; (3) `AINV_H01` uses a **separate technical communication principal** for CAP → RAP Web API. KSeF credentials and JWT belong only to the CAP/KSeF boundary. Successful login to CAP does not by itself prove SAP principal propagation or end-to-end NIP/CompanyCode isolation.
+
+**Current implementation boundary:** HANA/HDI is now connected to CAP on CF, but crash/restart durability, persistence transactions and cross-instance concurrency still require live validation. KSeF SEND, SAP writeback, inbound synchronization, managed XML/UPO storage and persistent outbox processing are **disabled or not deployed** in the current CF runtime. The SAP-origin `SAPUI5 → RAP → CAP → KSeF → CAP → RAP` cycle has **not** been verified end-to-end. The future FI/MM/SD interface is a target, not a connection to standard posting APIs today.
 
 ### Component responsibilities
 
@@ -104,10 +142,13 @@ flowchart TB
 | --- | --- | --- |
 | **SAP ABAP Cloud / RAP** | Invoice headers, items, references, SAP document status, confirmed KSeF number and business-user authorizations | RAP CDS + behavior; OData V4 UI for invoice reads; separate OData V4 Web API for trusted CAP integration |
 | **SAPUI5 / Fiori** | Presentation, invoice selection/filtering, AI/scanner experience, triggering authorized actions | Named RAP OData V4 model; CAP KSeF status/action API; existing AI REST services |
+| **SAP AppRouter (Node.js, not CAP Node.js)** | One HTTPS entry point for UI5, XSUAA authentication/session and route-based proxying to RAP UI and CAP | `@sap/approuter`; `approuter/xs-app.json`; UI5 static `resources/`; `/rap-ui/*` → `AINV_H01_UI_USER`; `/odata/v4/KsefService/*` → `ainvoicer-cap` |
 | **CAP Java** | KSeF authentication and sessions, FA(3) preparation, submission, polling, UPO, operation history, retries, recovery and SAP writeback | CAP CDS/Event Handlers + Spring Boot; official SDK; SAP Cloud SDK RemoteService / Destination |
 | **CAP persistence** | Idempotency reservations, immutable submission snapshots, operation/submission history, outbox commands and SAP writeback state | H2 for development/tests; **SAP HANA Cloud target** |
 | **Document storage** | Exact XML payloads and UPO artifacts with controlled retrieval and retention | Local test store today; durable managed storage and retention policy required for deployment |
 | **AI services** | NLP invoice filters, invoice scan/extraction, field suggestions, TTS and AI telemetry | Existing Python/Flask, Node.js/Express, OpenAI APIs and Langfuse |
+
+**Routing scope:** The AppRouter configuration above covers UI5, the CAP KSeF API and RAP UI. Existing AI REST services are a separate integration path; the current `xs-app.json` does **not** proxy their endpoints. CAP-to-RAP Web API calls use the server-side `AINV_H01` Destination, not a browser/AppRouter route. The CF HANA binding and HDI deployment are live in the dev space; this does not imply that the planned XML/UPO storage, KSeF SEND or outbox delivery are enabled.
 
 The current ABAP Environment uses **custom simulated invoice tables** (`ZAINV_INV_H`, `ZAINV_INV_I`, `ZAINV_INV_REF`). It is not an implementation against standard S/4HANA FI/MM/SD posting APIs yet. The target architecture supports mapping those business processes through released SAP APIs rather than direct access to SAP database tables from CAP.
 
@@ -182,10 +223,10 @@ Security is part of the solution design, not a UI-only feature:
 | SAP backend | ABAP Cloud, RAP, CDS, OData V4, ABAP Environment H01 | Authorized FI/MM/SD integration through released SAP APIs |
 | Integration backend | **CAP Java 5.2**, **Spring Boot 4.1**, SAP Cloud SDK RemoteService, official **KSeF Java SDK 3.0.29** | Hardened, independently deployable integration service |
 | SAP frontend | SAPUI5 freestyle, Fiori, OData V4 models, `sap.ui.table`, QUnit/OPA | Production cockpit with RAP/UI business-user access |
-| Persistence | CAP CDS, H2 for local development/tests | **SAP HANA Cloud** |
-| Security | CAP role/attribute checks, RAP behavior authorization and prepared DCL/IAM model | IAS/XSUAA, approuter, scoped user propagation, managed credentials |
+| Persistence | CAP CDS; H2 locally; SAP HANA Cloud + HDI bound to CAP on CF dev | Verified persistence scenarios, migration/restart/recovery testing |
+| Security | XSUAA + Node.js AppRouter on CF dev; CAP role/attribute checks; RAP behavior authorization and DCL/IAM | End-to-end principal isolation validation, managed credentials and hardening |
 | AI | Python/Flask, Node.js/Express, OpenAI APIs, Langfuse | Governed AI-assisted extraction, filtering and reconciliation |
-| Hosting | SAP BTP ABAP Environment; local CAP Java development | SAP BTP Cloud Foundry for CAP and supporting services |
+| Hosting | SAP BTP ABAP Environment; CAP Java and AppRouter on Cloud Foundry dev | Production deployment, operational monitoring and resilience |
 | Documents | Local test XML/UPO store | Durable document/object storage; optional SAP DMS integration |
 
 ## Verified progress vs. roadmap
@@ -244,6 +285,7 @@ The default cockpit configuration uses `dataMode: "mock"`. For **real RAP reads*
 ```text
 abap/                      ABAP Cloud RAP models, behavior and abapGit exports
 cap-java/                  CAP Java, Spring Boot, KSeF SDK, CDS, outbox and tests
+approuter/                 Standalone Node.js SAP AppRouter, XSUAA login and UI5/RAP/CAP routing
 sapui5/ainvoicer/          Existing SAPUI5 Fiori application + KSeF cockpit
 node/                      Invoice-scanning / AI Node.js services
 python/                    NLP, voice and other Python AI services

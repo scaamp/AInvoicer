@@ -1,6 +1,6 @@
 ---
 title: "AInvoicer — plan rozwoju"
-date: 2026-11-11
+date: 2026-11-12
 type: roadmap
 status: aktywny
 tags: [ainvoicer, roadmap, cap-java, ksef]
@@ -45,6 +45,11 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
   [Wynik i akceptacja](guides/CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md#cap-hana-01s--wynik-live-deployment-82250a52-finished-1111-2140-cet).
 - [ ] **CAP-HANA-02 — akceptacja persystencji (osobne zgody):** katalogowy SQL obiektów HDI, syntetyczne DML/SELECT,
   restart i trwałość, CAS/lock/konkurencja, LIVE A/B/DCL/principal H01, security sign-off; analiza WARN handlerów outbox.
+  - [x] Faza 1 read-only (2026-11-12): CF/HANA/HDI/CI odczytane, WARN outbox wyjaśnione offline, harness oceniony
+    (zgoda read-only + `verify-cleanup`, regresja PASS), task katalogowy read-only przygotowany. [Plan G0–G9](guides/CAP_HANA_02_PERSISTENCE_ACCEPTANCE.md).
+  - [ ] G0/G1 — odczyt w sesji właściciela i task katalogowy (GO do zgody).
+  - [ ] Runner w sieci CF (wariant R2, osobny etap offline + zgoda) — warunek pierwszego DML (obecnie NO-GO).
+  - [ ] G3–G9: check → seed → recover → (restart) → contend → cleanup → verify-cleanup, każda faza osobno.
 - [ ] **KSEF-STOR-02 — decyzja właściciela:** [ADR-0008](decisions/ADR-0008-document-storage-dev-test-proposal.md)
   proponuje limitowany BLOB DEV/TEST po CAP-HANA-01; brak implementacji. Object Store nadal OFF bez zgody kosztowej.
 

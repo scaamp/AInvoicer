@@ -8,6 +8,9 @@ tags: [ainvoicer, dokumentacja]
 
 # AInvoicer — baza wiedzy projektu
 
+**BLOB-LAB-01 (12.11.2026): owner-led LIVE CDS → HDI → HANA BLOB** — właściciel zbudował i wdrożył `KsefDocuments` w istniejącym `ainvoicer-db`, zweryfikował kolumnę `CONTENT BLOB` i odczyt pustej tabeli jako HDI runtime `_RT`. Upload/download OData V4, test DML/SHA-256 i restart nadal **PENDING**; `documents.cds` pozostaje lokalny/untracked. [Dziennik i dowody](journal/2026-11-12-blob-lab-01-owner-live-hdi-blob.md) · [zasady laboratorium](guides/BLOB_LAB_01_OWNER_LED_HDI.md).
+
+
 **Owner-led learning:** [BLOB-LAB-01 — samodzielne ćwiczenie CAP Java / HDI / HANA BLOB](guides/BLOB_LAB_01_OWNER_LED_HDI.md). Codex i Claude Code nie mogą realizować tego laboratorium autonomicznie; mogą pomagać wyłącznie w zakresie wskazanym przez właściciela. Laboratorium nie zostało rozpoczęte ani zatwierdzone do LIVE deployu.
 
 
@@ -18,6 +21,10 @@ tags: [ainvoicer, dokumentacja]
 
 > Strategia przyjęta; model CAP CDS/HDI oraz walidacja offline istnieją, lecz nie jest to pełne IaC BTP ani mechanizm backupu. Bieżący stan runtime CAP/HANA sprawdzaj w [STATUS](STATUS.md) i [dzienniku CAP-HANA-01](journal/2026-11-11-cap-hana-01-first-persistence.md).
 
+
+**CAP-HANA-02 (2026-11-12): Faza 1 read-only i plan akceptacji persystencji** — stan CF/HANA/HDI/CI, metoda
+katalogowego SQL bez service key, ocena harnessu, WARN outbox, plan G0–G9; DML NO-GO.
+[Przewodnik](guides/CAP_HANA_02_PERSISTENCE_ACCEPTANCE.md) · [dziennik](journal/2026-11-12-cap-hana-02-persistence-acceptance.md).
 
 **CAP-HANA-01S (2026-11-11): CAP na HANA Cloud wdrożony (VERIFIED LIVE)** — po nieudanym stagingu `40b8e964…`
 (opakowany JAR w `srv/data.zip`) poprawiono generator MTAR; deployment `82250a52…` FINISHED, CAP/AppRouter STARTED,

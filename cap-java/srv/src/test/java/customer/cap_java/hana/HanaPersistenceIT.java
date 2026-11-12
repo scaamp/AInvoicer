@@ -49,22 +49,42 @@ class HanaPersistenceIT {
     @Autowired CdsRuntime runtime;
     @Autowired DataSource dataSource;
 
+    /** Zgoda na zapis syntetycznych danych: wymagana dla faz seed/contend/cleanup. */
+    static final String WRITE_CONSENT = "WRITE_SYNTHETIC_DATA_TO_APPROVED_HDI";
+    /** Węższa zgoda CAP-HANA-02: wyłącznie fazy bez DML (start/metadata, odczyt własnych kluczy, kontrola po cleanup). */
+    static final String READ_ONLY_CONSENT = "READ_ONLY_CHECK_APPROVED_HDI";
+    static final Set<String> READ_ONLY_PHASES = Set.of("check", "recover", "verify-cleanup");
+    static final Set<String> PHASES = Set.of("check", "seed", "recover", "contend", "cleanup", "verify-cleanup");
+
     /** Bramki przed utworzeniem kontekstu Spring/DataSource: brak zgody = zero połączeń i zapisów. */
     @DynamicPropertySource static void gate(DynamicPropertyRegistry properties) {
-        if ("true".equalsIgnoreCase(System.getenv("GITHUB_ACTIONS"))
-                || !"WRITE_SYNTHETIC_DATA_TO_APPROVED_HDI".equals(System.getenv("AINV_HANA_TEST_CONSENT"))) {
+        validate(System.getenv());
+        properties.add("cds.environment.local.defaultEnvPath", () -> "hana-test-no-local-default-env.json");
+    }
+
+    /**
+     * Walidacja środowiska uruchomienia (wydzielona dla testów offline). Zgoda read-only nie odblokowuje
+     * faz z DML; zapisowa obejmuje wszystkie fazy. CI, obcy HDI, DBADMIN lub brak bindingu = odmowa.
+     */
+    static void validate(Map<String, String> env) {
+        String consent = env.get("AINV_HANA_TEST_CONSENT");
+        if ("true".equalsIgnoreCase(env.get("GITHUB_ACTIONS"))
+                || !(WRITE_CONSENT.equals(consent) || READ_ONLY_CONSENT.equals(consent))) {
             throw new IllegalStateException("HANA_TEST_EXPLICIT_OWNER_CONSENT_REQUIRED_NO_CI");
         }
-        runId = UUID.fromString(required("AINV_HANA_TEST_RUN_ID")).toString();
-        nip = required("AINV_HANA_TEST_NIP");
+        phase = required(env, "AINV_HANA_TEST_PHASE");
+        if (!PHASES.contains(phase)) throw new IllegalStateException("HANA_TEST_PHASE_INVALID");
+        if (!READ_ONLY_PHASES.contains(phase) && !WRITE_CONSENT.equals(consent)) {
+            throw new IllegalStateException("HANA_TEST_WRITE_CONSENT_REQUIRED_FOR_PHASE");
+        }
+        runId = UUID.fromString(required(env, "AINV_HANA_TEST_RUN_ID")).toString();
+        nip = required(env, "AINV_HANA_TEST_NIP");
         if (!KsefTaxpayerContext.isValidNip(nip)) throw new IllegalStateException("HANA_TEST_SYNTHETIC_NIP_REQUIRED");
-        hdi = required("AINV_HANA_TEST_HDI_NAME");
+        hdi = required(env, "AINV_HANA_TEST_HDI_NAME");
         if (!Set.of("ainvoicer-db", "ainvoicer-db-test").contains(hdi)) throw new IllegalStateException("HANA_TEST_HDI_NOT_ALLOWED");
-        phase = required("AINV_HANA_TEST_PHASE");
-        if (!Set.of("check", "seed", "recover", "contend", "cleanup").contains(phase)) throw new IllegalStateException("HANA_TEST_PHASE_INVALID");
         // Weryfikacja także przy bezpośrednim -Phana-integration, przed utworzeniem DataSource.
         try {
-            var services = new com.fasterxml.jackson.databind.ObjectMapper().readTree(required("VCAP_SERVICES"));
+            var services = new com.fasterxml.jackson.databind.ObjectMapper().readTree(required(env, "VCAP_SERVICES"));
             var bindings = services.path("hana");
             if (bindings.size() != 1 || !hdi.equals(bindings.path(0).path("name").asText())
                     || !"hdi-shared".equals(bindings.path(0).path("plan").asText())
@@ -74,11 +94,10 @@ class HanaPersistenceIT {
                 throw new IllegalStateException("HANA_TEST_MANAGED_HDI_BINDING_REQUIRED");
             }
         } catch (java.io.IOException error) { throw new IllegalStateException("HANA_TEST_BINDING_INVALID"); }
-        properties.add("cds.environment.local.defaultEnvPath", () -> "hana-test-no-local-default-env.json");
     }
 
-    static String required(String name) {
-        String value = System.getenv(name);
+    static String required(Map<String, String> env, String name) {
+        String value = env.get(name);
         if (value == null || value.isBlank()) throw new IllegalStateException("HANA_TEST_REQUIRED_" + name);
         return value;
     }
@@ -107,6 +126,7 @@ class HanaPersistenceIT {
             case "recover" -> recover();
             case "contend" -> contend();
             case "cleanup" -> cleanup();
+            case "verify-cleanup" -> verifyCleanup();
             default -> fail("Unknown phase");
         }
         System.out.println("HANA_TEST_PHASE_PASS=" + phase); // bez credentiali/danych/payloadu
@@ -242,6 +262,23 @@ class HanaPersistenceIT {
             db.run(Delete.from(OPS).byId(runId));
             db.run(Delete.from(InboundPersistence.CHECKPOINTS).matching(key()));
             db.run(Delete.from(InboundPersistence.LEASES).matching(key()));
+            return true;
+        });
+    }
+
+    /**
+     * Osobna JVM po cleanup (CAP-HANA-02): brak wyłącznie własnych kluczy runu i scope. Bez DML; rekordy
+     * innych runów/scope nie są czytane ani liczone. Pozostałość = FAIL i ręczna analiza, nie szerokie DELETE.
+     */
+    void verifyCleanup() {
+        persistence().tx(() -> {
+            assertTrue(db.run(Select.from(OPS).byId(runId)).list().isEmpty(), "own operation still present");
+            assertTrue(db.run(Select.from(OPS).where(o -> o.get("idempotencyKey").eq(MARKER + runId)
+                .and(o.get("taxpayerNip").eq(nip)))).list().isEmpty(), "own idempotency key still present");
+            assertTrue(db.run(Select.from(DOCS).byId(docId())).list().isEmpty(), "own document still present");
+            assertTrue(db.run(Select.from("cds.outbox.Messages").byId(runId)).list().isEmpty(), "own outbox row still present");
+            assertTrue(db.run(Select.from(InboundPersistence.CHECKPOINTS).matching(key())).list().isEmpty(), "own checkpoint still present");
+            assertTrue(db.run(Select.from(InboundPersistence.LEASES).matching(key())).list().isEmpty(), "own lease still present");
             return true;
         });
     }
