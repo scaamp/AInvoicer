@@ -201,6 +201,20 @@ nie musi być przekazywany do H01.
 
 ## Faza D — defekty i poprawki
 
+### ORCH-05 — korekta klasyfikacji HTML200 (2026-11-12)
+
+Niezależny review odtworzył fałszywy PASS: adres XSUAA w zmiennej lub komentarzu i faktyczna
+nawigacja do lokalnej strony wystarczały staremu klasyfikatorowi. Jest to **MEDIUM — luka narzędzia
+akceptacyjnego**, bez zmiany produkcyjnego AppRoutera. Poprawka rozpoznaje całą, zamkniętą postać HTML
+i instrukcji przekierowania, w tym trzy instrukcje cookie oraz opcjonalny nonce z przypiętego
+`@sap/approuter` 23.4.0 (`lib/passport/oauth2-strategy.js`). Dodatkowy skrypt, HTML, instrukcja,
+fałszywy `no-store`, inny Content-Type lub port celu powodują FAIL. JavaScript nie jest wykonywany.
+
+Regresja narzędzia: **12/12 PASS offline**, w tym strony wabiki i syntetyczny szablon SAP.
+Historyczny raport 38/38 pozostaje niezmieniony: pomiar wykonano wcześniejszym klasyfikatorem;
+**nie powtórzono LIVE po tej poprawce**. Dwa wyniki nawigacji wymagają ponownego potwierdzenia
+poprawionym narzędziem przed security sign-off. Pozostałe 36 sond nie korzysta z tej klasyfikacji.
+
 | ID | Waga | Ustalenie | Stan |
 | --- | --- | --- | --- |
 | E-1 | MEDIUM (luka testowa) | Jedyny test JWT HTTP (`XsuaaJwtODataContractTest`) działał w trybie smoke z `IdentitySmokeReadOnlyHandler`; wdrożony wariant HANA readiness go nie ma, więc brakowało dowodu dla rzeczywistego składu | **NAPRAWIONE OFFLINE**: `HanaReadinessJwtSecurityTest` (6 testów) |

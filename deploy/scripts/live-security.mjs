@@ -47,16 +47,29 @@ export function plan(cap, router) {
 const XSUAA_HOST = /^[a-z0-9-]+\.authentication\.[a-z0-9-]+\.hana\.ondemand\.com$/;
 
 /**
- * Strona przekierowania AppRoutera: mała, bez cache, bez UI5/OData, a każdy jawny URL https wskazuje XSUAA
- * i co najmniej jeden to /oauth/authorize. Każda inna treść 200 nie jest uznawana za przekierowanie.
+ * Rozpoznaje zamkniętą gramatykę strony AppRouter 23.4.0, bez wykonywania JavaScript.
+ * Sam URL w komentarzu/zmiennej nie dowodzi przekierowania; dodatkowy kod lub HTML = odmowa.
  */
-export function scriptRedirectKind(status, body, cacheControl) {
-    if (status !== 200 || body.length > 4096 || !/no-store/i.test(cacheControl || '')) return 'none';
-    if (/sap-ui-bootstrap|sap-ui-core|@odata|"value"\s*:|<edmx:/i.test(body)) return 'none';
-    if (!/location\.(href|replace|assign)|window\.location/.test(body)) return 'none';
-    const urls = [...body.matchAll(/https:\/\/[^\s"'<>\\]+/g)].map(m => { try { return new URL(m[0]); } catch { return null; } });
-    if (!urls.length || urls.some(u => !u || !XSUAA_HOST.test(u.hostname) || u.username || u.password)) return 'none';
-    return urls.some(u => u.pathname === '/oauth/authorize') ? 'xsuaa-authorize-script' : 'none';
+export function scriptRedirectKind(status, body, cacheControl, contentType = 'text/html') {
+    if (status !== 200 || Buffer.byteLength(body, 'utf8') > 4096
+        || !/(?:^|,)\s*no-store\s*(?:,|$)/i.test(cacheControl || '')
+        || !/^text\/html(?:\s*;|$)/i.test(contentType || '')) return 'none';
+    const html = body.trim().match(/^<html>\s*<head>\s*(?:<link rel="shortcut icon" href="data:image\/gif;base64,[A-Za-z0-9+/=]+"\s*\/?>\s*)?<script(?: nonce="[A-Za-z0-9+/_=-]+")?>([\s\S]*?)<\/script>\s*<\/head>\s*<\/html>$/);
+    if (!html) return 'none';
+    let code = html[1].trim();
+    // Dokładne trzy instrukcje cookie z lib/passport/oauth2-strategy.js. Dopuszczalne wyrażenia
+    // pochodzą ze źródeł przypiętego AppRoutera; żadnego eval, dodatkowych tagów ani instrukcji.
+    const attrs = String.raw`(?:;(?:path=/|Secure|SameSite=(?:None|Lax|Strict)|Partitioned)?)*`;
+    const fragment = String.raw`document\.cookie="(?:fragmentAfterLogin|ARFRG-[a-zA-Z0-9-]+)="\+encodeURIComponent\(location\.hash\)\+"${attrs}";`;
+    const path = String.raw`location\.href\.split\('#'\)\[0\](?:\.split\(location\.host\)\[1\]|\.substring\(location\.href\.split\('#'\)\[0\]\.indexOf\(location\.host\) \+ location\.host\.length\))`;
+    const original = String.raw`document\.cookie="(?:locationAfterLogin|ARLOC-[a-zA-Z0-9-]+)="\+encodeURIComponent\(${path}\)\+"${attrs}";`;
+    const signature = String.raw`document\.cookie="signature=[A-Za-z0-9%+/:=_.-]+${attrs}";`;
+    code = code.replace(new RegExp('^' + fragment + original + signature), '');
+    // Wersja SAP przypisuje location; prosty wariant replace zachowuje fragment URL.
+    const assignment = code.match(/^location="(https:\/\/[^"<>\\\s]+)";?$/);
+    const replace = code.match(/^window\.location\.replace\("(https:\/\/[^"<>\\\s]+)"(?: \+ location\.hash)?\);$/);
+    const target = assignment?.[1] || replace?.[1];
+    return target && redirectKind(target, target) === 'xsuaa-authorize' ? 'xsuaa-authorize-script' : 'none';
 }
 
 /** Tylko klasa celu przekierowania; pełny Location (parametry OAuth) nie trafia do raportu. */
@@ -65,7 +78,7 @@ export function redirectKind(location, base) {
     try {
         const target = new URL(location, base);
         return target.protocol === 'https:' && XSUAA_HOST.test(target.hostname)
-            && target.pathname === '/oauth/authorize' && !target.username && !target.password ? 'xsuaa-authorize' : 'other';
+            && !target.port && target.pathname === '/oauth/authorize' && !target.username && !target.password ? 'xsuaa-authorize' : 'other';
     } catch { return 'invalid'; }
 }
 
@@ -93,7 +106,7 @@ export async function probe(item, fetcher = fetch) {
             } finally { await reader.cancel(); }
         }
         if (item.expectedRedirect && redirect === 'none' && size <= 65536) {
-            redirect = scriptRedirectKind(response.status, body, response.headers.get('cache-control'));
+            redirect = scriptRedirectKind(response.status, body, response.headers.get('cache-control'), response.headers.get('content-type'));
         }
         const contractExposed =/KsefService|InvoiceIntegrationStatus|InboundInvoiceOverview/.test(body)
             && response.status === 200;

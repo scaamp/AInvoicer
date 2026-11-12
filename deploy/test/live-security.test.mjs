@@ -108,6 +108,46 @@ test('AppRouter 200 script redirect passes only as a small no-store page pointin
     assert.equal(scriptRedirectKind(302, page(authorize), 'no-store'), 'none');
 });
 
+test('HTML200 must actually redirect: reject decoys, local/HTTP targets and injected code', async () => {
+    const url = 'https://sub-1.authentication.eu20.hana.ondemand.com/oauth/authorize?state=SECRET';
+    const shell = code => `<html><head><script>${code}</script></head></html>`;
+    for (const code of [
+        `const decoy="${url}"; window.location="/public-app";`,
+        `// window.location.replace("${url}");`,
+        `window.location.replace("${url}");fetch('/private-data');`,
+        `window.location.replace("${url}");</script><body>Public app</body><script>`,
+        `/* ${url} */ window.location="http://evil.example";`,
+        `window.location.replace("${url}");window.location="//evil.example";`,
+        `location="https://sub-1.authentication.eu20.hana.ondemand.com:8443/oauth/authorize"`,
+        `location="${url}"+someFunction()`]) {
+        const result = await probe({ id: 'decoy', url: 'https://router.example.test/', navigation: true,
+            expected: [200], expectedRedirect: ['xsuaa-authorize-script'] }, async () => new Response(shell(code),
+            { headers: { 'Cache-Control': 'no-store', 'Content-Type': 'text/html' } }));
+        assert.equal(result.result, 'FAIL');
+        assert.ok(!JSON.stringify(result).includes('SECRET'));
+    }
+    const valid = shell(`location="${url}"`);
+    assert.equal(scriptRedirectKind(200, valid, 'no-store', 'application/json'), 'none');
+    assert.equal(scriptRedirectKind(200, valid, 'x-no-store'), 'none');
+});
+
+test('pinned SAP AppRouter cookie page and CSP nonce are recognized without evaluating JavaScript', () => {
+    const url = 'https://sub-1.authentication.eu20.hana.ondemand.com/oauth/authorize?state=SYNTHETIC';
+    for (const hostIncluded of [false, true]) {
+        const path = hostIncluded
+            ? "location.href.split('#')[0].substring(location.href.split('#')[0].indexOf(location.host) + location.host.length)"
+            : "location.href.split('#')[0].split(location.host)[1]";
+        const code = 'document.cookie="fragmentAfterLogin="+encodeURIComponent(location.hash)+";path=/;Secure;SameSite=None;";'
+            + `document.cookie="locationAfterLogin="+encodeURIComponent(${path})+";path=/;Secure;SameSite=None;";`
+            + 'document.cookie="signature=synthetic-signature;path=/;Secure;SameSite=None;";'
+            + `location="${url}"`;
+        const page = '<html><head><link rel="shortcut icon" href="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" />'
+            + `<script nonce="synthetic123=">${code}</script></head></html>`;
+        assert.equal(scriptRedirectKind(200, page, 'no-cache, no-store, must-revalidate'), 'xsuaa-authorize-script');
+        assert.equal(scriptRedirectKind(200, page.replace('signature=synthetic-signature', 'signature=x";alert(1);//'), 'no-store'), 'none');
+    }
+});
+
 test('probe reports exposed CAP index, unsafe error and oversized body as FAIL without raw body', async () => {
     for (const [status, text] of [[200, 'KsefService index'], [500, 'clientsecret=synthetic-hidden'], [401, 'x'.repeat(65537)]]) {
         const report = await probe({ id: 'negative', url: 'https://example.test', expected: [status] },
