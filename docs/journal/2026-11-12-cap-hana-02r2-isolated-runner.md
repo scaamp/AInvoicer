@@ -33,6 +33,12 @@ Główny worktree `D:\AInvoicer`: `main=4186081`, zmodyfikowany `.env.example` i
 Przeczytano AGENTS, STATUS, ROADMAP, wskazane runbooki/dziennik i ADR-0001/0007 oraz skill CAP Java.
 Stan HANA/MTA pochodzi z wcześniejszej dokumentacji; **nie powtarzano odczytów CF** w tej sesji.
 
+Po publikacji brancha ponowny fetch ujawnił `origin/main=2fe9402` (cztery commity dokumentacyjne
+LAB ponad bazą e468c76). Bez zmian kodu i bez konfliktu plików R2; nowe informacje są jednak istotne:
+OWNER-REPORTED deployment tabeli `CUSTOMER_CAP_JAVA_KSEFDOCUMENTS` do tego samego `ainvoicer-db`.
+G1 ma nadal dokładną listę14 tabel; dodatkowa tabela może dać MISMATCH. Nie zmieniano katalogowego
+skryptu ani LAB. **G2 NO-GO** do osobnego uzgodnienia zatwierdzonego katalogu i faktycznego MATCH.
+
 Toolchain lokalny: Microsoft OpenJDK25.0.4.1, Maven3.9.16, Node24.13.0.
 CAP5.2.0, Boot4.1.1, SDK3.0.29 według POM. JUnit rozwiązany przez Maven:6.0.3.
 SapMachine25 jest wymaganiem przyszłego stagingu; lokalny JDK nie dowodzi stagingu SAP buildpacka.
@@ -99,12 +105,13 @@ Sprawdzono generowany tekst planu CF, bez wykonania jego poleceń.
 R2 zamiast R1/R3 ze względu na wykonanie tego samego harnessu bez dotykania działającego CAP.
 Launcher API6.0.3 zapewnia kontrolę wyniku i brak surowych wyjątków w logach; console-standalone
 dublowałby biblioteki. Świadomie przyjęto ograniczoną diagnostykę i osobny etap LIVE stagingu.
-Zgodnie z zadaniem nie zmieniano źródeł/seman­tyki `HanaPersistenceIT`.
+Zgodnie z zadaniem nie zmieniano źródeł/semantyki `HanaPersistenceIT`.
 
 ## Current State
 
 Implementacja i dowody dotyczą wyłącznie offline. G2 wymaga review/CI, G1 MATCH, potwierdzenia quota/
-stanu HANA oraz osobnej zgody właściciela na nową app/staging i dwa bindingi. G4 wymaga kolejnej zgody DML.
+stanu HANA, uzgodnienia dodatkowej tabeli LAB oraz osobnej zgody właściciela na nową app/staging
+i dwa bindingi. G4 wymaga kolejnej zgody DML.
 Nie wykonano żadnego CF CLI, BTP LIVE operation, testu rzeczywistej HANA, restartu ani DML.
 
 ## Next Steps

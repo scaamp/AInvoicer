@@ -12,6 +12,14 @@ tags: [ainvoicer, cap-java, hana, hdi, cloud-foundry, integration-test, runner]
 DML/DDL, deploymentu, bindingu ani restartu.** Gotowość techniczna offline nie oznacza zgody na G2.
 Katalog G1 nadal PENDING; pierwszy DML pozostaje NO-GO do odrębnego zatwierdzenia.
 
+**Nowy blocker G2, ujawniony podczas pracy:** `main=2fe9402` zawiera
+[relację właściciela o wdrożeniu LAB do tego samego HDI](https://github.com/scaamp/AInvoicer/blob/2fe9402e10e3109a17f5fd9259cbea4a4b8e3d4a/docs/journal/2026-11-12-blob-lab-01-owner-live-hdi-blob.md).
+Tabela `CUSTOMER_CAP_JAVA_KSEFDOCUMENTS` jest według tego wpisu już w `ainvoicer-db`, choć jej CDS
+pozostaje poza Git. To dowód OWNER-REPORTED, nie własny odczyt tej sesji. Niezmieniony G1 sprawdza
+dokładny katalog14 tabel i może zwrócić MISMATCH z powodu dodatkowej tabeli LAB. **G2 pozostaje NO-GO**
+do świadomego uzgodnienia zatwierdzonego katalogu/źródeł i uzyskania MATCH. Nie dopisano whitelisty,
+nie skopiowano `documents.cds`, nie usuwano tabeli i nie zmieniano skryptu G1 w ramach R2.
+
 [Plan akceptacji CAP-HANA-02](CAP_HANA_02_PERSISTENCE_ACCEPTANCE.md) ·
 [Runbook pierwszego deploymentu](CAP_HANA_01_FIRST_DEPLOYMENT_RUNBOOK.md) ·
 [Granice BLOB-LAB-01](BLOB_LAB_01_OWNER_LED_HDI.md) ·
