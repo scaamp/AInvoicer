@@ -8,6 +8,14 @@ tags: [ainvoicer, cap-hana-01, hana, hdi, cloud-foundry, deployment, recovery]
 
 # CAP-HANA-01 — runbook do osobnego zatwierdzenia
 
+## Kontynuacja: CAP-HANA-02 (12.11)
+
+Akceptacja persystencji jest prowadzona w [CAP-HANA-02](CAP_HANA_02_PERSISTENCE_ACCEPTANCE.md): odczyt 12.11
+potwierdził 0.7.3 bez aktywnych operacji, CAP 1/1 bez restartu od 11.11 20:31:50Z, HANA `serviceStopped=false`,
+HDI bez service keys. Katalogowy SQL ma teraz konkretną procedurę read-only (task na istniejącym droplecie
+deployera, bramka G1), harness — zgodę `READ_ONLY_CHECK_APPROVED_HDI` i fazę `verify-cleanup`. Kolejność faz,
+parametry runu i GO/NO-GO obowiązują według CAP-HANA-02; §5 poniżej opisuje wymagania runnera bez zmian.
+
 ## CAP-HANA-01S — wynik LIVE: deployment 82250a52 FINISHED (11.11, 21:40 CET)
 
 Zgoda właściciela: „zgadzam się – abort i deploy” (bramka poniżej, bez czekania na CI PR).
@@ -485,6 +493,7 @@ Potem `recover` w nowej JVM. Nie uruchamiać dwóch Mavenów na wspólnym katalo
 | Restart CAP | Osobna zgoda na `cf restart ainvoicer-srv`; potem1/1, brak H2, autoryzowany odczyt własnej operacji i `recover`. Nie seedować ponownie. |
 | Outage HANA | Osobna zgoda administratora na stop/start; po zaplanowanym stopie bezpieczna odmowa startup/DB operacji, po RUNNING ponowny recover i sprawdzenie pool/reconnect istniejącego CAP. Żadnego automatycznego stop/start. |
 | Cleanup | Na końcu jedynie `AINV_HANA_TEST_PHASE=cleanup node deploy/scripts/hana-integration.mjs`; pod blokadami markery runu, checkpoint i właściciel lease. Obcy/zmieniony stan → odmowa całej transakcji. |
+| Po cleanup (CAP-HANA-02) | Nowa JVM: `AINV_HANA_TEST_PHASE=verify-cleanup` (zgoda `READ_ONLY_CHECK_APPROVED_HDI` wystarcza) — brak wyłącznie własnych kluczy runu/scope. Fazy `check`/`recover`/`verify-cleanup` przyjmują zgodę read-only; `seed`/`contend`/`cleanup` wyłącznie zgodę zapisową. |
 
 Obserwować SQLState/vendor code dla unique, timeout/deadlock i utraty połączenia. Nie mapować H2 HYT00
 na HANA. Retry błędu niejednoznacznego commita wymaga odczytu własnych kluczy i rekoncyliacji;
