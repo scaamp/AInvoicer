@@ -8,6 +8,9 @@ tags: [ainvoicer, education, cap-java, hana, hdi, blob, owner-led, agents]
 
 # BLOB-LAB-01 — owner-led: CAP CDS → HDI → HANA BLOB → OData V4
 
+> **AKTUALIZACJA — 12.11.2026 (wyniki właściciela, LIVE):** Laboratorium zostało rozpoczęte w istniejącym AInvoicer / `ainvoicer-db` (wariant B). Właściciel utworzył lokalną encję `KsefDocuments`, zbudował i wdrożył MTAR HANA 0.7.3, potwierdził zadanie HDI #3 `SUCCEEDED`, fizyczną tabelę `CUSTOMER_CAP_JAVA_KSEFDOCUMENTS`, kolumnę `CONTENT BLOB` oraz `SELECT COUNT(*) = 0` jako HDI runtime `_RT`. **Nadal brak:** committed `documents.cds`, OData media service, upload/download, DML, integralność SHA-256 i test restartu. Szczegóły i dowody: [dziennik BLOB-LAB-01 z 12.11](../journal/2026-11-12-blob-lab-01-owner-live-hdi-blob.md). Ten dopisek aktualizuje historyczne statusy „not started” niżej; ograniczenia owner-led nadal obowiązują.
+
+
 > **REZERWACJA ZADANIA DLA WŁAŚCICIELA (OWNER-LED).**
 > Codex, Claude Code i inni agenci **nie mogą autonomicznie zaimplementować, wdrożyć, przetestować LIVE ani „dokończyć” tego laboratorium**. Mogą być mentorami, generować **wyraźnie zamówione fragmenty kodu**, recenzować pracę właściciela i pomagać w diagnostyce. Właściciel chce sam wykonać kroki praktyczne i zrozumieć ich mechanizm.
 
