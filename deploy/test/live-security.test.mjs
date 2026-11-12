@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import vm from 'node:vm';
 import { webcrypto } from 'node:crypto';
-import { origin, plan, probe } from '../scripts/live-security.mjs';
+import { origin, plan, probe, redirectKind, scriptRedirectKind } from '../scripts/live-security.mjs';
 import { root } from '../scripts/identity-smoke.mjs';
 
 test('probe origins reject credentials, HTTP remote hosts, path/query/fragment before requests', () => {
@@ -34,6 +34,78 @@ test('actual HTTP probes use only GET, suppress secrets and never follow redirec
         assert.equal(followed, false);
         assert.deepEqual(methods, ['GET', 'GET']);
     } finally { await new Promise(r => server.close(r)); }
+});
+
+test('CAP-07E plan covers legacy projections, service root, RAP children and browser navigation', () => {
+    const probes = plan('https://cap.example.test', 'https://router.example.test');
+    const ids = probes.map(p => p.id);
+    for (const path of ['KsefOperations?$top=1', 'KsefOperations/$count', 'KsefInvoices?$top=1', '']) {
+        assert.ok(ids.includes('CAP anonymous ' + path), path);
+        assert.ok(ids.includes('CAP malformed JWT ' + path), path);
+    }
+    for (const path of ['/rap-ui/InvoiceItems?$top=1', '/rap-ui/InvoiceReferences?$top=1']) {
+        assert.ok(ids.includes('ROUTER fresh anonymous ' + path), path);
+    }
+    const navigation = probes.filter(p => p.navigation);
+    assert.equal(navigation.length, 2);
+    assert.ok(navigation.every(p => p.expectedRedirect.join() === 'xsuaa-authorize,xsuaa-authorize-script' && !p.authorization
+        && p.url.startsWith('https://router.example.test/')));
+    // Brak żądań do CAP bez kontroli tokenu poza ustalonym originem; same GET (probe nie przyjmuje metody).
+    assert.ok(probes.every(p => p.url.startsWith('https://cap.example.test/') || p.url.startsWith('https://router.example.test/')));
+});
+
+test('redirect classification accepts only XSUAA authorize and never reports OAuth parameters', async () => {
+    const base = 'https://router.example.test/index.html';
+    assert.equal(redirectKind('https://sub-1.authentication.eu20.hana.ondemand.com/oauth/authorize?client_id=x', base), 'xsuaa-authorize');
+    for (const location of ['https://evil.example/oauth/authorize', 'http://sub.authentication.eu20.hana.ondemand.com/oauth/authorize',
+        'https://sub.authentication.eu20.hana.ondemand.com.evil.example/oauth/authorize',
+        'https://u:p@sub.authentication.eu20.hana.ondemand.com/oauth/authorize', '/login/callback',
+        'https://sub.authentication.eu20.hana.ondemand.com/oauth/token']) {
+        assert.equal(redirectKind(location, base), 'other', location);
+    }
+    assert.equal(redirectKind(null, base), 'none');
+    const headers = [];
+    for (const [location, expected] of [
+        ['https://sub-1.authentication.eu20.hana.ondemand.com/oauth/authorize?client_id=SECRET-CLIENT&state=SECRET-STATE', 'PASS'],
+        ['https://evil.example/oauth/authorize?state=SECRET-STATE', 'FAIL']]) {
+        const report = await probe({ id: 'nav', url: base, navigation: true, expected: [302], expectedRedirect: ['xsuaa-authorize'] },
+            async (url, options) => { headers.push(options.headers); return new Response(null, { status: 302, headers: { Location: location } }); });
+        assert.equal(report.result, expected);
+        assert.ok(!/SECRET|client_id|state=/.test(JSON.stringify(report)));
+    }
+    assert.ok(headers.every(h => h['X-Requested-With'] === undefined && h.Accept === 'text/html' && h.Authorization === undefined));
+    const xhr = await probe({ id: 'xhr', url: base, expected: [401] }, async (url, options) => {
+        assert.equal(options.headers['X-Requested-With'], 'XMLHttpRequest');
+        return new Response(null, { status: 401 });
+    });
+    assert.equal(xhr.redirectKind, undefined);
+});
+
+test('AppRouter 200 script redirect passes only as a small no-store page pointing solely to XSUAA', async () => {
+    const authorize = 'https://sub-1.authentication.eu20.hana.ondemand.com/oauth/authorize?response_type=code&client_id=SECRET-CLIENT'
+        + '&redirect_uri=https%3A%2F%2Frouter.example.test%2Flogin%2Fcallback&state=SECRET-STATE';
+    const page = url => `<html><head><script>window.location.replace("${url}" + location.hash);</script></head></html>`;
+    const item = { id: 'nav', url: 'https://router.example.test/index.html', navigation: true, expected: [200, 302, 303],
+        expectedRedirect: ['xsuaa-authorize', 'xsuaa-authorize-script'] };
+    const run = (body, cache = 'no-cache, no-store, must-revalidate') =>
+        probe(item, async () => new Response(body, { status: 200, headers: { 'Cache-Control': cache, 'Content-Type': 'text/html' } }));
+    const ok = await run(page(authorize));
+    assert.equal(ok.result, 'PASS');
+    assert.equal(ok.redirectKind, 'xsuaa-authorize-script');
+    assert.ok(!/SECRET|client_id|redirect_uri/.test(JSON.stringify(ok)));
+    for (const [body, cache] of [
+        [page('https://evil.example/oauth/authorize'), undefined],
+        [page(authorize) + '<script src="https://cdn.example/x.js"></script>', undefined],
+        [page(authorize) + '<script id="sap-ui-bootstrap"></script>', undefined],
+        ['{"@odata.context":"$metadata#Invoices","value":[]}', undefined],
+        ['<html>KsefService app shell</html>', undefined],
+        [page(authorize), 'public, max-age=60'],
+        [page(authorize) + 'x'.repeat(5000), undefined]]) {
+        const report = await run(body, cache);
+        assert.equal(report.result, 'FAIL', body.slice(0, 60));
+        assert.ok(!/SECRET/.test(JSON.stringify(report)));
+    }
+    assert.equal(scriptRedirectKind(302, page(authorize), 'no-store'), 'none');
 });
 
 test('probe reports exposed CAP index, unsafe error and oversized body as FAIL without raw body', async () => {
