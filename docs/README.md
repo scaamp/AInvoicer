@@ -8,10 +8,15 @@ tags: [ainvoicer, dokumentacja]
 
 # AInvoicer — baza wiedzy projektu
 
-**BLOB-LAB-01 (12.11.2026): owner-led LIVE CDS → HDI → HANA BLOB** — właściciel zbudował i wdrożył `KsefDocuments` w istniejącym `ainvoicer-db`, zweryfikował kolumnę `CONTENT BLOB` i odczyt pustej tabeli jako HDI runtime `_RT`. Upload/download OData V4, test DML/SHA-256 i restart nadal **PENDING**; `documents.cds` pozostaje lokalny/untracked. [Dziennik i dowody](journal/2026-11-12-blob-lab-01-owner-live-hdi-blob.md) · [zasady laboratorium](guides/BLOB_LAB_01_OWNER_LED_HDI.md).
+**ORCH-05 (12.11.2026): HANA R2 + CAP-07E MERGED** — wyłącznie PR#15 i PR#16, po review i CI dokładnych HEAD; bez operacji LIVE. [Wyniki, regresja i trzy decyzje właściciela](journal/2026-11-12-orch-05-hana-security-integration.md).
+
+- **CAP-HANA-02R2:** [runner i procedura](guides/CAP_HANA_02_R2_RUNNER.md), [dziennik offline](journal/2026-11-12-cap-hana-02r2-isolated-runner.md), [PR #15](https://github.com/scaamp/AInvoicer/pull/15). G1 katalog/LAB do uzgodnienia, G2–G4 NO-GO.
+- **CAP-07E:** [macierz i ryzyka E-2/E-3](guides/CAP_07E_SECURITY_ACCEPTANCE.md), [dziennik](journal/2026-11-12-cap-07e-security-acceptance.md), [PR #16](https://github.com/scaamp/AInvoicer/pull/16). Anonimowe HTTP38/38 historycznie PASS; poprawiony klasyfikator wymaga ponowienia 2 nawigacji. A/B/principal H01 BLOCKED, security sign-off PENDING.
+
+**BLOB-LAB-01 (12.11.2026): owner-led LIVE CDS → HDI → HANA BLOB** — właściciel zbudował i wdrożył `KsefDocuments` w istniejącym `ainvoicer-db`, zweryfikował kolumnę `CONTENT BLOB` i odczyt pustej tabeli jako HDI runtime `_RT` (relacja/screenshoty właściciela). Upload/download OData V4, test DML/SHA-256 i restart nadal **PENDING**. **CDS jest już w Git od commita właściciela `30b6234`**; wpis o lokalnym/untracked pliku w dzienniku opisuje wcześniejszy stan. [Dziennik i dowody](journal/2026-11-12-blob-lab-01-owner-live-hdi-blob.md) · [zasady laboratorium](guides/BLOB_LAB_01_OWNER_LED_HDI.md).
 
 
-**Owner-led learning:** [BLOB-LAB-01 — samodzielne ćwiczenie CAP Java / HDI / HANA BLOB](guides/BLOB_LAB_01_OWNER_LED_HDI.md). Codex i Claude Code nie mogą realizować tego laboratorium autonomicznie; mogą pomagać wyłącznie w zakresie wskazanym przez właściciela. Laboratorium nie zostało rozpoczęte ani zatwierdzone do LIVE deployu.
+**Owner-led learning:** [BLOB-LAB-01 — samodzielne ćwiczenie CAP Java / HDI / HANA BLOB](guides/BLOB_LAB_01_OWNER_LED_HDI.md). Codex i Claude Code nie mogą realizować tego laboratorium autonomicznie; mogą pomagać wyłącznie w zakresie wskazanym przez właściciela. Właściciel wykonał opisany wyżej etap HDI; kolejne kroki pozostają jego pracą.
 
 
 ## Strategia infrastruktury i bazy danych

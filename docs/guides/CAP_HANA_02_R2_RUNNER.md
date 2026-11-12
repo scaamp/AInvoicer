@@ -12,6 +12,11 @@ tags: [ainvoicer, cap-java, hana, hdi, cloud-foundry, integration-test, runner]
 DML/DDL, deploymentu, bindingu ani restartu.** Gotowość techniczna offline nie oznacza zgody na G2.
 Katalog G1 nadal PENDING; pierwszy DML pozostaje NO-GO do odrębnego zatwierdzenia.
 
+**Aktualizacja ORCH-05, 12.11.2026:** właściciel zapisał już `documents.cds` w Git (`30b6234`,
+obecne w `main=ccbf0e7`). Poniższy opis `main=2fe9402` dotyczy wcześniejszego stanu. Skrypt G1
+nadal oczekuje historycznych 14 tabel; nie zmieniono go automatycznie. Pełny review oraz decyzje
+o dokładnym katalogu core14 + LAB i dalszym stagingu: [ORCH-05](../journal/2026-11-12-orch-05-hana-security-integration.md).
+
 **Nowy blocker G2, ujawniony podczas pracy:** `main=2fe9402` zawiera
 [relację właściciela o wdrożeniu LAB do tego samego HDI](https://github.com/scaamp/AInvoicer/blob/2fe9402e10e3109a17f5fd9259cbea4a4b8e3d4a/docs/journal/2026-11-12-blob-lab-01-owner-live-hdi-blob.md).
 Tabela `CUSTOMER_CAP_JAVA_KSEFDOCUMENTS` jest według tego wpisu już w `ainvoicer-db`, choć jej CDS
@@ -297,7 +302,9 @@ if ($LASTEXITCODE -ne 0) { throw 'DML task generation blocked' }
 ```
 
 Wynik: SUCCEEDED + `HANA_TEST_PHASE_PASS=seed`, `R2_PHASE_RESULT=seed;EXIT=0` i rzeczywisty SQLState unique.
-Zmiany: syntetyczne rekordy runu w5 tabelach, odrzucany duplikat i rollback/CAS zgodnie z oryginalnym harness.
+Zmiany: syntetyczne rekordy runu w4 tabelach (operacje, inbound documents, outbox, checkpoints),
+odrzucany duplikat i rollback/CAS zgodnie z oryginalnym harness. Piąta tabela, sync leases, jest
+zapisywana dopiero w fazie `contend`; nie jest to tabela dokumentów owner-led LAB.
 Restart/downtime CAP: brak. Zasoby: jeden task1GB, transakcje/locki w istniejącym HDI.
 Przerwanie lub niejednoznaczny commit: **nie ponawiać seed**. Zatrzymać task po decyzji właściciela,
 zachować UUID, uruchomić osobno zatwierdzony `recover` i przeanalizować. Brak automatycznego rollbacku DML.

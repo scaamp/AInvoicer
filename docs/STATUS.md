@@ -8,7 +8,21 @@ tags: [ainvoicer, cap-java, status]
 
 # Stan projektu
 
-**BLOB-LAB-01 — OWNER-REPORTED LIVE PASS dla modelu i HDI (2026-11-12).** Własnoręcznie utworzony lokalny `cap-java/db/documents.cds` (`KsefDocuments`, `LargeBinary`), build HANA 0.7.3 `verify:hana PASS`, artefakt `hdbtable` w MTAR, kontrolowany deployment w istniejącym `ainvoicer-db` (task #3 `SUCCEEDED`), CAP 1/1 ready. SQL Console Cloud Central potwierdziła tabelę i `CONTENT BLOB`, a SQL jako HDI `_RT` odczytał `COUNT(*) = 0`. `documents.cds` nie został jeszcze zapisany w Git; upload/download OData, DML, test integralności i restart nadal **NIE WYKONANE**. [Dziennik 12.11](journal/2026-11-12-blob-lab-01-owner-live-hdi-blob.md). Starsze wpisy BLOB-LAB poniżej są historyczne.
+**ORCH-05 (2026-11-12) — R2 i CAP-07E MERGED po review i zielonym CI.**
+[PR #15](https://github.com/scaamp/AInvoicer/pull/15): PASS WITH NOTES, CI dokładnego HEAD `4dd9ce1` SUCCESS.
+[PR #16](https://github.com/scaamp/AInvoicer/pull/16): utworzony; naprawiono fałszywy PASS HTML200 (`715ef43`),
+CI końcowego HEAD SUCCESS. Merge kolejno `f55d0e8` i `d4dc204`; scalono tylko te dwa PR-y.
+Wspólna regresja offline: Maven 476 (470 PASS / 6 skipped), deploy 51 PASS / 1 skipped,
+runner 5/5, AppRouter 10/10 — powtórzona po merge na rzeczywistym `main=d4dc204`: **PASS**. Bez zmian LIVE.
+[Pełny review, wyniki i decyzje A/B/C](journal/2026-11-12-orch-05-hana-security-integration.md).
+
+| Zakres | Aktualny status ORCH-05 |
+| --- | --- |
+| **CAP-HANA-02R2** | Runner zaimplementowany i sprawdzony offline; [przewodnik](guides/CAP_HANA_02_R2_RUNNER.md), [dziennik](journal/2026-11-12-cap-hana-02r2-isolated-runner.md). G1 wymaga jawnego uzgodnienia core14 + LAB; G2 staging niezatwierdzony, G3/G4 niewykonane. **NO-GO LIVE**. |
+| **CAP-07E** | Historyczny pomiar anonimowych HTTP LIVE 38/38 PASS; po poprawce klasyfikatora 2 nawigacje wymagają ponowienia. JWT/tenant isolation PASS offline; A/B i principal H01 BLOCKED, logout/expiry niezaakceptowane. E-2 (raw CREATE) i E-3 (SAP READ przed KSeF guard) do decyzji. **Security sign-off PENDING**. [Macierz](guides/CAP_07E_SECURITY_ACCEPTANCE.md). |
+| **BLOB-LAB-01** | Owner-led. Właściciel utworzył i wdrożył tabelę; dowody są OWNER-REPORTED/OWNER-SCREENSHOT-VERIFIED. **CDS już w Git od `30b6234`**, co potwierdzono niezależnie. Brak upload/download, DML dokumentów, porównania SHA plików i testu trwałości po restarcie. Agenci nadal nie realizują LAB autonomicznie. |
+
+**BLOB-LAB-01 — OWNER-REPORTED LIVE PASS dla modelu i HDI (2026-11-12).** Własnoręcznie utworzony `cap-java/db/documents.cds` (`KsefDocuments`, `LargeBinary`), build HANA 0.7.3 `verify:hana PASS`, artefakt `hdbtable` w MTAR, kontrolowany deployment w istniejącym `ainvoicer-db` (task #3 `SUCCEEDED`), CAP 1/1 ready. SQL Console Cloud Central potwierdziła tabelę i `CONTENT BLOB`, a SQL jako HDI `_RT` odczytał `COUNT(*) = 0`. W późniejszym commicie właściciela `30b6234` CDS został zapisany w Git; upload/download OData, DML, test integralności i restart nadal **NIE WYKONANE**. [Dziennik 12.11](journal/2026-11-12-blob-lab-01-owner-live-hdi-blob.md). Starsze wpisy poniżej opisują historyczny stan.
 
 
 [Dziennik CAP-04 Hardening](journal/2026-10-29-cap-04-hardening.md) · [Dziennik CAP-04B — kontrakt zapisu RAP](journal/2026-10-28-cap-04b-rap-write-contract.md) · [ADR-0002](decisions/ADR-0002-sap-ksef-result-write-contract.md) · [Dziennik CAP-03 — integracja SAP H01](journal/2026-10-27-cap-03-sap-remote-integration.md)

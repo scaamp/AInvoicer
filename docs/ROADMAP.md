@@ -8,6 +8,16 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
 
 # Plan rozwoju
 
+- [x] **ORCH-05 (2026-11-12) — integracja R2 + CAP-07E:** niezależny review, poprawka klasyfikatora HTML200 `715ef43` z regresją i zielony CI dokładnych HEAD; scalono wyłącznie PR#15 (`f55d0e8`) i PR#16 (`d4dc204`). [Review i decyzje](journal/2026-11-12-orch-05-hana-security-integration.md).
+- [x] **CAP-HANA-02R2 — runner offline:** JAR/JUnit/guardy/integralność, 5/5 testów procesowych; CI `4dd9ce1` SUCCESS. [Przewodnik](guides/CAP_HANA_02_R2_RUNNER.md) · [dziennik](journal/2026-11-12-cap-hana-02r2-isolated-runner.md).
+- [ ] **HANA — kolejne bramki:** decyzja A o dokładnym katalogu core14 + owner-led LAB (CDS już w main od `30b6234`); osobne zlecenie zmiany G1, potem zgoda na odczyt. G2 runner staging, G3 check i G4 DML nadal niezatwierdzone/niewykonane. Nie zmieniać liczby tabel wyłącznie dla PASS.
+- [x] **CAP-07E — audyt i testy offline:** 6 testów JWT HANA readiness, historyczne anonimowe HTTP38/38 PASS, poprawka narzędzia ORCH-05 z regresją. [Macierz](guides/CAP_07E_SECURITY_ACCEPTANCE.md) · [dziennik](journal/2026-11-12-cap-07e-security-acceptance.md).
+- [ ] **Security acceptance:** drugie konto i znane fixtures A/B, Destination, autorytatywny principal H01 i DCL dzieci, logout/expiry, decyzje E-2/E-3 i ponowienie 2 nawigacji po poprawce. Sign-off PENDING; bez aktywacji KSeF.
+- [x] **BLOB-LAB-01 — etap właściciela:** model CDS zapisany w Git (`30b6234`); fizyczny BLOB/task#3/COUNT0 potwierdzone relacją i screenshotami właściciela. [Dowody](journal/2026-11-12-blob-lab-01-owner-live-hdi-blob.md).
+- [ ] **BLOB-LAB-01 — dalsza nauka owner-led:** zabezpieczony serwis mediów, upload/download, integralność i trwałość plików nadal niewykonane; agenci nie przejmują tych kroków. [Zasady](guides/BLOB_LAB_01_OWNER_LED_HDI.md).
+
+Poniższe wpisy zachowują historię wcześniejszych etapów; aktualne bramki są powyżej i w [STATUS](STATUS.md).
+
 - [x] **INT-03 — MERGED e2696ab po final review/CI PASS:** CAP-07D + storage + HANA as-built, wspólny tenant gate,
   wariant HANA existing-service, storage body deadline, harness opt-in i CI emulatora.
   [Wyniki/PR/CI](journal/2026-11-11-int-03-orchestration.md) · [Runbook HANA](guides/HANA_CLOUD_CAP_DEPLOYMENT.md).
