@@ -73,6 +73,10 @@ jobs:
         run: |
           npm run build:btp:hana --prefix deploy
           npm run verify:hana --prefix deploy
+      - name: Package isolated HANA test runner and exercise offline gates (no HANA or CF)
+        run: |
+          node deploy/scripts/hana-it-runner.mjs build
+          node deploy/scripts/hana-it-runner.mjs test
       - name: Official Azure storage emulator contract (loopback only)
         run: |
           npm ci --prefix deploy/storage --ignore-scripts
