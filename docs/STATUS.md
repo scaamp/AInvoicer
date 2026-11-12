@@ -8,6 +8,9 @@ tags: [ainvoicer, cap-java, status]
 
 # Stan projektu
 
+**BLOB-LAB-01 — OWNER-REPORTED LIVE PASS dla modelu i HDI (2026-11-12).** Własnoręcznie utworzony lokalny `cap-java/db/documents.cds` (`KsefDocuments`, `LargeBinary`), build HANA 0.7.3 `verify:hana PASS`, artefakt `hdbtable` w MTAR, kontrolowany deployment w istniejącym `ainvoicer-db` (task #3 `SUCCEEDED`), CAP 1/1 ready. SQL Console Cloud Central potwierdziła tabelę i `CONTENT BLOB`, a SQL jako HDI `_RT` odczytał `COUNT(*) = 0`. `documents.cds` nie został jeszcze zapisany w Git; upload/download OData, DML, test integralności i restart nadal **NIE WYKONANE**. [Dziennik 12.11](journal/2026-11-12-blob-lab-01-owner-live-hdi-blob.md). Starsze wpisy BLOB-LAB poniżej są historyczne.
+
+
 [Dziennik CAP-04 Hardening](journal/2026-10-29-cap-04-hardening.md) · [Dziennik CAP-04B — kontrakt zapisu RAP](journal/2026-10-28-cap-04b-rap-write-contract.md) · [ADR-0002](decisions/ADR-0002-sap-ksef-result-write-contract.md) · [Dziennik CAP-03 — integracja SAP H01](journal/2026-10-27-cap-03-sap-remote-integration.md)
 
 [Project Home](README.md) · [Roadmapa](ROADMAP.md) · [Workflow abapGit](guides/ABAPGIT_WORKFLOW.md) · [Model RAP faktur](guides/ABAP_RAP_INVOICE_MODEL.md) · [Dziennik próby tworzenia ABAP FS](journal/2026-10-25-abapfs-create-probe.md) · [Dziennik kompozycji RAP](journal/2026-10-24-abap-rap-composition.md) · [Dziennik pierwszego eksportu](journal/2026-10-24-abapgit-rap-initial-export.md) · [Dziennik bootstrapu](journal/2026-10-23-cap-java-bootstrap.md) · [Weryfikacja Phase 1](journal/2026-10-24-cap-java-bootstrap-verification.md) · [Model KsefOperations](journal/2026-10-24-ksef-operations-model.md) · [Usługa i CRUD OData](journal/2026-10-24-ksef-service-definition.md) · [Walidacja i autoryzacja KsefOperations](journal/2026-10-24-ksef-operations-validation-authorization.md)
