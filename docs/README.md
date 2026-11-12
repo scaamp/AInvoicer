@@ -8,6 +8,9 @@ tags: [ainvoicer, dokumentacja]
 
 # AInvoicer — baza wiedzy projektu
 
+**BLOB-LAB-01 (12.11.2026): owner-led LIVE CDS → HDI → HANA BLOB** — właściciel zbudował i wdrożył `KsefDocuments` w istniejącym `ainvoicer-db`, zweryfikował kolumnę `CONTENT BLOB` i odczyt pustej tabeli jako HDI runtime `_RT`. Upload/download OData V4, test DML/SHA-256 i restart nadal **PENDING**; `documents.cds` pozostaje lokalny/untracked. [Dziennik i dowody](journal/2026-11-12-blob-lab-01-owner-live-hdi-blob.md) · [zasady laboratorium](guides/BLOB_LAB_01_OWNER_LED_HDI.md).
+
+
 **Owner-led learning:** [BLOB-LAB-01 — samodzielne ćwiczenie CAP Java / HDI / HANA BLOB](guides/BLOB_LAB_01_OWNER_LED_HDI.md). Codex i Claude Code nie mogą realizować tego laboratorium autonomicznie; mogą pomagać wyłącznie w zakresie wskazanym przez właściciela. Laboratorium nie zostało rozpoczęte ani zatwierdzone do LIVE deployu.
 
 
