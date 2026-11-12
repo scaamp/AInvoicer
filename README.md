@@ -69,27 +69,34 @@ The interface must **not** infer that an invoice was never sent simply because i
 
 ## Architecture
 
-**Key design decision:** **RAP is the system of record for invoice business data and the persisted KSeF business result; CAP owns integration execution, technical status and synchronization.** SAPUI5 reads invoices **directly from RAP OData V4**, rather than routing ordinary invoice-list requests through a CAP proxy.
+**Key design decision:** **RAP is the system of record for invoice business data and the persisted KSeF business result; CAP owns integration execution, technical status and synchronization.** SAPUI5 reads invoice business data from **RAP OData V4 through the SAP AppRouter**, **not through CAP as an invoice-list proxy**. The AppRouter is a standalone Node.js reverse proxy based on `@sap/approuter`, **not a CAP Node.js service**.
 
 ```mermaid
 flowchart TB
+    BROWSER["Browser / business user"]
+    AR["SAP AppRouter — Node.js (@sap/approuter)<br/>XSUAA login/session · UI5 static files · reverse proxy"]
     UI["SAPUI5 / Fiori<br/>Invoice cockpit · AI filter · Scanner"]
+    XSUAA["SAP BTP XSUAA<br/>Authentication / OAuth tokens"]
     RAPUI["SAP RAP OData V4 UI<br/>Invoices · Items · References<br/>Business status / KSeF number"]
     CAP["CAP Java / Spring Boot<br/>KsefService · requestSend · status"]
     RAPAPI["SAP RAP OData V4 Web API<br/>ZAPI_AINV_INV_H_O4 / ApplyKsefResult"]
     SAPDB[("SAP ABAP Cloud<br/>Invoice business data")]
-    DB[("CAP persistence + outbox<br/>H2 dev / HANA Cloud target")]
+    DB[("CAP persistence<br/>H2 local / HANA Cloud + HDI on CF<br/>Outbox disabled in current CF readiness")]
     SDK["Official MF KSeF Java SDK<br/>Authentication · encryption · sessions"]
     KSEF["KSeF 2.0 API<br/>TEST → production target"]
     STORE[("XML / UPO storage<br/>Local TEST / managed target")]
     AI["Existing Python + Node.js AI services<br/>OpenAI · OCR/NLP · TTS"]
     LF["Langfuse<br/>AI observability"]
 
-    UI -->|"Business-user OData V4 read"| RAPUI
-    UI -->|"OData V4 actions + integration status"| CAP
-    UI -->|"Existing AI requests"| AI
+    BROWSER -->|"HTTPS"| AR
+    AR -->|"Serves index.html and static UI5 bundle"| UI
+    UI -->|"Same-origin OData V4 requests"| AR
+    AR <-->|"Login and session"| XSUAA
+    AR -->|"/rap-ui/* via Destination AINV_H01_UI_USER<br/>Business-user RAP read"| RAPUI
+    AR -->|"/odata/v4/KsefService/* via ainvoicer-cap<br/>XSUAA token forwarding"| CAP
+    UI -->|"Existing AI REST requests<br/>separate service endpoints"| AI
     RAPUI --> SAPDB
-    CAP -->|"SAP Cloud SDK Destination AINV_H01<br/>trusted system-to-system read/write"| RAPAPI
+    CAP -->|"SAP Cloud SDK Destination AINV_H01<br/>trusted system-to-system read/write contract"| RAPAPI
     RAPAPI --> SAPDB
     CAP <--> DB
     CAP <--> STORE
@@ -104,10 +111,13 @@ flowchart TB
 | --- | --- | --- |
 | **SAP ABAP Cloud / RAP** | Invoice headers, items, references, SAP document status, confirmed KSeF number and business-user authorizations | RAP CDS + behavior; OData V4 UI for invoice reads; separate OData V4 Web API for trusted CAP integration |
 | **SAPUI5 / Fiori** | Presentation, invoice selection/filtering, AI/scanner experience, triggering authorized actions | Named RAP OData V4 model; CAP KSeF status/action API; existing AI REST services |
+| **SAP AppRouter (Node.js, not CAP Node.js)** | One HTTPS entry point for UI5, XSUAA authentication/session and route-based proxying to RAP UI and CAP | `@sap/approuter`; `approuter/xs-app.json`; UI5 static `resources/`; `/rap-ui/*` → `AINV_H01_UI_USER`; `/odata/v4/KsefService/*` → `ainvoicer-cap` |
 | **CAP Java** | KSeF authentication and sessions, FA(3) preparation, submission, polling, UPO, operation history, retries, recovery and SAP writeback | CAP CDS/Event Handlers + Spring Boot; official SDK; SAP Cloud SDK RemoteService / Destination |
 | **CAP persistence** | Idempotency reservations, immutable submission snapshots, operation/submission history, outbox commands and SAP writeback state | H2 for development/tests; **SAP HANA Cloud target** |
 | **Document storage** | Exact XML payloads and UPO artifacts with controlled retrieval and retention | Local test store today; durable managed storage and retention policy required for deployment |
 | **AI services** | NLP invoice filters, invoice scan/extraction, field suggestions, TTS and AI telemetry | Existing Python/Flask, Node.js/Express, OpenAI APIs and Langfuse |
+
+**Routing scope:** The AppRouter configuration above covers UI5, the CAP KSeF API and RAP UI. Existing AI REST services are a separate integration path; the current `xs-app.json` does **not** proxy their endpoints. CAP-to-RAP Web API calls use the server-side `AINV_H01` Destination, not a browser/AppRouter route. The CF HANA binding and HDI deployment are live in the dev space; this does not imply that the planned XML/UPO storage, KSeF SEND or outbox delivery are enabled.
 
 The current ABAP Environment uses **custom simulated invoice tables** (`ZAINV_INV_H`, `ZAINV_INV_I`, `ZAINV_INV_REF`). It is not an implementation against standard S/4HANA FI/MM/SD posting APIs yet. The target architecture supports mapping those business processes through released SAP APIs rather than direct access to SAP database tables from CAP.
 
@@ -182,10 +192,10 @@ Security is part of the solution design, not a UI-only feature:
 | SAP backend | ABAP Cloud, RAP, CDS, OData V4, ABAP Environment H01 | Authorized FI/MM/SD integration through released SAP APIs |
 | Integration backend | **CAP Java 5.2**, **Spring Boot 4.1**, SAP Cloud SDK RemoteService, official **KSeF Java SDK 3.0.29** | Hardened, independently deployable integration service |
 | SAP frontend | SAPUI5 freestyle, Fiori, OData V4 models, `sap.ui.table`, QUnit/OPA | Production cockpit with RAP/UI business-user access |
-| Persistence | CAP CDS, H2 for local development/tests | **SAP HANA Cloud** |
-| Security | CAP role/attribute checks, RAP behavior authorization and prepared DCL/IAM model | IAS/XSUAA, approuter, scoped user propagation, managed credentials |
+| Persistence | CAP CDS; H2 locally; SAP HANA Cloud + HDI bound to CAP on CF dev | Verified persistence scenarios, migration/restart/recovery testing |
+| Security | XSUAA + Node.js AppRouter on CF dev; CAP role/attribute checks; RAP behavior authorization and DCL/IAM | End-to-end principal isolation validation, managed credentials and hardening |
 | AI | Python/Flask, Node.js/Express, OpenAI APIs, Langfuse | Governed AI-assisted extraction, filtering and reconciliation |
-| Hosting | SAP BTP ABAP Environment; local CAP Java development | SAP BTP Cloud Foundry for CAP and supporting services |
+| Hosting | SAP BTP ABAP Environment; CAP Java and AppRouter on Cloud Foundry dev | Production deployment, operational monitoring and resilience |
 | Documents | Local test XML/UPO store | Durable document/object storage; optional SAP DMS integration |
 
 ## Verified progress vs. roadmap
@@ -244,6 +254,7 @@ The default cockpit configuration uses `dataMode: "mock"`. For **real RAP reads*
 ```text
 abap/                      ABAP Cloud RAP models, behavior and abapGit exports
 cap-java/                  CAP Java, Spring Boot, KSeF SDK, CDS, outbox and tests
+approuter/                 Standalone Node.js SAP AppRouter, XSUAA login and UI5/RAP/CAP routing
 sapui5/ainvoicer/          Existing SAPUI5 Fiori application + KSeF cockpit
 node/                      Invoice-scanning / AI Node.js services
 python/                    NLP, voice and other Python AI services
