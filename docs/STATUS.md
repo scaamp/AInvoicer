@@ -1,12 +1,23 @@
 ---
 title: "AInvoicer — aktualny stan"
-date: 2026-11-12
+date: 2026-11-13
 type: status
 status: w-trakcie
 tags: [ainvoicer, cap-java, status]
 ---
 
 # Stan projektu
+
+**CAP-HANA-02G1 / PR #17 — CI recovery (2026-11-13).** Poprawiono bootstrap Chrome/CDP
+(port przydzielany przez system, handshake z deadline i diagnostyką). Lokalnie runner 8/8,
+katalog CORE14 + LAB 48/48, deploy 90 PASS / 1 lokalny Go skipped. Pełny
+[CI kodu `6f67b4a`](https://github.com/scaamp/AInvoicer/actions/runs/43458383822) **SUCCESS**:
+runner 8/8, deploy 91/91 (także Go), Maven 476/0 błędów/6 skipped, oba MTAR, R2,
+emulator i UI5/Inbox PASS. Lokalna odbudowa i weryfikacja obu MTAR również PASS.
+Aktualne checks końcowego HEAD: [PR #17](https://github.com/scaamp/AInvoicer/pull/17).
+PR pozostaje otwarty; niezależny review przed merge.
+Bez zmian katalogu, LAB/CAP-07F i bez jakichkolwiek operacji LIVE lub G1.
+[Diagnoza i wyniki](journal/2026-11-13-cap-hana-02g1-ci-recovery.md).
 
 **ORCH-05 (2026-11-12) — R2 i CAP-07E MERGED po review i zielonym CI.**
 [PR #15](https://github.com/scaamp/AInvoicer/pull/15): PASS WITH NOTES, CI dokładnego HEAD `4dd9ce1` SUCCESS.
