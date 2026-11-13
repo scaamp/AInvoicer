@@ -1,6 +1,7 @@
 package customer.cap_java.security;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -22,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.ApplicationContext;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,6 +36,8 @@ import com.sap.cloud.security.config.Service;
 import com.sap.cloud.security.json.DefaultJsonObject;
 import com.sap.cloud.security.test.JwtGenerator;
 import com.sap.cloud.security.test.SecurityTest;
+
+import customer.cap_java.sap.SapInvoiceRemoteAdapter;
 
 /**
  * CAP-07E — OFFLINE kontrakt JWT dla zestawu flag faktycznie wdrożonego wariantu HANA readiness
@@ -73,6 +77,8 @@ class HanaReadinessJwtSecurityTest {
     @Autowired PersistenceService db;
     @Autowired ApplicationContext context;
     @Autowired CdsRuntime runtime;
+    /** CAP-07F: atrapa adaptera RAP — test liczy wywołania SAP i nigdy nie łączy się z H01. */
+    @MockitoBean SapInvoiceRemoteAdapter sap;
     private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper json = new ObjectMapper();
     private String invoice;
@@ -167,39 +173,58 @@ class HanaReadinessJwtSecurityTest {
         }
     }
 
-    /** KSeF OFF: requestSend nie może utworzyć rezerwacji, operacji ani zlecenia — także bez handlera smoke. */
+    /**
+     * KSeF OFF: requestSend nie może utworzyć rezerwacji, operacji ani zlecenia — także bez handlera smoke.
+     * CAP-07F (E-3): odmowa 409 następuje przed odczytem SAP (0 wywołań adaptera RAP), więc kod błędu
+     * dowodzi dojścia do guardu transportu, a nie awarii Destination.
+     */
     @Test void requestSendWithKsefDisabledLeavesNoReservationOrOperation() throws Exception {
         String token = operator(NIP_A, "1000").createToken().getTokenValue();
         long reservations = rows("customer.cap_java.KsefSendReservations");
         long operations = rows("customer.cap_java.KsefOperations");
         var response = post(token, "requestSend", "{\"invoiceUUID\":\"" + invoice + "\"}");
-        assertTrue(response.statusCode() >= 400, "requestSend musi zostać odrzucony: " + response.statusCode());
+        assertEquals(409, response.statusCode(), response::body);
+        assertTrue(response.body().contains("KSEF_CONTEXT_NOT_CONFIGURED"), response::body);
         assertFalse(response.body().contains("QUEUED"));
         assertFalse(response.body().matches("(?s).*(java\\.lang\\.|stackTrace|https?://).*"), "bezpieczny błąd bez URL/stosu");
+        verifyNoInteractions(sap);
         assertEquals(reservations, rows("customer.cap_java.KsefSendReservations"));
         assertEquals(operations, rows("customer.cap_java.KsefOperations"));
     }
 
     /**
-     * ZNANE RYZYKO CAP-07E-R1 (charakteryzacja, nie akceptacja): w wariancie HANA readiness operator może
-     * utworzyć surową operację CHECK_STATUS/RECEIVE_INVOICE we własnym zakresie, utrwaloną w bazie.
-     * UI używa wyłącznie READ, a status KSeF w UI wyprowadza tylko z SEND_INVOICE. Obcy zakres i SEND_INVOICE
-     * są odrzucane, a status/environment nadaje serwer. Decyzja o zamknięciu tej ścieżki należy do właściciela;
-     * zmiana zachowania musi świadomie zaktualizować ten test.
+     * CAP-07F (E-2) — zamyka CAP-07E-R1 (wcześniej charakteryzowane jako znane ryzyko: 201 dla własnego
+     * CHECK_STATUS). W składzie HANA readiness projekcja KsefOperations jest {@code @readonly} z jedynym grantem
+     * READ: własny i obcy zakres, każdy typ, sfałszowany status i CREATE w $batch → 403; anonim → 401.
+     * Żaden wiersz nie powstaje, a odczyt własnej operacji działa dalej.
      */
-    @Test void rawOperationCreateIsScopedServerControlledAndCharacterizedAsKnownRisk() throws Exception {
+    @Test void rawOperationCreateIsRejectedForEveryScopeTypeAndBatch() throws Exception {
         String token = operator(NIP_A, "1000").createToken().getTokenValue();
         long before = rows("customer.cap_java.KsefOperations");
-        assertEquals(400, post(token, "KsefOperations", createBody(NIP_B)).statusCode(), "obcy NIP");
-        assertEquals(400, post(token, "KsefOperations", createBody(NIP_A).replace("CHECK_STATUS", "SEND_INVOICE")).statusCode());
-        assertEquals(before, rows("customer.cap_java.KsefOperations"));
+        for (String type : new String[]{"CHECK_STATUS", "RECEIVE_INVOICE", "SEND_INVOICE"}) {
+            for (String nip : new String[]{NIP_A, NIP_B}) {
+                var response = post(token, "KsefOperations", createBody(nip).replace("CHECK_STATUS", type));
+                assertEquals(403, response.statusCode(), nip + "/" + type);
+                assertFalse(response.body().matches("(?s).*(java\\.lang\\.|stackTrace|https?://).*"), response::body);
+            }
+        }
+        var forged = post(token, "KsefOperations", createBody(NIP_A).replace("}", ",\"status\":\"ACCEPTED\",\"environment\":\"PROD\"}"));
+        assertEquals(403, forged.statusCode(), forged::body);
 
-        var created = post(token, "KsefOperations", createBody(NIP_A).replace("}", ",\"status\":\"ACCEPTED\",\"environment\":\"PROD\"}"));
-        assertEquals(201, created.statusCode(), created::body);
-        var row = json.readTree(created.body());
-        assertEquals("NEW", row.path("status").asText());
-        assertEquals("TEST", row.path("environment").asText());
-        assertEquals(before + 1, rows("customer.cap_java.KsefOperations"));
+        var batch = batchCreate(token, createBody(NIP_A));
+        assertEquals(200, batch.statusCode(), batch::body);
+        assertTrue(batch.body().contains("403 Forbidden"), batch::body);
+        assertFalse(batch.body().contains("201 Created"), batch::body);
+
+        var anonymous = http.send(HttpRequest.newBuilder(uri("KsefOperations")).header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(createBody(NIP_A))).build(), HttpResponse.BodyHandlers.ofString());
+        // Bez tokenu Spring Security odrzuca POST przed CAP (401 albo 403 zależnie od kolejności filtrów/CSRF —
+        // istniejące zachowanie, jak w XsuaaJwtODataContractTest); nigdy nie dochodzi do zapisu.
+        assertTrue(anonymous.statusCode() == 401 || anonymous.statusCode() == 403, "anonymous POST: " + anonymous.statusCode());
+
+        assertEquals(before, rows("customer.cap_java.KsefOperations"));
+        assertEquals(200, get(token, "KsefOperations(" + ownOperation + ")").statusCode());
+        assertEquals("1", get(token, "KsefOperations/$count?$filter=" + enc("sapDocumentRef eq '" + invoice + "'")).body());
     }
 
     // ---- Pomocnicze --------------------------------------------------------------------------------
@@ -263,6 +288,19 @@ class HanaReadinessJwtSecurityTest {
     private HttpResponse<String> post(String token, String path, String body) throws Exception {
         return http.send(HttpRequest.newBuilder(uri(path)).header("Authorization", "Bearer " + token)
             .header("Content-Type", "application/json").header("OData-MaxVersion", "4.0")
+            .POST(HttpRequest.BodyPublishers.ofString(body)).build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    /** CREATE KsefOperations wewnątrz changesetu $batch (OData V4 multipart). */
+    private HttpResponse<String> batchCreate(String token, String entity) throws Exception {
+        String batch = "batch_cap07f";
+        String changeset = "changeset_cap07f";
+        String body = "--" + batch + "\r\nContent-Type: multipart/mixed;boundary=" + changeset + "\r\n\r\n"
+            + "--" + changeset + "\r\nContent-Type: application/http\r\nContent-Transfer-Encoding: binary\r\nContent-ID: 1\r\n\r\n"
+            + "POST KsefOperations HTTP/1.1\r\nContent-Type: application/json\r\nAccept: application/json\r\n\r\n"
+            + entity + "\r\n--" + changeset + "--\r\n--" + batch + "--\r\n";
+        return http.send(HttpRequest.newBuilder(uri("$batch")).header("Authorization", "Bearer " + token)
+            .header("Content-Type", "multipart/mixed;boundary=" + batch).header("OData-MaxVersion", "4.0")
             .POST(HttpRequest.BodyPublishers.ofString(body)).build(), HttpResponse.BodyHandlers.ofString());
     }
 

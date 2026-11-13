@@ -386,7 +386,8 @@ class XsuaaJwtODataContractTest {
         var create = post(token, "KsefOperations", """
             {"sapDocumentRef":"%s","taxpayerNip":"%s","companyCode":"1000","direction":"OUTBOUND",
              "operationType":"CHECK_STATUS","idempotencyKey":"%s"}""".formatted(invoice, NIP_A, UUID.randomUUID()));
-        assertEquals(409, create.statusCode(), create::body);
+        // CAP-07F (E-2): CREATE odrzuca już kontrakt CDS (@readonly, tylko READ) — 403 przed handlerem smoke.
+        assertEquals(403, create.statusCode(), create::body);
         // Bez tokenu nadal odmowa (Spring Security: 401 albo 403 dla POST bez CSRF/tokenu) — tryb nie osłabia
         // uwierzytelnienia i nie dochodzi do handlera.
         int anonymous = http.send(HttpRequest.newBuilder(uri("requestSend")).header("Content-Type", "application/json")

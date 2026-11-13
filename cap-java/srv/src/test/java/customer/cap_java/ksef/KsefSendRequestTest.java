@@ -341,12 +341,40 @@ class KsefSendRequestTest {
         assertTrue(sendOperations().isEmpty());
     }
 
+    /** CAP-07F (E-2): publiczny CREATE jest zamknięty kontraktem CDS (403); SEND tylko przez requestSend. */
     @Test void rawCreateOfSendOperationIsRejected() throws Exception {
         var response = post("operator-a", "test-a", "KsefOperations", Map.of("taxpayerNip", "1234567802",
                 "direction", "OUTBOUND", "operationType", "SEND_INVOICE", "idempotencyKey", UUID.randomUUID().toString(),
                 "sapDocumentRef", invoice.toString()));
-        assertEquals(400, response.status());
+        assertEquals(403, response.status());
         assertTrue(sendOperations().isEmpty());
+    }
+
+    /**
+     * CAP-07F (E-3): przy KSeF ON semantyka bez zmian i dokładnie jeden odczyt SAP na żądanie —
+     * obcy NIP 403, brak faktury 404, własna faktura 200 z rezerwacją (wewnętrzny zapis operacji działa).
+     */
+    @Test void transportOnKeepsScopeSemanticsWithExactlyOneSapReadPerRequest() throws Exception {
+        clearInvocations(sap);
+        var foreign = send("operator-b", "test-b", invoice);
+        assertEquals(403, foreign.status());
+        assertEquals("KSEF_TAXPAYER_NOT_AUTHORIZED", code(foreign));
+        verify(sap, times(1)).readInvoice(invoice);
+        assertEquals(0, count(KsefSendRequestHandler.RESERVATIONS));
+
+        UUID missing = UUID.randomUUID();
+        when(sap.readInvoice(missing)).thenReturn(Optional.empty());
+        var notFound = send("operator-a", "test-a", missing);
+        assertEquals(404, notFound.status());
+        assertEquals("KSEF_INVOICE_NOT_FOUND", code(notFound));
+        verify(sap, times(1)).readInvoice(missing);
+
+        var own = send("operator-a", "test-a", invoice);
+        assertEquals(200, own.status(), own.body()::toString);
+        assertEquals("QUEUED", own.body().get("status").asText());
+        verify(sap, times(2)).readInvoice(invoice);
+        assertEquals(1, count(KsefSendRequestHandler.RESERVATIONS));
+        assertEquals(1, sendOperations().size());
     }
 
     @Test void integrationStatusIsReadOnlyScopedAndWithoutSapOrSecretData() throws Exception {

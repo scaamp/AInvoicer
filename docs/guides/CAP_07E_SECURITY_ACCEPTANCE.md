@@ -227,6 +227,10 @@ poprawionym narzędziem przed security sign-off. Pozostałe 36 sond nie korzysta
 
 Nie osłabiono `DedicatedTenantPolicy`, guardów ani istniejących testów; żadnej zmiany kodu produkcyjnego.
 
+> **Aktualizacja 2026-11-13:** E-2 i E-3 zamknięto **offline** w [CAP-07F](CAP_07F_SECURITY_HARDENING.md)
+> (`@readonly` projekcji `KsefOperations`, guard transportu przed SAP READ w `requestSend`). LIVE niezweryfikowane
+> do czasu osobnego, zatwierdzonego wdrożenia. Powyższa tabela pozostaje zapisem stanu z 12.11.
+
 ## Ryzyka przed aktywacją KSeF
 
 1. Brak dowodu principal H01 i izolacji A/B/DCL w AppRouterze (R03–R05).
