@@ -14,6 +14,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { localCapAuth } from "./local-cap-auth.mjs";
+import { waitForCdp } from "./cdp-startup.mjs";
 
 const BROWSERS = [
     process.env.CHROME_PATH,
@@ -52,11 +53,10 @@ try {
     process.exit(2);
 }
 
-const port = 9300 + Math.floor(Math.random() * 500);
 const profileDir = mkdtempSync(join(tmpdir(), "ainvoicer-cdp-"));
 const browser = spawn(browserPath, [
     "--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
-    "--window-size=1600,1000", `--remote-debugging-port=${port}`, `--user-data-dir=${profileDir}`, "about:blank"
+    "--window-size=1600,1000", "--remote-debugging-port=0", `--user-data-dir=${profileDir}`, "about:blank"
 ], { stdio: ["ignore", "ignore", "pipe"] });
 let browserDiagnostics = "";
 let browserLaunchError = "";
@@ -65,27 +65,6 @@ browser.stderr.on("data", chunk => { browserDiagnostics = (browserDiagnostics + 
 browser.on("error", error => { browserLaunchError = error.message; });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-async function cdpTarget() {
-    // CI bywa wolniejsze od lokalnego desktopu; awaria procesu ma konkretną diagnostykę, nie ślepy timeout.
-    for (let i = 0; i < 150; i++) {
-        if (browserLaunchError || browser.exitCode !== null) {
-            throw new Error("ENVIRONMENT: browser failed to start: " + (browserLaunchError || browser.exitCode)
-                + "\n" + browserDiagnostics);
-        }
-        try {
-            const list = await (await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(1000) })).json();
-            const page = list.find((t) => t.type === "page");
-            if (page) {
-                return page.webSocketDebuggerUrl;
-            }
-        } catch (e) {
-            // przeglądarka jeszcze startuje
-        }
-        await sleep(200);
-    }
-    throw new Error("ENVIRONMENT: DevTools endpoint not reachable\n" + browserDiagnostics);
-}
 
 function connect(wsUrl) {
     return new Promise((resolve, reject) => {
@@ -141,7 +120,11 @@ async function waitFor(cdp, expression, label) {
 let exitCode = 0;
 const errors = [];
 try {
-    const cdp = await connect(await cdpTarget());
+    const startupStarted = Date.now();
+    const wsUrl = await waitForCdp({ browser, profileDir,
+        diagnostics: () => browserDiagnostics, launchError: () => browserLaunchError });
+    log(`Browser CDP ready after ${Date.now() - startupStarted}ms`);
+    const cdp = await connect(wsUrl);
     cdp.on((msg) => {
         if (msg.method === "Runtime.consoleAPICalled" && msg.params.args.some((a) => String(a.value ?? "").includes("Component-preload.js"))) {
             return; // standardowy brak preload w trybie dev, nie błąd aplikacji
