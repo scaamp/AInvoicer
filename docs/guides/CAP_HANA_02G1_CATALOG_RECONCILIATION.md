@@ -8,10 +8,12 @@ tags: [ainvoicer, cap-hana-02g1, hana, hdi, catalog, owner-led]
 
 # CAP-HANA-02G1 — uzgodnienie katalogu HDI
 
-Zlecenie obejmuje wyłącznie walidator, testy offline i ten przewodnik. **Nie wykonano żadnej
+Pierwotne zlecenie obejmowało wyłącznie walidator, testy offline i ten przewodnik. **Nie wykonano żadnej
 operacji CF/HANA LIVE, taska, HDI make, DDL/DML, odczytu BLOB ani zmian LAB/CAP.**
-Aktualne zlecenie ma pierwszeństwo nad workflow dokumentacji AGENTS/skill CAP: celowo nie zmieniono
-STATUS, ROADMAP, README ani plików produkcyjnych. Nie realizowano dalszych etapów laboratorium.
+W pierwotnym zleceniu celowo nie zmieniono STATUS, ROADMAP, README ani plików produkcyjnych
+(ograniczenie zakresu miało pierwszeństwo nad workflow dokumentacji). Późniejsze
+[CI recovery PR #17](../journal/2026-11-13-cap-hana-02g1-ci-recovery.md) obejmuje runner Chrome
+i standardową dokumentację; nie zmienia kontraktu katalogu ani dalszych etapów laboratorium.
 
 [Plan G0–G9](CAP_HANA_02_PERSISTENCE_ACCEPTANCE.md) · [Runner R2](CAP_HANA_02_R2_RUNNER.md) ·
 [Decyzja A ORCH-05](../journal/2026-11-12-orch-05-hana-security-integration.md) ·

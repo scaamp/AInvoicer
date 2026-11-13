@@ -8,6 +8,10 @@ tags: [ainvoicer, dokumentacja]
 
 # AInvoicer — baza wiedzy projektu
 
+**CAP-HANA-02G1 / PR #17 (13.11.2026):**
+[CI recovery Chrome/CDP, walidacja offline i granice dowodów](journal/2026-11-13-cap-hana-02g1-ci-recovery.md).
+Bez operacji G1/LIVE; PR pozostaje otwarty do niezależnego review.
+
 **ORCH-05 (12.11.2026): HANA R2 + CAP-07E MERGED** — wyłącznie PR#15 i PR#16, po review i CI dokładnych HEAD; bez operacji LIVE. [Wyniki, regresja i trzy decyzje właściciela](journal/2026-11-12-orch-05-hana-security-integration.md).
 
 - **CAP-HANA-02R2:** [runner i procedura](guides/CAP_HANA_02_R2_RUNNER.md), [dziennik offline](journal/2026-11-12-cap-hana-02r2-isolated-runner.md), [PR #15](https://github.com/scaamp/AInvoicer/pull/15). G1 katalog/LAB do uzgodnienia, G2–G4 NO-GO.

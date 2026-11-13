@@ -1,12 +1,18 @@
 ---
 title: "AInvoicer — plan rozwoju"
-date: 2026-11-12
+date: 2026-11-13
 type: roadmap
 status: aktywny
 tags: [ainvoicer, roadmap, cap-java, ksef]
 ---
 
 # Plan rozwoju
+
+- [x] **CAP-HANA-02G1 / PR #17 — CI recovery:** katalog CORE14 + LAB offline 48/48;
+  recovery Chrome/CDP, runner 8/8; pełny CI kodu `6f67b4a` SUCCESS.
+  [Dziennik](journal/2026-11-13-cap-hana-02g1-ci-recovery.md). G1 i LIVE nadal niewykonane.
+- [ ] **PR #17 — niezależny review:** końcowe checks w PR, następnie osobna decyzja o merge;
+  bez automatycznego merge i bez zgody wykonawczej G1.
 
 - [x] **ORCH-05 (2026-11-12) — integracja R2 + CAP-07E:** niezależny review, poprawka klasyfikatora HTML200 `715ef43` z regresją i zielony CI dokładnych HEAD; scalono wyłącznie PR#15 (`f55d0e8`) i PR#16 (`d4dc204`). [Review i decyzje](journal/2026-11-12-orch-05-hana-security-integration.md).
 - [x] **CAP-HANA-02R2 — runner offline:** JAR/JUnit/guardy/integralność, 5/5 testów procesowych; CI `4dd9ce1` SUCCESS. [Przewodnik](guides/CAP_HANA_02_R2_RUNNER.md) · [dziennik](journal/2026-11-12-cap-hana-02r2-isolated-runner.md).
