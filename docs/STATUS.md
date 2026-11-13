@@ -8,7 +8,24 @@ tags: [ainvoicer, cap-java, status]
 
 # Stan projektu
 
-**CAP-HANA-02G1 / PR #17 — CI recovery (2026-11-13).** Poprawiono bootstrap Chrome/CDP
+**ORCH-06 (2026-11-13) — CAP-HANA-02G1 (PR #17) i CAP-07F (PR #18) MERGED po review i zielonym CI.**
+Oba review PASS WITH NOTES, bez uwag krytycznych i konfliktów. Merge `--no-ff` dokładnych HEAD:
+#17 `a87402e` → [`ad86a09`](https://github.com/scaamp/AInvoicer/commit/ad86a0968bbd5aba25884bfe9f08be6169e12f69),
+#18 `ad095bc` → [`790aad8`](https://github.com/scaamp/AInvoicer/commit/790aad8653f650ed371eac6a81c7ab0e10cdd7c2); nic innego nie scalono.
+Wspólna regresja offline: Maven 486 / 0 błędów / 6 skipped (2×), deploy 90 PASS / 1 Go skip, runner Chrome 8/8,
+katalog 48/48, R2 5/5, Azurite 6/6, QUnit 112/112, OPA 21/21, Inbox 16/73, oba MTAR PASS.
+CI `main=790aad8`: [run 43467054062](https://github.com/scaamp/AInvoicer/actions/runs/43467054062) **SUCCESS** (24/24 kroków). **Bez operacji LIVE.** [Review, regresja i instrukcja G1](journal/2026-11-13-orch-06-g1-security-integration.md).
+
+| Zakres | Aktualny status ORCH-06 |
+| --- | --- |
+| **CAP-HANA-02G1** | W `main`: ścisły kontrakt CORE14 + OWNER LAB (15/4/6/15 PK, 9 kolumn LAB), import SQL Console jako OWNER-REPORTED. Kontrakt potwierdzony niezależną kompilacją HANA w pamięci. **G1 NIEWYKONANE** — dwie opcje (Console / task deployera) czekają na decyzję właściciela. G2–G9 niewykonane. |
+| **CAP-07F** | W `main`: `KsefOperations` read-only (POST/`$batch` → 403), `requestSend` przy KSeF OFF → 409 przed SAP READ, bez zapisów. **Runtime CF 0.7.3 bez tych zmian** do osobnego wydania. |
+| **Security acceptance** | Nadal **PENDING**: A/B z fixtures, principal H01 i DCL dzieci, Destination, logout/expiry, 2 nawigacje po poprawce klasyfikatora. |
+| **BLOB-LAB-01** | Owner-led, nienaruszony. Lokalny WIP właściciela (`BlobService`) po wdrożeniu doda widok — G1 dałby wtedy oczekiwany MISMATCH. |
+
+Poniższe wpisy opisują wcześniejszy stan (historia).
+
+**CAP-HANA-02G1 / PR #17 — CI recovery (2026-11-13; stan przed ORCH-06, PR już MERGED).** Poprawiono bootstrap Chrome/CDP
 (port przydzielany przez system, handshake z deadline i diagnostyką). Lokalnie runner 8/8,
 katalog CORE14 + LAB 48/48, deploy 90 PASS / 1 lokalny Go skipped. Pełny
 [CI kodu `6f67b4a`](https://github.com/scaamp/AInvoicer/actions/runs/43458383822) **SUCCESS**:

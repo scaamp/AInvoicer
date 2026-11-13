@@ -8,9 +8,13 @@ tags: [ainvoicer, dokumentacja]
 
 # AInvoicer — baza wiedzy projektu
 
-**CAP-HANA-02G1 / PR #17 (13.11.2026):**
-[CI recovery Chrome/CDP, walidacja offline i granice dowodów](journal/2026-11-13-cap-hana-02g1-ci-recovery.md).
-Bez operacji G1/LIVE; PR pozostaje otwarty do niezależnego review.
+**ORCH-06 (13.11.2026): CAP-HANA-02G1 + CAP-07F MERGED** — wyłącznie PR #17 i PR #18, po review i CI dokładnych HEAD;
+wspólna regresja offline PASS; bez operacji LIVE. [Review, regresja i dwie opcje G1 do decyzji właściciela](journal/2026-11-13-orch-06-g1-security-integration.md).
+
+- **CAP-HANA-02G1:** [kontrakt CORE14 + LAB](guides/CAP_HANA_02G1_CATALOG_RECONCILIATION.md),
+  [CI recovery Chrome/CDP](journal/2026-11-13-cap-hana-02g1-ci-recovery.md), [PR #17](https://github.com/scaamp/AInvoicer/pull/17). G1 niewykonane.
+- **CAP-07F:** [hardening E-2/E-3](guides/CAP_07F_SECURITY_HARDENING.md), [dziennik](journal/2026-11-13-cap-07f-security-hardening.md),
+  [PR #18](https://github.com/scaamp/AInvoicer/pull/18). Runtime CF bez zmian; security sign-off PENDING.
 
 **ORCH-05 (12.11.2026): HANA R2 + CAP-07E MERGED** — wyłącznie PR#15 i PR#16, po review i CI dokładnych HEAD; bez operacji LIVE. [Wyniki, regresja i trzy decyzje właściciela](journal/2026-11-12-orch-05-hana-security-integration.md).
 

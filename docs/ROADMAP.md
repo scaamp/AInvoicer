@@ -8,11 +8,19 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
 
 # Plan rozwoju
 
+- [x] **ORCH-06 (2026-11-13) — integracja G1 + CAP-07F:** review obu PR PASS WITH NOTES, wspólna regresja offline PASS,
+  merge wyłącznie PR #17 (`ad86a09`) i PR #18 (`790aad8`); bez LIVE. [Review, wyniki, opcje G1](journal/2026-11-13-orch-06-g1-security-integration.md).
+- [x] **CAP-07F — E-2/E-3 w kodzie:** publiczny CREATE `KsefOperations` zamknięty, guard transportu przed SAP READ.
+  [Przewodnik](guides/CAP_07F_SECURITY_HARDENING.md) · [dziennik](journal/2026-11-13-cap-07f-security-hardening.md).
+- [ ] **CAP-07F — wydanie i sondy LIVE:** runtime CF nadal 0.7.3; osobna zgoda na build/deploy i ponowne sondy.
+- [ ] **G1 — odczyt katalogu HDI (decyzja właściciela):** najpierw ustalić wdrożony model; opcja 1 SQL Console
+  (OWNER-REPORTED, kontrola service keys przed/po) albo opcja 2 jeden task deployera (SCRIPT_MEASURED). MATCH nie autoryzuje G2–G4.
+- [ ] **G2–G9:** niezatwierdzone i niewykonane.
+
 - [x] **CAP-HANA-02G1 / PR #17 — CI recovery:** katalog CORE14 + LAB offline 48/48;
   recovery Chrome/CDP, runner 8/8; pełny CI kodu `6f67b4a` SUCCESS.
   [Dziennik](journal/2026-11-13-cap-hana-02g1-ci-recovery.md). G1 i LIVE nadal niewykonane.
-- [ ] **PR #17 — niezależny review:** końcowe checks w PR, następnie osobna decyzja o merge;
-  bez automatycznego merge i bez zgody wykonawczej G1.
+- [x] **PR #17 — niezależny review:** wykonany w ORCH-06, MERGED `ad86a09`; bez zgody wykonawczej G1.
 
 - [x] **ORCH-05 (2026-11-12) — integracja R2 + CAP-07E:** niezależny review, poprawka klasyfikatora HTML200 `715ef43` z regresją i zielony CI dokładnych HEAD; scalono wyłącznie PR#15 (`f55d0e8`) i PR#16 (`d4dc204`). [Review i decyzje](journal/2026-11-12-orch-05-hana-security-integration.md).
 - [x] **CAP-HANA-02R2 — runner offline:** JAR/JUnit/guardy/integralność, 5/5 testów procesowych; CI `4dd9ce1` SUCCESS. [Przewodnik](guides/CAP_HANA_02_R2_RUNNER.md) · [dziennik](journal/2026-11-12-cap-hana-02r2-isolated-runner.md).
