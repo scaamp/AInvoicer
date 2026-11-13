@@ -34,7 +34,7 @@ import customer.cap_java.sap.SapInvoiceSnapshot;
  * wysyłki (ADR-0005, decyzja 7). Jedynym wejściem jest InvoiceUUID: NIP, CompanyCode, kierunek,
  * kwoty, XML i klucz idempotencji CAP wyznacza sam z odczytu RAP (communication user) i konfiguracji.
  *
- * <p>Kolejność: (1) odczyt RAP i walidacje bez zapisu, (2) wygenerowanie i walidacja FA(3) bez DB,
+ * <p>Kolejność: (0) format UUID i włączony transport KSeF (bez wywołań SAP/DB), (1) odczyt RAP i walidacje bez zapisu, (2) wygenerowanie i walidacja FA(3) bez DB,
  * (3) w jednym ChangeSet żądania: atomowa rezerwacja {@code KsefSendReservations} po PK
  * (invoiceUUID, environment) albo CAS przepięcia po potwierdzonym odrzuceniu, operacja NEW,
  * migawka SAP_RAP, zlecenie i outbox. Rollback dowolnego kroku cofa wszystko; po commit worker
@@ -80,6 +80,13 @@ public class KsefSendRequestHandler implements EventHandler {
     public void onRequestSend(RequestSendContext context) {
         UUID invoiceId = parseUuid(context.getInvoiceUUID());
         UserInfo user = context.getUserInfo();
+
+        // (0) CAP-07F (E-3): wyłączony transport KSeF → jedna, stała odmowa PRZED odczytem SAP. Bez tego operator
+        // mógłby wywołać techniczny READ (communication user) i odróżnić brakującą fakturę (404) od obcej (403).
+        // Kod jest ten sam co dotychczas dla OFF/innego kontekstu, więc kontrakt błędu dla UI się nie zmienia.
+        if (!worker.transportEnabled()) {
+            throw fail(ErrorStatuses.CONFLICT, "KSEF_CONTEXT_NOT_CONFIGURED");
+        }
 
         // (1) Dane faktury wyłącznie z RAP; przeglądarka niczego nie dostarcza poza kluczem.
         SapInvoiceSnapshot invoice;

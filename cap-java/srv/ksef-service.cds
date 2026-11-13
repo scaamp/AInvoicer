@@ -19,10 +19,14 @@ service KsefService {
       then true else false end as xmlAvailable : Boolean
   };
 
+  /**
+   * CAP-07F (E-2): publiczna projekcja jest wyłącznie do odczytu. Operacje tworzy tylko logika serwerowa
+   * (np. akcja requestSend przez PersistenceService na encji bazowej), nigdy surowy POST/$batch klienta.
+   */
   @(restrict: [
-    { grant: 'CREATE', to: 'KsefOperator', where: (taxpayerNip = $user.taxpayerNips and companyCode = $user.companyCodes) },
     { grant: 'READ', to: 'KsefOperator', where: (taxpayerNip = $user.taxpayerNips and companyCode = $user.companyCodes) }
   ])
+  @readonly
   entity KsefOperations as projection on db.KsefOperations excluding { invoice, snapshot, confirmedXmlSha256, submission, writeback };
 
   @(restrict: [

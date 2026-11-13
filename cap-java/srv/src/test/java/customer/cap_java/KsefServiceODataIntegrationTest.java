@@ -2,7 +2,7 @@ package customer.cap_java;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
@@ -14,15 +14,20 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sap.cds.ql.Insert;
+import com.sap.cds.ql.Select;
 import com.sap.cds.services.persistence.PersistenceService;
 import cds.gen.customer.cap_java.KsefOperations;
 import cds.gen.customer.cap_java.KsefOperations_;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -132,22 +137,45 @@ class KsefServiceODataIntegrationTest {
 			"Public client must not set the hidden invoice foreign key");
 	}
 
-	@Test
-	void operatorCanCreateAndReadOnlyOwnTaxpayerOperations() throws Exception {
-		ODataResponse created = create("operator-a", "test-a", operation(NIP_A, "CHECK_STATUS"));
-		assertTrue(created.is2xxSuccessful(), () -> "CREATE failed: HTTP " + created.status() + " " + created.getBody());
-
-		ODataResponse visible = request("operator-a", "test-a", HttpMethod.GET, COLLECTION, null);
-		assertTrue(visible.is2xxSuccessful());
-		JsonNode rows = visible.getBody().path("value");
-		assertTrue(containsTaxpayer(rows, NIP_A));
-		assertFalse(containsTaxpayer(rows, NIP_B));
+	/**
+	 * CAP-07F (E-2): publiczna projekcja KsefOperations jest @readonly z jedynym grantem READ. Wszystkie dawne
+	 * przypadki walidacji CREATE (zły NIP, typ, kierunek, klucz, sfałszowany status/środowisko, obcy NIP,
+	 * SEND_INVOICE, brak atrybutów) pozostają jako przypadki odmowy: CAP odrzuca je 403 przed handlerem,
+	 * a liczba wierszy w bazie się nie zmienia.
+	 */
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("rejectedCreatePayloads")
+	void publicCreateOfOperationsIsRejectedWithoutWritingRows(String name, String user, String password,
+		Map<String, Object> payload) {
+		long before = operationRows();
+		assertStatus(create(user, password, payload), 403);
+		assertEquals(before, operationRows(), name);
 	}
 
-	@Test
-	void operatorCannotCreateForAnotherTaxpayer() {
-		ODataResponse response = create("operator-a", "test-a", operation(NIP_B, "CHECK_STATUS"));
-		assertStatus(response, 400);
+	static Stream<Arguments> rejectedCreatePayloads() {
+		Map<String, Object> missingType = operation(NIP_A, "CHECK_STATUS");
+		missingType.remove("operationType");
+		Map<String, Object> blankKey = operation(NIP_A, "CHECK_STATUS");
+		blankKey.put("idempotencyKey", "   ");
+		Map<String, Object> sideways = operation(NIP_A, "CHECK_STATUS");
+		sideways.put("direction", "SIDEWAYS");
+		Map<String, Object> forged = operation(NIP_A, "CHECK_STATUS");
+		forged.put("status", "ACCEPTED");
+		forged.put("environment", "PROD");
+		return Stream.of(
+			Arguments.of("own CHECK_STATUS", "operator-a", "test-a", operation(NIP_A, "CHECK_STATUS")),
+			Arguments.of("own RECEIVE_INVOICE", "operator-a", "test-a", operation(NIP_A, "RECEIVE_INVOICE")),
+			Arguments.of("own SEND_INVOICE", "operator-a", "test-a", operation(NIP_A, "SEND_INVOICE")),
+			Arguments.of("foreign taxpayer", "operator-a", "test-a", operation(NIP_B, "CHECK_STATUS")),
+			Arguments.of("operator B own scope", "operator-b", "test-b", operation(NIP_B, "RECEIVE_INVOICE")),
+			Arguments.of("operator without attributes", "operator-without-taxpayer-attribute", "test-no-nip",
+				operation(NIP_A, "CHECK_STATUS")),
+			Arguments.of("invalid NIP", "operator-a", "test-a", operation("1234567890", "CHECK_STATUS")),
+			Arguments.of("unsupported type", "operator-a", "test-a", operation(NIP_A, "DELETE_EVERYTHING")),
+			Arguments.of("missing type", "operator-a", "test-a", missingType),
+			Arguments.of("blank idempotency key", "operator-a", "test-a", blankKey),
+			Arguments.of("unsupported direction", "operator-a", "test-a", sideways),
+			Arguments.of("forged status/environment", "operator-a", "test-a", forged));
 	}
 
 	@Test
@@ -164,11 +192,67 @@ class KsefServiceODataIntegrationTest {
 	}
 
 	@Test
-	void operatorWithoutTaxpayerAttributeCannotCreateOrReadOperations() {
-		ODataResponse create = create(
-			"operator-without-taxpayer-attribute", "test-no-nip", operation(NIP_A, "CHECK_STATUS"));
-		assertStatus(create, 400);
+	void createRequiresAuthenticationAndOperatorRole() {
+		long before = operationRows();
+		assertStatus(create(null, null, operation(NIP_A, "CHECK_STATUS")), 401);
+		assertStatus(create("user-without-ksef-role", "test-user", operation(NIP_A, "CHECK_STATUS")), 403);
+		assertEquals(before, operationRows());
+	}
 
+	/** $batch nie omija kontraktu: CREATE w changesecie dostaje 403, a baza pozostaje bez zmian. */
+	@Test
+	void batchCreateIsRejectedWithoutWritingRows() throws Exception {
+		long before = operationRows();
+		String batch = "batch_cap07f";
+		String changeset = "changeset_cap07f";
+		String body = "--" + batch + "\r\nContent-Type: multipart/mixed;boundary=" + changeset + "\r\n\r\n"
+			+ "--" + changeset + "\r\nContent-Type: application/http\r\nContent-Transfer-Encoding: binary\r\nContent-ID: 1\r\n\r\n"
+			+ "POST KsefOperations HTTP/1.1\r\nContent-Type: application/json\r\nAccept: application/json\r\n\r\n"
+			+ objectMapper.writeValueAsString(operation(NIP_A, "CHECK_STATUS")) + "\r\n"
+			+ "--" + changeset + "--\r\n--" + batch + "--\r\n";
+		String credentials = Base64.getEncoder().encodeToString("operator-a:test-a".getBytes(StandardCharsets.UTF_8));
+		HttpResponse<String> response = httpClient.send(HttpRequest.newBuilder(URI.create(url("/odata/v4/KsefService/$batch")))
+			.header("Authorization", "Basic " + credentials)
+			.header("Content-Type", "multipart/mixed;boundary=" + batch)
+			.POST(HttpRequest.BodyPublishers.ofString(body)).build(), HttpResponse.BodyHandlers.ofString());
+		assertEquals(200, response.statusCode(), response::body);
+		assertTrue(response.body().contains("403 Forbidden"), response::body);
+		assertFalse(response.body().contains("201 Created"), response::body);
+		assertEquals(before, operationRows());
+	}
+
+	/** READ bez regresji: lista, $count, własny klucz 200, obcy klucz 404 (operacje utworzone wewnętrznie). */
+	@Test
+	void operatorReadsOnlyOwnOperationsByListCountAndKey() {
+		String own = persistOperation(NIP_A, "CHECK_STATUS");
+		String foreign = persistOperation(NIP_B, "RECEIVE_INVOICE");
+		String document = "CAP07F-" + UUID.randomUUID();
+		jdbcTemplate.update("UPDATE customer_cap_java_KsefOperations SET sapDocumentRef = ? WHERE ID IN (?, ?)",
+			document, own, foreign);
+
+		ODataResponse visible = request("operator-a", "test-a", HttpMethod.GET, COLLECTION, null);
+		assertTrue(visible.is2xxSuccessful());
+		JsonNode rows = visible.getBody().path("value");
+		assertTrue(containsId(rows, own));
+		assertTrue(containsTaxpayer(rows, NIP_A));
+		assertFalse(containsTaxpayer(rows, NIP_B));
+
+		ODataResponse count = request("operator-a", "test-a", HttpMethod.GET,
+			COLLECTION + "?$count=true&$filter=sapDocumentRef%20eq%20'" + document + "'", null);
+		assertTrue(count.is2xxSuccessful(), () -> "$count failed: HTTP " + count.status());
+		// Bez nagłówka OData-MaxVersion CAP zwraca skróconą adnotację "@count" (z nim: "@odata.count").
+		JsonNode total = count.getBody().has("@count") ? count.getBody().path("@count") : count.getBody().path("@odata.count");
+		assertEquals(1, total.asInt(-1), () -> count.getBody().toString());
+		assertEquals(1, count.getBody().path("value").size());
+
+		assertStatus(request("operator-a", "test-a", HttpMethod.GET, COLLECTION + "(" + own + ")", null), 200);
+		assertStatus(request("operator-a", "test-a", HttpMethod.GET, COLLECTION + "(" + foreign + ")", null), 404);
+		assertStatus(request("operator-b", "test-b", HttpMethod.GET, COLLECTION + "(" + foreign + ")", null), 200);
+	}
+
+	@Test
+	void operatorWithoutTaxpayerAttributeCannotReadOperations() {
+		persistOperation(NIP_A, "CHECK_STATUS");
 		ODataResponse read = request(
 			"operator-without-taxpayer-attribute", "test-no-nip", HttpMethod.GET, COLLECTION, null);
 		assertTrue(read.is2xxSuccessful());
@@ -177,61 +261,8 @@ class KsefServiceODataIntegrationTest {
 	}
 
 	@Test
-	void invalidNipIsRejectedByCreateValidation() {
-		ODataResponse response = create("operator-a", "test-a", operation("1234567890", "CHECK_STATUS"));
-		assertStatus(response, 400);
-	}
-
-	@Test
-	void unsupportedOperationTypeIsRejected() {
-		ODataResponse response = create("operator-a", "test-a", operation(NIP_A, "DELETE_EVERYTHING"));
-		assertStatus(response, 400);
-	}
-
-	@Test
-	void missingOperationTypeIsRejected() {
-		Map<String, Object> data = operation(NIP_A, "CHECK_STATUS");
-		data.remove("operationType");
-		assertStatus(create("operator-a", "test-a", data), 400);
-	}
-
-	@Test
-	void blankIdempotencyKeyIsRejected() {
-		Map<String, Object> data = operation(NIP_A, "CHECK_STATUS");
-		data.put("idempotencyKey", "   ");
-		assertStatus(create("operator-a", "test-a", data), 400);
-	}
-
-	@Test
-	void unsupportedDirectionIsRejected() {
-		Map<String, Object> data = operation(NIP_A, "CHECK_STATUS");
-		data.put("direction", "SIDEWAYS");
-		assertStatus(create("operator-a", "test-a", data), 400);
-	}
-
-	@Test
-	void createOverwritesClientStatusAndTrimsIdempotencyKey() throws Exception {
-		Map<String, Object> data = operation(NIP_A, "CHECK_STATUS");
-		data.put("status", "ACCEPTED");
-		data.put("environment", "PROD");
-		data.put("idempotencyKey", "  " + data.get("idempotencyKey") + "  ");
-		ODataResponse response = create("operator-a", "test-a", data);
-		assertTrue(response.is2xxSuccessful(), () -> "CREATE failed: HTTP " + response.status() + " " + response.getBody());
-
-		JsonNode entity = response.getBody();
-		assertNotNull(entity);
-		assertEquals("NEW", entity.path("status").asText());
-		assertEquals("TEST", entity.path("environment").asText());
-		assertFalse(entity.path("idempotencyKey").asText().startsWith(" "));
-	}
-
-	@Test
-	void updateAndDeleteAreNotGrantedByPublicService() throws Exception {
-		ODataResponse created = create("operator-a", "test-a", operation(NIP_A, "CHECK_STATUS"));
-		assertTrue(created.is2xxSuccessful());
-		String id = created.getBody().path("ID").asText();
-		assertFalse(id.isBlank(), "CREATE response must include the generated ID");
-
+	void updateAndDeleteAreNotGrantedByPublicService() {
+		String id = persistOperation(NIP_A, "CHECK_STATUS");
 		String entityPath = COLLECTION + "(" + id + ")";
 		ODataResponse update = request("operator-a", "test-a", HttpMethod.PATCH,
 			entityPath, Map.of("sapDocumentRef", "changed-by-client"));
@@ -239,28 +270,17 @@ class KsefServiceODataIntegrationTest {
 
 		ODataResponse delete = request("operator-a", "test-a", HttpMethod.DELETE, entityPath, null);
 		assertStatus(delete, 403);
+		assertEquals(1L, persistence.run(Select.from(KsefOperations_.class).byId(id)).rowCount());
 	}
 
+	/** Idempotencja nie zależy od publicznego CREATE: UNIQUE (taxpayerNip, idempotencyKey) działa w bazie. */
 	@Test
 	void duplicateTaxpayerAndIdempotencyKeyIsRejectedByDatabaseConstraint() {
 		String idempotencyKey = "duplicate-" + UUID.randomUUID();
-		Map<String, Object> first = operation(NIP_A, "CHECK_STATUS");
-		first.put("idempotencyKey", idempotencyKey);
-		assertTrue(create("operator-a", "test-a", first).is2xxSuccessful());
-
-		Map<String, Object> duplicate = operation(NIP_A, "CHECK_STATUS");
-		duplicate.put("idempotencyKey", idempotencyKey);
-		assertStatus(create("operator-a", "test-a", duplicate), 409);
-	}
-
-	@Test
-	void operatorBOperationsAreNotVisibleToOperatorA() {
-		ODataResponse created = create("operator-b", "test-b", operation(NIP_B, "RECEIVE_INVOICE"));
-		assertTrue(created.is2xxSuccessful());
-
-		ODataResponse response = request("operator-a", "test-a", HttpMethod.GET, COLLECTION, null);
-		assertTrue(response.is2xxSuccessful());
-		assertFalse(containsTaxpayer(response.getBody().path("value"), NIP_B));
+		persistOperation(NIP_A, "CHECK_STATUS", idempotencyKey);
+		assertThrows(RuntimeException.class, () -> persistOperation(NIP_A, "CHECK_STATUS", idempotencyKey));
+		assertEquals(1L, persistence.run(Select.from(KsefOperations_.class)
+			.where(o -> o.idempotencyKey().eq(idempotencyKey))).rowCount());
 	}
 
 	private ODataResponse create(String username, String password, Map<String, Object> data) {
@@ -287,6 +307,28 @@ class KsefServiceODataIntegrationTest {
 		invoice.put("upoStorageRef", "private://upo/" + id);
 		persistence.run(Insert.into("customer.cap_java.KsefInvoices").entry(invoice));
 		return id;
+	}
+
+	private String persistOperation(String nip, String operationType) {
+		return persistOperation(nip, operationType, UUID.randomUUID().toString());
+	}
+
+	/** Wewnętrzna ścieżka zapisu (PersistenceService na encji bazowej) — ta sama, której używa requestSend. */
+	private String persistOperation(String nip, String operationType, String idempotencyKey) {
+		String id = UUID.randomUUID().toString();
+		KsefOperations operation = KsefOperations.create();
+		operation.setId(id);
+		operation.setTaxpayerNip(nip);
+		operation.setCompanyCode(NIP_A.equals(nip) ? "1000" : "2000");
+		operation.setDirection("OUTBOUND");
+		operation.setOperationType(operationType);
+		operation.setIdempotencyKey(idempotencyKey);
+		persistence.run(Insert.into(KsefOperations_.class).entry(operation));
+		return id;
+	}
+
+	private long operationRows() {
+		return persistence.run(Select.from(KsefOperations_.class)).rowCount();
 	}
 
 	private String persistLinkedOperation(String nip, String invoiceId) {
@@ -333,7 +375,7 @@ class KsefServiceODataIntegrationTest {
 		return "http://localhost:" + port + path;
 	}
 
-	private Map<String, Object> operation(String nip, String operationType) {
+	private static Map<String, Object> operation(String nip, String operationType) {
 		Map<String, Object> operation = new HashMap<>();
 		operation.put("taxpayerNip", nip);
 		operation.put("companyCode", NIP_A.equals(nip) ? "1000" : "2000");

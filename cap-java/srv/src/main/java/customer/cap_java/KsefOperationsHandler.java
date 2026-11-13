@@ -14,7 +14,13 @@ import com.sap.cds.services.handler.annotations.ServiceName;
 
 import cds.gen.ksefservice.KsefOperations;
 
-/** Waliduje minimalny kontrakt wejściowy CREATE operacji KSeF. */
+/**
+ * Waliduje minimalny kontrakt wejściowy CREATE operacji KSeF.
+ *
+ * <p>CAP-07F (E-2): projekcja {@code KsefService.KsefOperations} jest {@code @readonly} i nie ma grantu CREATE,
+ * więc publiczny POST/$batch zostaje odrzucony przez CAP przed tym handlerem. Walidacja pozostaje świadomie jako
+ * druga bariera (defense-in-depth) na wypadek przyszłego, omyłkowego przywrócenia grantu.
+ */
 @Component
 @ServiceName("KsefService")
 public class KsefOperationsHandler implements EventHandler {

@@ -391,7 +391,15 @@ public class KsefSubmissionWorker implements EventHandler {
 
     /** Czy transport KSeF TEST jest włączony i skonfigurowany dla tego kontekstu NIP (bez ujawniania konfiguracji). */
     public boolean acceptsContext(String taxpayerNip) {
-        return enabled && !configuredNip.isBlank() && configuredNip.equals(taxpayerNip);
+        return transportEnabled() && configuredNip.equals(taxpayerNip);
+    }
+
+    /**
+     * CAP-07F (E-3): czy transport KSeF TEST jest w ogóle włączony i skonfigurowany, niezależnie od NIP.
+     * Pozwala odmówić requestSend przed odczytem SAP; nie ujawnia skonfigurowanego NIP.
+     */
+    public boolean transportEnabled() {
+        return enabled && !configuredNip.isBlank();
     }
 
     private void requireEnabled() {
