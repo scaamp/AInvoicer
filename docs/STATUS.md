@@ -1,12 +1,19 @@
 ---
 title: "AInvoicer — aktualny stan"
-date: 2026-11-13
+date: 2026-11-14
 type: status
 status: w-trakcie
 tags: [ainvoicer, cap-java, status]
 ---
 
 # Stan projektu
+
+**Publikacja BLOB-LAB-01 (14.11.2026).** Źródła i raport LAB połączono z aktualnym ORCH-06.
+Nie wykonano nowego deploymentu: CF nadal zawiera pakiet LAB z 13.11 oparty o `4d4dbfc`,
+bez późniejszych zmian CAP-07F. Wdrożony widok `BlobService.Documents` oznacza dodatkową
+różnicę względem kontraktu G1 z ORCH-06; nie zmieniano kontraktu tylko dla uzyskania PASS.
+Autoryzowany test pliku na HANA i trwałość po restarcie pozostają PENDING.
+Poniżej zachowano wyniki obu prac z ich pierwotnymi datami.
 
 **ORCH-06 (2026-11-13) — CAP-HANA-02G1 (PR #17) i CAP-07F (PR #18) MERGED po review i zielonym CI.**
 Oba review PASS WITH NOTES, bez uwag krytycznych i konfliktów. Merge `--no-ff` dokładnych HEAD:
@@ -35,6 +42,17 @@ Aktualne checks końcowego HEAD: [PR #17](https://github.com/scaamp/AInvoicer/pu
 PR pozostaje otwarty; niezależny review przed merge.
 Bez zmian katalogu, LAB/CAP-07F i bez jakichkolwiek operacji LIVE lub G1.
 [Diagnoza i wyniki](journal/2026-11-13-cap-hana-02g1-ci-recovery.md).
+**BLOB-LAB-01 (2026-11-13): lokalny upload/download OData i SHA-256 VERIFIED LOCAL.**
+Właściciel zlecił agentowi lokalne testy, a następnie przygotowanie i wykonanie wdrożenia
+w istniejącym DEV. Używana jest istniejąca rola `KsefOperator` i filtr właściciela dokumentu.
+Dodano walidację XML/DTD, kontrolę UPDATE i trasę AppRouter z XSUAA/CSRF.
+Nowe testy HTTP H2 3/3 PASS; pełny Maven 479 testów, 0 failures/errors, 6 skipped.
+Wdrożenie **VERIFIED LIVE**: operacja `de6d13db…` zakończona, HDI task #4 SUCCEEDED,
+CAP/AppRouter started 1/1; 9 sond HTTP ochrony dostępu PASS. Dodano wyłącznie widok BlobService,
+bez zmian/usunięć istniejących tabel. Autoryzowany LIVE upload/download do HANA i test trwałości
+po restarcie nadal **PENDING**; lokalny PASS H2 nie zastępuje tych pomiarów.
+[Raport i wyjaśnienia](journal/2026-11-13-blob-lab-01-odata-deployment.md).
+Poniższe wpisy zachowują historyczny stan poprzednich etapów.
 
 **ORCH-05 (2026-11-12) — R2 i CAP-07E MERGED po review i zielonym CI.**
 [PR #15](https://github.com/scaamp/AInvoicer/pull/15): PASS WITH NOTES, CI dokładnego HEAD `4dd9ce1` SUCCESS.

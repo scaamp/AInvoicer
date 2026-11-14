@@ -1,12 +1,15 @@
 ---
 title: "AInvoicer — plan rozwoju"
-date: 2026-11-13
+date: 2026-11-14
 type: roadmap
 status: aktywny
 tags: [ainvoicer, roadmap, cap-java, ksef]
 ---
 
 # Plan rozwoju
+
+- [x] **14.11 — publikacja źródeł LAB z ORCH-06:** integracja w Git bez ponownego deploymentu.
+- [ ] **G1 po wdrożeniu LAB:** uwzględnić rzeczywiście dodany widok `BlobService.Documents` w uzgodnieniu katalogu; zachować rozróżnienie kodu main i wdrożonego MTAR.
 
 - [x] **ORCH-06 (2026-11-13) — integracja G1 + CAP-07F:** review obu PR PASS WITH NOTES, wspólna regresja offline PASS,
   merge wyłącznie PR #17 (`ad86a09`) i PR #18 (`790aad8`); bez LIVE. [Review, wyniki, opcje G1](journal/2026-11-13-orch-06-g1-security-integration.md).
@@ -21,6 +24,9 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
   recovery Chrome/CDP, runner 8/8; pełny CI kodu `6f67b4a` SUCCESS.
   [Dziennik](journal/2026-11-13-cap-hana-02g1-ci-recovery.md). G1 i LIVE nadal niewykonane.
 - [x] **PR #17 — niezależny review:** wykonany w ORCH-06, MERGED `ad86a09`; bez zgody wykonawczej G1.
+- [x] **BLOB-LAB-01 (13.11): lokalny OData Media XML + SHA-256, walidacja i izolacja właściciela.** Nowe 3 testy HTTP H2 PASS; Maven 479 / 0 błędów / 6 skipped. [Raport](journal/2026-11-13-blob-lab-01-odata-deployment.md).
+- [x] **BLOB-LAB-01: wdrożenie DEV (13.11).** Zlecone przez właściciela: HDI task #4 SUCCEEDED, CAP/AppRouter 1/1, 9 sond HTTP ochrony dostępu PASS; bez nowych usług i ról.
+- [ ] **BLOB-LAB-01: autoryzowany upload/download LIVE HANA oraz trwałość po restarcie.** Wymagają rzeczywistych pomiarów; lokalny PASS H2 i deployment nie zamykają laboratorium.
 
 - [x] **ORCH-05 (2026-11-12) — integracja R2 + CAP-07E:** niezależny review, poprawka klasyfikatora HTML200 `715ef43` z regresją i zielony CI dokładnych HEAD; scalono wyłącznie PR#15 (`f55d0e8`) i PR#16 (`d4dc204`). [Review i decyzje](journal/2026-11-12-orch-05-hana-security-integration.md).
 - [x] **CAP-HANA-02R2 — runner offline:** JAR/JUnit/guardy/integralność, 5/5 testów procesowych; CI `4dd9ce1` SUCCESS. [Przewodnik](guides/CAP_HANA_02_R2_RUNNER.md) · [dziennik](journal/2026-11-12-cap-hana-02r2-isolated-runner.md).

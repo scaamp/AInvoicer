@@ -6,6 +6,13 @@
   },
   "routes": [
     {
+      "source": "^/odata/v4/blob/(.*)$",
+      "target": "/odata/v4/blob/$1",
+      "destination": "ainvoicer-cap",
+      "authenticationType": "xsuaa",
+      "csrfProtection": true
+    },
+    {
       "source": "^/odata/v4/KsefService/(.*)$",
       "target": "/odata/v4/KsefService/$1",
       "destination": "ainvoicer-cap",

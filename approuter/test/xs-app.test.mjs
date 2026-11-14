@@ -12,6 +12,17 @@ const xsApp = JSON.parse(readFileSync(join(root, 'xs-app.json'), 'utf8'));
 const mta = readFileSync(join(root, '..', 'mta.yaml'), 'utf8');
 const routeFor = (path) => xsApp.routes.find((route) => new RegExp(route.source).test(path));
 
+test('BLOB-LAB-01: media route requires XSUAA and CSRF, without matching other services', () => {
+  for (const tail of ['$metadata', 'Documents', 'Documents(10000000-0000-4000-8000-000000000001)/content']) {
+    const route = routeFor('/odata/v4/blob/' + tail);
+    assert.equal(route.destination, 'ainvoicer-cap');
+    assert.equal(route.authenticationType, 'xsuaa');
+    assert.equal(route.csrfProtection, true);
+    assert.equal(route.target, '/odata/v4/blob/$1');
+  }
+  assert.equal(routeFor('/odata/v4/blob-evil/Documents').destination, undefined);
+});
+
 test('CAP-07D: metadata/count/klucze i tabele prywatne zachowują właściwą granicę JWT', () => {
   for (const tail of ['$metadata', 'InvoiceIntegrationStatus/$count',
     'InboundInvoiceOverview(10000000-0000-4000-8000-000000000001)', 'KsefInboundDocuments']) {

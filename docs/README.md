@@ -8,6 +8,9 @@ tags: [ainvoicer, dokumentacja]
 
 # AInvoicer — baza wiedzy projektu
 
+**14.11.2026 — publikacja źródeł BLOB-LAB-01 wraz z ORCH-06.** Bez nowego deploymentu;
+wersja CF z 13.11 nie zawiera jeszcze CAP-07F. [Raport LAB](journal/2026-11-13-blob-lab-01-odata-deployment.md).
+
 **ORCH-06 (13.11.2026): CAP-HANA-02G1 + CAP-07F MERGED** — wyłącznie PR #17 i PR #18, po review i CI dokładnych HEAD;
 wspólna regresja offline PASS; bez operacji LIVE. [Review, regresja i dwie opcje G1 do decyzji właściciela](journal/2026-11-13-orch-06-g1-security-integration.md).
 
@@ -15,6 +18,8 @@ wspólna regresja offline PASS; bez operacji LIVE. [Review, regresja i dwie opcj
   [CI recovery Chrome/CDP](journal/2026-11-13-cap-hana-02g1-ci-recovery.md), [PR #17](https://github.com/scaamp/AInvoicer/pull/17). G1 niewykonane.
 - **CAP-07F:** [hardening E-2/E-3](guides/CAP_07F_SECURITY_HARDENING.md), [dziennik](journal/2026-11-13-cap-07f-security-hardening.md),
   [PR #18](https://github.com/scaamp/AInvoicer/pull/18). Runtime CF bez zmian; security sign-off PENDING.
+**BLOB-LAB-01 (13.11.2026): lokalny OData Media PASS i wdrożenie DEV zakończone.** HDI #4 SUCCEEDED, CAP/AppRouter 1/1; LIVE HANA upload/SHA/restart nadal PENDING.
+[Raport krok po kroku, testy i wynik wdrożenia](journal/2026-11-13-blob-lab-01-odata-deployment.md).
 
 **ORCH-05 (12.11.2026): HANA R2 + CAP-07E MERGED** — wyłącznie PR#15 i PR#16, po review i CI dokładnych HEAD; bez operacji LIVE. [Wyniki, regresja i trzy decyzje właściciela](journal/2026-11-12-orch-05-hana-security-integration.md).
 
