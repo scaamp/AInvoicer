@@ -19,6 +19,7 @@
   "devDependencies": {
     "adm-zip": "0.6.1",
     "mbt": "1.2.49",
+    "terser": "5.44.1",
     "yaml": "2.9.1"
   }
 }

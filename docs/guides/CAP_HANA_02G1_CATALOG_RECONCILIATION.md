@@ -1,12 +1,19 @@
 ---
 title: "CAP-HANA-02G1 — ścisłe uzgodnienie katalogu CORE i OWNER LAB"
-date: 2026-11-13
+date: 2026-11-14
 type: guide
 status: offline-verified-live-not-executed
 tags: [ainvoicer, cap-hana-02g1, hana, hdi, catalog, owner-led]
 ---
 
 # CAP-HANA-02G1 — uzgodnienie katalogu HDI
+
+**Aktualizacja KSEF-IN-03B, 14.11.2026:** obowiązuje dokładnie CORE14 + OWNER LAB + OWNER LAB OData:
+**15 tabel / 5 widoków / 6 UNIQUE / 15 PK**, pełny eksport **70 wierszy**. Piąty widok
+`BLOBSERVICE_DOCUMENTS` wymaga `IS_VALID=TRUE` i dokładnego SELECT siedmiu kolumn z tabeli LAB.
+W `DETAIL` wiersza VIEW ma teraz `TRUE:<pełna definicja SQL>` zamiast `-`; inne widoki nadal `-`.
+Szczegóły, granice normalizacji i test CSN/HDI: [IN-03B](KSEF_IN_03B_WORKER_READINESS.md#g1-po-blobservice).
+Nie wykonano G1 LIVE. Wynik wdrożenia BlobService z 13.11 jest wcześniejszym raportem, nie nowym pomiarem katalogu.
 
 Pierwotne zlecenie obejmowało wyłącznie walidator, testy offline i ten przewodnik. **Nie wykonano żadnej
 operacji CF/HANA LIVE, taska, HDI make, DDL/DML, odczytu BLOB ani zmian LAB/CAP.**
@@ -41,13 +48,14 @@ na każdej tabeli. Nie sprawdzał kolumn PK ani LAB, pomijał nieunikalne indeks
 duplikatów. Schemat pochodził z dokładnie jednego bindingu `hana/hdi-shared`, `ainvoicer-db`.
 Kody wyjścia 0/2/1 zachowano; nie ma automatycznej naprawy ani retry.
 
-Nowy kontrakt ma dwa jawne zakresy:
+Kontrakt ma trzy jawne zakresy:
 
 | Zakres | Wymagania |
 | --- | --- |
 | CORE | Dokładnie historyczne 14 nazw tabel, 4 widoków i 6 unikalnych indeksów z `EXPECTED` w [walidatorze](../../deploy/scripts/hdi-catalog-readonly.cjs). PK(ID), z trzema wyjątkami poniżej. Każdy indeks UNIQUE musi należeć do właściwej tabeli. |
-| OWNER LAB | Wyłącznie `CUSTOMER_CAP_JAVA_KSEFDOCUMENTS`, jeden PK(ID), dokładnie 9 kolumn opisanych niżej. Brak nowych widoków lub indeksów UNIQUE. |
-| Całość | W domyślnym trybie dokładnie 15 tabel/4 widoki/6 indeksów UNIQUE/15 PK. Brak obcych tabel, widoków, dodatkowych jawnych indeksów, duplikatów i niekompletnych metadanych. Każdy wiersz musi mieć oczekiwany fizyczny schemat HDI. |
+| OWNER LAB | Wyłącznie `CUSTOMER_CAP_JAVA_KSEFDOCUMENTS`, jeden PK(ID), dokładnie 9 kolumn opisanych niżej. Bez nowych indeksów UNIQUE. |
+| OWNER LAB OData | Dokładnie `BLOBSERVICE_DOCUMENTS`, poprawny stan i definicja siedmiu kolumn według IN-03B. |
+| Całość | W domyślnym trybie dokładnie 15 tabel/5 widoków/6 indeksów UNIQUE/15 PK. Brak obcych tabel, widoków, dodatkowych jawnych indeksów, duplikatów i niekompletnych metadanych. Każdy wiersz musi mieć oczekiwany fizyczny schemat HDI. |
 
 Złożone PK z artefaktów (kolejność jest sprawdzana):
 
@@ -76,7 +84,7 @@ Nazwy spoza obsługiwanego alfabetu identyfikatorów modelu są odrzucane, bez i
 
 Kontrola długości dotyczy NVARCHAR; katalogowa LENGTH dla TIMESTAMP/BLOB nie jest limitem zadanym
 w tym DDL, więc nie porównujemy jej z wymyśloną stałą. Typ i nullable sprawdzamy zawsze.
-Nie sprawdzamy definicji SQL widoków, wszystkich kolumn CORE, defaultów/triggerów, zawartości tabel,
+Nie sprawdzamy definicji SQL czterech widoków CORE, wszystkich kolumn CORE, defaultów/triggerów, zawartości tabel,
 kolumn indeksów UNIQUE ani grantów runtime. MATCH dotyczy opisanego kontraktu katalogowego.
 
 ## Tryby, SQL i raportowanie
@@ -97,9 +105,10 @@ jest nadmiarem; **nie wolno użyć go do akceptacji obecnego wspólnego kontener
 Zachowano `--task-json`, `--print-runtime-source`, nazwę taska i pola JSON CAPI (256 MB/512 MB).
 Rozszerzony runtime używa Brotli+base64 zamiast gzip, obsługiwanego przez Node 22/24 bez dodatkowych
 pakietów. Test rozpakowuje i wykonuje dokładnie wysyłany program, również dla przypadków negatywnych.
-Lokalnie polecenie ma 4051 znaków przy limicie 4096; generator odmawia przekroczenia limitu.
+IN-03B używa przypiętego Terser 5.44.1 (tylko generator) przed Brotli. Lokalnie polecenie ma
+4059 znaków przy limicie 4096; generator odmawia przekroczenia limitu.
 SHA-256 programu runtime w domyślnym trybie:
-`efb44fb4d0080fecf8e4a9dc16470aca764cb2ea868951fcc4a2aa4b51a5c52f`.
+`5e0d23eda95ac46f30366828f50d79f90e9fca6ac0c216b4295fd5d22279d2e8`.
 Stary hash/gzip i liczba 14 w runbooku G1 są historyczne i nie obowiązują dla tego patcha.
 
 Jedyny SQL to parametryzowany `SELECT ... UNION ALL ...` do `SYS.TABLES`, `SYS.VIEWS`, `SYS.INDEXES`,
@@ -111,8 +120,8 @@ Wersja Console zastępuje parametry przez `CURRENT_SCHEMA` bez konkatenowania na
 Przykład zgodnego wyniku z przyszłego pomiaru skryptu (nie wynik LIVE tej sesji):
 
 ```text
-HDI_CATALOG verdict=MATCH tables=15/15 views=4/4 uniqueIndexes=6/6 primaryKeys=15/15 missing=[] unexpected=[]
-HDI_CATALOG_CORE=PASS HDI_CATALOG_OWNER_LAB=PASS evidence=SCRIPT_MEASURED
+HDI_CATALOG verdict=MATCH tables=15/15 views=5/5 uniqueIndexes=6/6 primaryKeys=15/15 missing=[] unexpected=[]
+HDI_CATALOG_CORE=PASS HDI_CATALOG_OWNER_LAB=PASS HDI_CATALOG_OWNER_LAB_ODATA=PASS evidence=SCRIPT_MEASURED
 ```
 
 | Kod | Znaczenie / działanie |
@@ -160,7 +169,8 @@ wymienione pola tekstowe. Plik UTF-8 (BOM dozwolony), maks. 5 MiB. Przykład jed
 {"version":1,"rows":[{"KIND":"COLUMN","NAME":"CONTENT","DETAIL":"BLOB:0:TRUE","SCHEMA_NAME":"SYNTH_SCHEMA"}]}
 ```
 
-`DETAIL` dla TABLE/VIEW: `-`; INDEX: `<CONSTRAINT>@<TABLE_NAME>`; PK_COLUMN: `<POSITION>:<COLUMN_NAME>`
+`DETAIL` dla TABLE i VIEW CORE: `-`; VIEW LAB: `TRUE:<pełna definicja SQL>`;
+INDEX: `<CONSTRAINT>@<TABLE_NAME>`; PK_COLUMN: `<POSITION>:<COLUMN_NAME>`
 z NAME=tabela; COLUMN: `<DATA_TYPE_NAME>:<LENGTH-lub->:<IS_NULLABLE>` z NAME=kolumna LAB.
 Skrypt przyjmuje oba zapisy constraintów HANA: `PRIMARY_KEY`/`PRIMARY KEY`,
 `NOT_NULL_UNIQUE`/`NOT NULL UNIQUE`. Nie normalizuje nazw tabel/kolumn.
@@ -196,6 +206,9 @@ zgodność **widocznego** katalogu, nie audyt wszystkich ukrytych obiektów cał
 [CAP compile.to.hana](https://cap.cloud.sap/docs/node.js/cds-compile#hana).
 
 ## Walidacja offline i dalsze bramki
+
+Aktualne testy IN-03B: katalog **62/62 PASS**, deploy **104 PASS / 1 Go SKIP** lokalnie.
+Niżej zachowano historię oryginalnego G1; pełne nowe wyniki i CI są w [dzienniku IN-03B](../journal/2026-11-14-ksef-in-03b-worker-readiness.md).
 
 Node 24.13.0 / npm 11.6.2 na Windows:
 

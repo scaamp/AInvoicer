@@ -17,6 +17,7 @@ import customer.cap_java.ksef.inbound.DurableInboundDocumentStore;
 import customer.cap_java.ksef.inbound.KsefEnvironment;
 import customer.cap_java.ksef.inbound.KsefTaxpayerContext;
 import customer.cap_java.ksef.inbound.sync.InboundSynchronization;
+import customer.cap_java.ksef.inbound.sync.InboundSyncScheduler;
 import pl.akmf.ksef.sdk.client.interfaces.KSeFClient;
 import pl.akmf.ksef.sdk.client.model.auth.TokenInfo;
 
@@ -38,7 +39,8 @@ class KsefInboundConfigurationTest {
     }
 
     private ApplicationContextRunner context(KsefDocumentStore store) {
-        return new ApplicationContextRunner().withUserConfiguration(KsefInboundConfiguration.class)
+        return new ApplicationContextRunner().withUserConfiguration(KsefInboundConfiguration.class,
+                KsefInboundSchedulerConfiguration.class)
                 .withBean(KsefDocumentStore.class, () -> store);
     }
 
@@ -51,6 +53,7 @@ class KsefInboundConfigurationTest {
                     assertNull(app.getStartupFailure());
                     assertTrue(app.getBeansOfType(InboundSynchronization.class).isEmpty());
                     assertTrue(app.getBeansOfType(KsefInboundAccess.class).isEmpty());
+                    assertTrue(app.getBeansOfType(InboundSyncScheduler.class).isEmpty());
                     verifyNoInteractions(sdk, auth);
                 });
     }
@@ -70,12 +73,44 @@ class KsefInboundConfigurationTest {
                 .run(app -> assertTrue(messages(app.getStartupFailure()).contains("KSEF_INBOUND_CLOUD_ACTIVATION_NOT_READY")));
     }
 
+    @Test void schedulerOptInAloneDoesNotEnableSynchronization() {
+        context(mock(KsefDocumentStore.class)).withPropertyValues("ainv.ksef.inbound.scheduler.enabled=true")
+                .run(app -> {
+                    assertNull(app.getStartupFailure());
+                    assertTrue(app.getBeansOfType(InboundSyncScheduler.class).isEmpty());
+                    assertTrue(app.getBeansOfType(InboundSynchronization.class).isEmpty());
+                });
+    }
+
+    @Test void schedulerCannotBypassCloudGuardWithDurableStorage() {
+        for (String cloud : java.util.List.of("spring.profiles.active=cf", "spring.profiles.active=cloud",
+                "spring.profiles.active=prod", "spring.profiles.active=production", "VCAP_APPLICATION={}")) {
+            var sdk = mock(KSeFClient.class);
+            var auth = mock(KsefAuthentication.class);
+            context(mock(DurableInboundDocumentStore.class)).withBean(KSeFClient.class, () -> sdk)
+                    .withBean(KsefAuthentication.class, () -> auth)
+                    .withPropertyValues(cloud, "ainv.ksef.inbound.enabled=true", "ainv.ksef.inbound.scheduler.enabled=true")
+                    .run(app -> {
+                        assertTrue(messages(app.getStartupFailure()).contains("KSEF_INBOUND_CLOUD_ACTIVATION_NOT_READY"));
+                        verifyNoInteractions(sdk, auth);
+                    });
+        }
+    }
+
     @Test void localOptInRequiresConfiguredStorage() {
         context(new LocalTestDocumentStore("")).withPropertyValues("ainv.ksef.inbound.enabled=true")
                 .run(app -> assertTrue(messages(app.getStartupFailure()).contains("KSEF_INBOUND_DOCUMENT_STORE_REQUIRED")));
     }
 
     @Test void localWiringDoesNotStartSynchronizationOrAuthenticate() {
+        localStartup(false);
+    }
+
+    @Test void schedulerOptInRegistersDelayedTaskWithoutStartupHttp() {
+        localStartup(true);
+    }
+
+    private void localStartup(boolean schedulerEnabled) {
         var sdk = mock(KSeFClient.class);
         var auth = mock(KsefAuthentication.class);
         context(new LocalTestDocumentStore(directory.toString())).withBean(KSeFClient.class, () -> sdk)
@@ -83,10 +118,20 @@ class KsefInboundConfigurationTest {
                 .withBean(PersistenceService.class, () -> mock(PersistenceService.class))
                 .withBean(CdsRuntime.class, () -> mock(CdsRuntime.class))
                 .withPropertyValues("ainv.ksef.inbound.enabled=true", "ainv.ksef.nip=1111111111",
+                        "ainv.ksef.inbound.scheduler.enabled=" + schedulerEnabled,
                         "ainv.ksef.inbound.initial-from=2026-11-01T00:00:00Z", "ainv.ksef.local-store=" + directory)
                 .run(app -> {
                     assertNull(app.getStartupFailure(), () -> messages(app.getStartupFailure()));
                     assertNotNull(app.getBean(InboundSynchronization.class));
+                    assertEquals(schedulerEnabled ? 1 : 0, app.getBeansOfType(InboundSyncScheduler.class).size());
+                    if (schedulerEnabled) {
+                        var tasks = app.getBean(org.springframework.scheduling.annotation.ScheduledAnnotationBeanPostProcessor.class)
+                                .getScheduledTasks();
+                        assertEquals(1, tasks.size());
+                        var task = (org.springframework.scheduling.config.IntervalTask) tasks.iterator().next().getTask();
+                        assertEquals(java.time.Duration.ofMinutes(15), task.getInitialDelayDuration());
+                        assertEquals(java.time.Duration.ofMinutes(15), task.getIntervalDuration());
+                    }
                     verifyNoInteractions(sdk, auth);
                 });
     }

@@ -17,11 +17,23 @@ const SECRET = { host: 'synthetic-host.invalid', port: '443', user: 'SYNTH_RT_US
 const vcap = (overrides = {}, extra = []) => JSON.stringify({ hana: [{ label: 'hana', name: 'ainvoicer-db', plan: 'hdi-shared',
     credentials: { ...SECRET, ...overrides } }, ...extra] });
 
+// Niezależny zapis wyniku compile.to.hana z niezmienionego CDS main=7a47ac9.
+const labViewDDL = `VIEW BlobService_Documents AS SELECT
+  KsefDocuments_0.ID,
+  KsefDocuments_0.fileName,
+  KsefDocuments_0."MIMETYPE",
+  KsefDocuments_0.content,
+  KsefDocuments_0.sha256,
+  KsefDocuments_0.createdBy,
+  KsefDocuments_0.createdAt
+FROM customer_cap_java_KsefDocuments AS KsefDocuments_0`;
+
 /** Pełny, zgodny katalog: tabele, widoki, unikalne indeksy i PK dla każdej tabeli. */
 function healthyRows(lab = true) {
     return [
         ...[...catalog.EXPECTED.TABLE, ...(lab ? [catalog.LAB_TABLE] : [])].map(NAME => ({ KIND: 'TABLE', NAME, DETAIL: '-' })),
         ...catalog.EXPECTED.VIEW.map(NAME => ({ KIND: 'VIEW', NAME, DETAIL: '-' })),
+        ...(lab ? [{ KIND: 'VIEW', NAME: 'BLOBSERVICE_DOCUMENTS', DETAIL: 'TRUE:' + labViewDDL }] : []),
         ...catalog.EXPECTED.UNIQUE_INDEX.map(NAME => ({ KIND: 'INDEX', NAME, DETAIL: `UNIQUE@${NAME.replace(/_[A-Z]+$/, '')}` })),
         ...[...catalog.EXPECTED.TABLE, ...(lab ? [catalog.LAB_TABLE] : [])].map((table, i) => ({ KIND: 'INDEX', NAME: `_SYS_TREE_CS_#${i}_#0_#P0`, DETAIL: `PRIMARY KEY@${table}` })),
         ...Object.entries(catalog.PRIMARY_KEYS).filter(([t]) => lab || t !== catalog.LAB_TABLE)
@@ -76,7 +88,7 @@ test('healthy catalog -> MATCH, exit 0, schema passed only as bind parameter, no
     const hdb = fakeHdb(healthyRows());
     const { code, out } = await execute({ VCAP_SERVICES: vcap() }, hdb);
     assert.equal(code, 0);
-    assert.match(out, /^HDI_CATALOG verdict=MATCH tables=15\/15 views=4\/4 uniqueIndexes=6\/6 primaryKeys=15\/15 missing=\[\] unexpected=\[\]\nHDI_CATALOG_CORE=PASS HDI_CATALOG_OWNER_LAB=PASS evidence=SCRIPT_MEASURED$/);
+    assert.match(out, /^HDI_CATALOG verdict=MATCH tables=15\/15 views=5\/5 uniqueIndexes=6\/6 primaryKeys=15\/15 missing=\[\] unexpected=\[\]\nHDI_CATALOG_CORE=PASS HDI_CATALOG_OWNER_LAB=PASS HDI_CATALOG_OWNER_LAB_ODATA=PASS evidence=SCRIPT_MEASURED$/);
     assert.deepEqual(hdb.calls.sql, [catalog.CATALOG_SQL]);
     assert.deepEqual(hdb.calls.params, [Array(5).fill(SECRET.schema)]);
     assert.equal(hdb.calls.ended, 1);
@@ -214,6 +226,18 @@ test('LAB contract matches observed hdbtable including quoted MIMETYPE, managed 
 });
 
 const negativeCases = {
+    'missing fifth view': r => r.filter(x => x.NAME !== 'BLOBSERVICE_DOCUMENTS'),
+    'unknown sixth view': r => [...r, { KIND: 'VIEW', NAME: 'FOREIGN_VIEW', DETAIL: '-', SCHEMA_NAME: SECRET.schema }],
+    'missing view definition': r => r.map(x => x.NAME === 'BLOBSERVICE_DOCUMENTS' ? { ...x, DETAIL: '-' } : x),
+    'invalid view': r => r.map(x => x.NAME === 'BLOBSERVICE_DOCUMENTS' ? { ...x, DETAIL: x.DETAIL.replace('TRUE:', 'FALSE:') } : x),
+    'wrong projection': r => r.map(x => x.NAME === 'BLOBSERVICE_DOCUMENTS' ? { ...x, DETAIL: x.DETAIL.replace('.sha256', '.modifiedBy') } : x),
+    'wrong source': r => r.map(x => x.NAME === 'BLOBSERVICE_DOCUMENTS' ? { ...x, DETAIL: x.DETAIL.replace('FROM customer_cap_java_KsefDocuments', 'FROM OTHER_DOCUMENTS') } : x),
+    'wrong source schema': r => r.map(x => x.NAME === 'BLOBSERVICE_DOCUMENTS' ? { ...x, DETAIL: x.DETAIL.replace('FROM customer_cap_java_KsefDocuments', 'FROM OTHER_SCHEMA.customer_cap_java_KsefDocuments') } : x),
+    'added filter': r => r.map(x => x.NAME === 'BLOBSERVICE_DOCUMENTS' ? { ...x, DETAIL: x.DETAIL + ' WHERE 1=0' } : x),
+    'wrong quoted source case': r => r.map(x => x.NAME === 'BLOBSERVICE_DOCUMENTS' ? { ...x, DETAIL: x.DETAIL.replace('FROM customer_cap_java_KsefDocuments', 'FROM "customer_cap_java_KsefDocuments"') } : x),
+    'wrong quoted column case': r => r.map(x => x.NAME === 'BLOBSERVICE_DOCUMENTS' ? { ...x, DETAIL: x.DETAIL.replace('"MIMETYPE"', '"mimeType"') } : x),
+    'truncated definition': r => r.map(x => x.NAME === 'BLOBSERVICE_DOCUMENTS' ? { ...x, DETAIL: x.DETAIL.slice(0, -12) } : x),
+    'extra statement': r => r.map(x => x.NAME === 'BLOBSERVICE_DOCUMENTS' ? { ...x, DETAIL: x.DETAIL + '; SELECT * FROM X' } : x),
     'missing CORE table': r => r.filter(x => x.NAME !== 'CDS_OUTBOX_MESSAGES'),
     'unknown additional table': r => [...r, { KIND: 'TABLE', NAME: 'UNAPPROVED', DETAIL: '-', SCHEMA_NAME: SECRET.schema }],
     'wrong LAB PK': r => r.map(x => x.KIND === 'PK_COLUMN' && x.NAME === catalog.LAB_TABLE ? { ...x, DETAIL: '1:SHA256' } : x),
@@ -269,6 +293,46 @@ test('CORE and LAB results are separate; names/order deterministic and HANA cons
     const missingCore = catalog.evaluate(negativeCases['missing CORE table'](healthyRows()), SECRET.schema);
     assert.equal(missingCore.core, 'FAIL');
     assert.equal(missingCore.ownerLab, 'PASS');
+});
+
+test('OData scope checks exact projection, resolved names, validity and same-schema SQL wrappers', () => {
+    const projection = labViewDDL.slice(labViewDDL.indexOf('SELECT'));
+    const qualified = projection.replace('FROM customer_cap_java_KsefDocuments', `FROM "${SECRET.schema}"."CUSTOMER_CAP_JAVA_KSEFDOCUMENTS"`);
+    const forms = [labViewDDL, projection, qualified,
+        `CREATE VIEW "${SECRET.schema}"."BLOBSERVICE_DOCUMENTS" (ID,FILENAME,MIMETYPE,CONTENT,SHA256,CREATEDBY,CREATEDAT) AS ${qualified};`];
+    for (const sql of forms) assert.equal(catalog.validLabView('TRUE:' + sql, SECRET.schema), true, sql);
+    for (const name of ['missing fifth view', 'missing view definition', 'wrong projection']) {
+        const result = catalog.evaluate(negativeCases[name](healthyRows()), SECRET.schema);
+        assert.equal(result.core, 'PASS');
+        assert.equal(result.ownerLab, 'PASS');
+        assert.equal(result.ownerLabOData, 'FAIL');
+    }
+    assert.equal(catalog.evaluate(negativeCases['unknown sixth view'](healthyRows()), SECRET.schema).core, 'FAIL');
+    assert.equal(catalog.evaluate(healthyRows(false), SECRET.schema, true).ownerLabOData, 'NOT_REQUESTED');
+});
+
+test('current CDS independently generates exactly CORE14 + LAB + one OData view and expected media key', async () => {
+    const cds = require('../../cap-java/node_modules/@sap/cds-dk/node_modules/@sap/cds');
+    const root = fileURLToPath(new URL('../../cap-java/', import.meta.url));
+    const model = await cds.load([join(root, 'db'), join(root, 'srv'), join(root, 'node_modules/@sap/cds-dk/node_modules/@sap/cds/srv/outbox.cds')]);
+    const artifacts = [...cds.compile.to.hana(model, { sqlMapping: 'plain' })];
+    const names = suffix => artifacts.filter(([, f]) => f.file.endsWith(suffix)).map(([sql]) => sql.match(/^(?:COLUMN TABLE|VIEW|UNIQUE INVERTED INDEX) (\S+)/)?.[1]?.toUpperCase()).sort();
+    assert.equal(artifacts.filter(([, f]) => f.file.endsWith('.hdbtable')).length, 15);
+    assert.deepEqual(names('.hdbtable'), [...catalog.EXPECTED.TABLE, catalog.LAB_TABLE].sort());
+    assert.deepEqual(names('.hdbview'), [...catalog.EXPECTED.VIEW, 'BLOBSERVICE_DOCUMENTS'].sort());
+    assert.equal(artifacts.filter(([, f]) => f.file.endsWith('.hdbindex')).length, 6);
+    assert.deepEqual(names('.hdbindex'), [...catalog.EXPECTED.UNIQUE_INDEX].sort());
+    for (const [sql, file] of artifacts.filter(([, f]) => f.file.endsWith('.hdbtable'))) {
+        const table = sql.match(/^COLUMN TABLE (\S+)/)[1].toUpperCase();
+        const keys = sql.match(/PRIMARY KEY\(([^)]+)\)/)[1].split(',').map(k => k.trim().toUpperCase());
+        assert.deepEqual(keys, catalog.PRIMARY_KEYS[table], file.file);
+    }
+    const [ddl] = artifacts.find(([, f]) => f.file === 'BlobService.Documents.hdbview');
+    assert.equal(ddl.trim(), labViewDDL);
+    assert.equal(catalog.validLabView('TRUE:' + ddl, SECRET.schema), true);
+    assert.deepEqual(Object.entries(model.definitions['BlobService.Documents'].elements).filter(([, e]) => e.key).map(([n]) => n), ['ID']);
+    assert.equal(model.definitions['BlobService.Documents'].elements.content.type, 'cds.LargeBinary');
+    assert.deepEqual(model.definitions['BlobService.Documents'].elements.content['@Core.MediaType'], { '=': 'mimeType' });
 });
 
 test('insufficient privilege at PREPARE or SELECT -> exit 1; no retry, no GRANT, no server text', async () => {

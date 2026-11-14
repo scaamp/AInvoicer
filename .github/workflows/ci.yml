@@ -63,6 +63,7 @@ jobs:
       - name: Deployment invariants and secret patterns
         run: |
           npm ci --prefix deploy
+          npm ci --prefix cap-java --ignore-scripts
           npm test --prefix deploy
           npm run validate:smoke --prefix deploy
           node deploy/scripts/check-secrets.mjs

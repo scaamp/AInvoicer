@@ -403,6 +403,36 @@ class CqnInboundPersistenceTest {
         verify(access, times(1)).open();
     }
 
+    @Test void concurrentCoordinatorsDoNotAuthenticateOrReadWithoutLease() throws Exception {
+        segment(xml);
+        var entered = new java.util.concurrent.CountDownLatch(1);
+        var release = new java.util.concurrent.CountDownLatch(1);
+        var access = mock(KsefInboundAccess.class);
+        var session = mock(KsefInboundAccess.AccessSession.class);
+        when(session.token()).thenReturn(token());
+        when(access.open()).thenAnswer(call -> {
+            entered.countDown();
+            assertTrue(release.await(10, TimeUnit.SECONDS));
+            return session;
+        });
+        var leases = new CqnInboundSyncLeaseRepository(persistence, CLOCK);
+        var first = new InboundSynchronization(SCOPE, START, CLOCK, access, retrieval, documents,
+                checkpoints, leases, store, SCHEMA);
+        var second = new InboundSynchronization(SCOPE, START, CLOCK, access, retrieval, documents,
+                checkpoints, new CqnInboundSyncLeaseRepository(persistence, CLOCK), store, SCHEMA);
+        try (var executor = Executors.newSingleThreadExecutor()) {
+            var result = executor.submit(first::runOnce);
+            try {
+                assertTrue(entered.await(10, TimeUnit.SECONDS));
+                assertTrue(second.runOnce().isEmpty());
+                verify(access, times(1)).open();
+                verifyNoInteractions(sdk);
+                assertTrue(checkpoints.find(SCOPE).isEmpty());
+            } finally { release.countDown(); }
+            assertEquals(InvoiceSyncRunner.Status.COMMITTED, result.get(10, TimeUnit.SECONDS).orElseThrow().status());
+        }
+    }
+
     @Test void ambiguousAuthenticationBlocksScopeWithoutBlindRedeemOrAuthRetry() {
         var access = mock(KsefInboundAccess.class);
         when(access.open()).thenThrow(new KsefFailure("KSEF_REDEEM_IO", true, false, null));
