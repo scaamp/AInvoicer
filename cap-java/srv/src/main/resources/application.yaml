@@ -46,8 +46,10 @@ ainv:
   ksef:
     enabled: false
     inbound:
-      # Wiring wyłącznie po jawnym opt-in lokalnym; brak schedulera i automatycznego startu na CF.
+      # Wiring i scheduler wyłącznie po osobnych opt-in lokalnych; CF nadal fail-closed.
       enabled: false
+      scheduler:
+        enabled: false
       environment: TEST
       initial-from: ""
     nip: ${AINV_KSEF_NIP:}

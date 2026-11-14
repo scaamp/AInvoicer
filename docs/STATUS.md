@@ -8,6 +8,20 @@ tags: [ainvoicer, cap-java, status]
 
 # Stan projektu
 
+**KSEF-IN-03B (14.11.2026) — przygotowanie offline, CF NO-GO.** Audyt potwierdził istniejący pipeline
+i DI. Dodano opcjonalny lokalny scheduler (dwa default OFF, bez startup I/O, bez nakładania ticków),
+zachowano bezwarunkowy guard CF. Globalny budżet API nadal niepodłączony i bez repozytorium między JVM;
+lease chroni checkpoint, lecz po expiry nie zapewnia wyłączności HTTP. Adapter HANA BLOB KSEF-STOR-03
+wymaga osobnego review/testów. G1 w kodzie uzgodniony z dokładnie jednym widokiem BlobService:
+**15 tabel / 5 widoków / 6 UNIQUE / 15 PK**, 70 wierszy metadanych i kontrola definicji widoku.
+**G1 LIVE niewykonane**, bez zmian LAB/storage ani operacji LIVE.
+Regresja lokalna: Maven **497/0 failures/0 errors/6 skipped**, G1 **63/63**,
+deploy **105 PASS/1 Go skip**, QUnit **112**, OPA **21**, Inbox **16/73**, R2 **5**, Azurite **6** PASS; oba MTAR PASS.
+[Przewodnik i blockery](guides/KSEF_IN_03B_WORKER_READINESS.md) · [Wyniki regresji / PR](journal/2026-11-14-ksef-in-03b-worker-readiness.md).
+[Otwarty PR #19 i checks HEAD](https://github.com/scaamp/AInvoicer/pull/19/checks); bez merge.
+
+Poniższe wpisy zachowują historyczny stan przed IN-03B.
+
 **Publikacja BLOB-LAB-01 (14.11.2026).** Źródła i raport LAB połączono z aktualnym ORCH-06.
 Nie wykonano nowego deploymentu: CF nadal zawiera pakiet LAB z 13.11 oparty o `4d4dbfc`,
 bez późniejszych zmian CAP-07F. Wdrożony widok `BlobService.Documents` oznacza dodatkową

@@ -8,8 +8,15 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
 
 # Plan rozwoju
 
+- [x] **KSEF-IN-03B offline:** audyt istniejącego INBOUND, scheduler z dwoma opt-in OFF i zachowanym guardem CF;
+  G1 dokładnie CORE14 + LAB + jeden BlobService view (15/5/6/15), weryfikacja definicji i testy negatywne.
+  [Przewodnik](guides/KSEF_IN_03B_WORKER_READINESS.md) · [Dziennik / regresja](journal/2026-11-14-ksef-in-03b-worker-readiness.md).
+- [ ] **INBOUND CF NO-GO:** zatwierdzenie i implementacja globalnego budżetu API (schema + nowa wersja G1),
+  wiring wszystkich prób SDK/auth, lease per dispatch/renew, KSEF-STOR-03 HANA BLOB i testy wielu JVM,
+  security acceptance, osobne zgody na wydanie/odczyt TEST/aktywację schedulera.
+
 - [x] **14.11 — publikacja źródeł LAB z ORCH-06:** integracja w Git bez ponownego deploymentu.
-- [ ] **G1 po wdrożeniu LAB:** uwzględnić rzeczywiście dodany widok `BlobService.Documents` w uzgodnieniu katalogu; zachować rozróżnienie kodu main i wdrożonego MTAR.
+- [x] **G1 po wdrożeniu LAB — kontrakt offline:** IN-03B uwzględnia dokładny widok `BlobService.Documents`; pomiar LIVE nadal wymaga osobnej zgody. Zachowano rozróżnienie kodu i wdrożonego MTAR.
 
 - [x] **ORCH-06 (2026-11-13) — integracja G1 + CAP-07F:** review obu PR PASS WITH NOTES, wspólna regresja offline PASS,
   merge wyłącznie PR #17 (`ad86a09`) i PR #18 (`790aad8`); bez LIVE. [Review, wyniki, opcje G1](journal/2026-11-13-orch-06-g1-security-integration.md).

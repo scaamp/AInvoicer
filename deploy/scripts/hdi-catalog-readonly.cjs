@@ -59,6 +59,8 @@ const EXPECTED = Object.freeze({
 
 // Klucze i kolumny odczytane z wygenerowanego design-time; identyfikatory katalogowe są case-sensitive.
 const LAB_TABLE = 'CUSTOMER_CAP_JAVA_KSEFDOCUMENTS';
+const LAB_VIEW = 'BLOBSERVICE_DOCUMENTS';
+const LAB_VIEW_COLUMNS = ['ID', 'FILENAME', 'MIMETYPE', 'CONTENT', 'SHA256', 'CREATEDBY', 'CREATEDAT'];
 const PRIMARY_KEYS = Object.freeze(Object.fromEntries([...EXPECTED.TABLE, LAB_TABLE].map(table => [table,
     table.endsWith('KSEFSENDRESERVATIONS') ? ['INVOICEUUID', 'ENVIRONMENT']
         : /KSEFINBOUNDSYNC(CHECKPOINTS|LEASES)$/.test(table) ? ['ENVIRONMENT', 'CONTEXTNIP', 'SUBJECTROLE'] : ['ID']])));
@@ -71,7 +73,7 @@ const LAB_COLUMNS = Object.freeze({
 
 // Jedyne polecenie SQL; pięć parametrów schematu. DETAIL ma stały format metadanych, bez danych biznesowych.
 const CATALOG_SQL = "SELECT 'TABLE' AS KIND, TABLE_NAME AS NAME, '-' AS DETAIL, SCHEMA_NAME FROM SYS.TABLES WHERE SCHEMA_NAME = ?"
-    + " UNION ALL SELECT 'VIEW', VIEW_NAME, '-', SCHEMA_NAME FROM SYS.VIEWS WHERE SCHEMA_NAME = ?"
+    + " UNION ALL SELECT 'VIEW', VIEW_NAME, CASE WHEN VIEW_NAME = '" + LAB_VIEW + "' THEN IS_VALID || ':' || TO_NVARCHAR(DEFINITION) ELSE '-' END, SCHEMA_NAME FROM SYS.VIEWS WHERE SCHEMA_NAME = ?"
     + " UNION ALL SELECT 'INDEX', INDEX_NAME, IFNULL(\"CONSTRAINT\", '-') || '@' || TABLE_NAME, SCHEMA_NAME FROM SYS.INDEXES WHERE SCHEMA_NAME = ?"
     + " UNION ALL SELECT 'PK_COLUMN', TABLE_NAME, TO_NVARCHAR(POSITION) || ':' || COLUMN_NAME, SCHEMA_NAME FROM SYS.INDEX_COLUMNS WHERE SCHEMA_NAME = ? AND \"CONSTRAINT\" IN ('PRIMARY KEY', 'PRIMARY_KEY')"
     + " UNION ALL SELECT 'COLUMN', COLUMN_NAME, DATA_TYPE_NAME || ':' || IFNULL(TO_NVARCHAR(LENGTH), '-') || ':' || IS_NULLABLE, SCHEMA_NAME FROM SYS.TABLE_COLUMNS WHERE SCHEMA_NAME = ? AND TABLE_NAME = '" + LAB_TABLE + "'"
@@ -104,6 +106,46 @@ function clientOptions(credentials) {
     return options;
 }
 
+/** Dokładny SELECT projekcji LAB: tokeny SQL zachowują case cytowanych nazw, bez usuwania WHERE/JOIN. */
+function validLabView(detail, schema) {
+    if (!detail.startsWith('TRUE:')) return false;
+    const sql = detail.slice(5), tokens = [];
+    const lexer = /\s+|"(?:[^"]|"")*"|[A-Za-z_][A-Za-z0-9_$#]*|[(),.;]/gy;
+    let end = 0, match;
+    while ((match = lexer.exec(sql))) {
+        end = lexer.lastIndex;
+        const word = match[0];
+        if (!/^\s/.test(word)) tokens.push(word.startsWith('"') ? word.slice(1, -1).replaceAll('""', '"') : word.toUpperCase());
+    }
+    if (end !== sql.length) return false;
+    if (tokens.at(-1) === ';') tokens.pop();
+    let i = 0;
+    const take = word => tokens[i++] === word;
+    const name = expected => {
+        if (tokens[i + 1] === '.') { if (!take(schema) || !take('.')) return false; }
+        return take(expected);
+    };
+    if (tokens[i] === 'CREATE') { i++; if (tokens[i] !== 'VIEW') return false; }
+    if (tokens[i] === 'VIEW') {
+        i++;
+        if (!name(LAB_VIEW)) return false;
+        if (tokens[i] === '(') {
+            i++;
+            for (const [n, column] of LAB_VIEW_COLUMNS.entries()) if ((n && !take(',')) || !take(column)) return false;
+            if (!take(')')) return false;
+        }
+        if (!take('AS')) return false;
+    }
+    if (!take('SELECT')) return false;
+    const alias = tokens[i];
+    for (const [n, column] of LAB_VIEW_COLUMNS.entries()) {
+        if ((n && !take(',')) || !take(alias) || !take('.') || !take(column)) return false;
+    }
+    if (!take('FROM') || !name(LAB_TABLE)) return false;
+    if (tokens[i] === 'AS') i++;
+    return take(alias) && i === tokens.length;
+}
+
 /** Porównanie katalogu z oczekiwaniami. Każda rozbieżność (brak lub nadmiar) = MISMATCH. */
 function evaluate(rows, schema, coreOnly = false) {
     const missing = [], unexpected = [];
@@ -128,8 +170,13 @@ function evaluate(rows, schema, coreOnly = false) {
     };
     const tables = [...EXPECTED.TABLE, ...(coreOnly ? [] : [LAB_TABLE])];
     compare('TABLE', data.TABLE.map(r => r.NAME), tables);
-    compare('VIEW', data.VIEW.map(r => r.NAME), EXPECTED.VIEW);
-    for (const row of [...data.TABLE, ...data.VIEW]) if (row.DETAIL !== '-') bad('INVALID_OBJECT_DETAIL');
+    const views = [...EXPECTED.VIEW, ...(coreOnly ? [] : [LAB_VIEW])];
+    compare('VIEW', data.VIEW.map(r => r.NAME), views);
+    for (const row of [...data.TABLE, ...data.VIEW]) {
+        if (row.KIND === 'VIEW' && row.NAME === LAB_VIEW) {
+            if (!validLabView(row.DETAIL, schema)) bad('VIEW_DEFINITION:' + LAB_VIEW);
+        } else if (row.DETAIL !== '-') bad('INVALID_OBJECT_DETAIL');
+    }
     const pkTables = [], uniques = [];
     for (const row of data.INDEX) {
         const [constraint, table, extra] = row.DETAIL.split('@');
@@ -159,20 +206,22 @@ function evaluate(rows, schema, coreOnly = false) {
             || !/^(0|[1-9][0-9]*|-)$/.test(length)) bad('COLUMN_DEFINITION:' + row.NAME);
     }
     const labIssue = item => item.endsWith(':' + LAB_TABLE) || /^(COLUMN|COLUMN_DEFINITION):/.test(item);
+    const odataIssue = item => item.endsWith(':' + LAB_VIEW);
     const issues = [...missing, ...unexpected];
     return {
         verdict: issues.length ? 'MISMATCH' : 'MATCH',
-        core: issues.some(i => !labIssue(i)) ? 'FAIL' : 'PASS',
+        core: issues.some(i => !labIssue(i) && !odataIssue(i)) ? 'FAIL' : 'PASS',
         ownerLab: coreOnly ? 'NOT_REQUESTED' : issues.some(i => labIssue(i) || /^(INVALID|SCHEMA|DUPLICATE|INDEX_TARGET|PK_TABLE)/.test(i)) ? 'FAIL' : 'PASS',
+        ownerLabOData: coreOnly ? 'NOT_REQUESTED' : issues.some(i => odataIssue(i) || labIssue(i) || /^(INVALID|SCHEMA|DUPLICATE)/.test(i)) ? 'FAIL' : 'PASS',
         tables: data.TABLE.length, views: data.VIEW.length, uniqueIndexes: uniques.length,
-        primaryKeys: pkTables.length, expectedTables: tables.length,
+        primaryKeys: pkTables.length, expectedTables: tables.length, expectedViews: views.length,
         missing: missing.sort(), unexpected: unexpected.sort(),
     };
 }
 
 function summaryLine(result) {
     return `HDI_CATALOG verdict=${result.verdict} tables=${result.tables}/${result.expectedTables}`
-        + ` views=${result.views}/${EXPECTED.VIEW.length} uniqueIndexes=${result.uniqueIndexes}/${EXPECTED.UNIQUE_INDEX.length}`
+        + ` views=${result.views}/${result.expectedViews} uniqueIndexes=${result.uniqueIndexes}/${EXPECTED.UNIQUE_INDEX.length}`
         + ` primaryKeys=${result.primaryKeys}/${result.expectedTables}`
         + ` missing=[${result.missing.join(',')}] unexpected=[${result.unexpected.join(',')}]`;
 }
@@ -219,7 +268,7 @@ function run(env = process.env, hdbModule, log = console.log, timeoutMs = 60000,
                     if (execError) { log(safeError('SELECT', execError)); finish(1); return; }
                     const result = evaluate(rows, schema, coreOnly);
                     log(summaryLine(result));
-                    log(`HDI_CATALOG_CORE=${result.core} HDI_CATALOG_OWNER_LAB=${result.ownerLab} evidence=SCRIPT_MEASURED`);
+                    log(`HDI_CATALOG_CORE=${result.core} HDI_CATALOG_OWNER_LAB=${result.ownerLab} HDI_CATALOG_OWNER_LAB_ODATA=${result.ownerLabOData} evidence=SCRIPT_MEASURED`);
                     finish(result.verdict === 'MATCH' ? 0 : 2);
                 });
             });
@@ -236,16 +285,19 @@ const MAX_TASK_COMMAND_LENGTH = 4096;
  */
 function runtimeSource(coreOnly = false) {
     const compositeKeys = Object.fromEntries(Object.entries(PRIMARY_KEYS).filter(([, cols]) => cols.length > 1));
-    return [
+    const source = [
         `const HDI_NAME=${JSON.stringify(HDI_NAME)};`,
         `const EXPECTED=${JSON.stringify(EXPECTED)};`,
         `const CATALOG_SQL=${JSON.stringify(CATALOG_SQL)};`,
         `const LAB_TABLE=${JSON.stringify(LAB_TABLE)},PRIMARY_KEYS=Object.fromEntries([...EXPECTED.TABLE,LAB_TABLE].map(t=>[t,(${JSON.stringify(compositeKeys)})[t]||["ID"]])),LAB_COLUMNS=${JSON.stringify(LAB_COLUMNS)};`,
-        ...[selectBinding, clientOptions, evaluate, summaryLine, safeError, run].map(String),
+        `const LAB_VIEW=${JSON.stringify(LAB_VIEW)},LAB_VIEW_COLUMNS=${JSON.stringify(LAB_VIEW_COLUMNS)};`,
+        ...[selectBinding, clientOptions, validLabView, evaluate, summaryLine, safeError, run].map(String),
         `module.exports={run,main:()=>run(process.env,undefined,console.log,60000,${coreOnly}).then(code=>{process.exitCode=code;})};`,
-    ].join('\n').replace(/\r\n/g, '\n')
-        .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/^\s+/gm, '');
-    // Usuwamy wyłącznie komentarze/indentację znanych funkcji; test wykonuje dokładnie ten program.
+    ].join('\n').replace(/\r\n/g, '\n');
+    // Terser tylko na laptopie: minifikacja AST zamiast tekstowych podmian identyfikatorów SQL.
+    // Runtime taska nadal zależy wyłącznie od Node + hdb; test wykonuje dokładnie wysyłany program.
+    return require('terser').minify_sync(source, { compress: { passes: 2 }, mangle: { toplevel: true },
+        format: { comments: false } }).code;
 }
 
 /**
@@ -279,7 +331,7 @@ function fromConsole(value, schema, coreOnly = false) {
     return evaluate(value.rows, schema, coreOnly);
 }
 
-module.exports = { PRIMARY_KEYS, LAB_TABLE, LAB_COLUMNS, EXPECTED, CATALOG_SQL, HDI_NAME, TASK_NAME, MAX_TASK_COMMAND_LENGTH, selectBinding, clientOptions,
+module.exports = { PRIMARY_KEYS, LAB_TABLE, LAB_COLUMNS, LAB_VIEW, LAB_VIEW_COLUMNS, validLabView, EXPECTED, CATALOG_SQL, HDI_NAME, TASK_NAME, MAX_TASK_COMMAND_LENGTH, selectBinding, clientOptions,
     evaluate, summaryLine, safeError, run, runtimeSource, taskRequest, sha256, fromConsole };
 
 // Tryb laptopa: wyłącznie wygenerowanie treści żądania / podglądu programu; brak połączenia z CF/HANA.
@@ -301,7 +353,7 @@ if (require.main === module) {
             if (fs.statSync(args[1]).size > 5 * 1024 * 1024) throw new Error('HDI_CATALOG_CONSOLE_INVALID');
             const result = fromConsole(JSON.parse(fs.readFileSync(args[1], 'utf8').replace(/^\uFEFF/, '')), args[3], coreOnly);
             console.log(summaryLine(result));
-            console.log(`HDI_CATALOG_CORE=${result.core} HDI_CATALOG_OWNER_LAB=${result.ownerLab} evidence=OWNER-REPORTED`);
+            console.log(`HDI_CATALOG_CORE=${result.core} HDI_CATALOG_OWNER_LAB=${result.ownerLab} HDI_CATALOG_OWNER_LAB_ODATA=${result.ownerLabOData} evidence=OWNER-REPORTED`);
             process.exitCode = result.verdict === 'MATCH' ? 0 : 2;
         } else {
             process.stderr.write('Usage: node deploy/scripts/hdi-catalog-readonly.cjs [--core-only] --task-json | --print-runtime-source | --print-console-sql | --from-console <json> --schema <expected-schema>\n');
