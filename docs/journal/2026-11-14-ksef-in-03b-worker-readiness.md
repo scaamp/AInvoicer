@@ -101,8 +101,8 @@ Końcowa regresja zamrożonego kodu, wyłącznie lokalnie i offline:
 
 | Zakres | Wynik offline |
 | --- | --- |
-| G1 | 62/62 PASS: dokładny piąty widok, obcy szósty, SQL/source/schema/case/kolumny/validity, pełny runtime taska i niezależna kompilacja CDS |
-| Deploy | 104 PASS / 1 SKIP (Go lokalnie); smoke validate PASS |
+| G1 | 63/63 PASS: dokładny piąty widok, obcy szósty, SQL/source/schema/case/kolumny/validity, pełny runtime taska i niezależna kompilacja CDS |
+| Deploy | 105 PASS / 1 SKIP (Go lokalnie); smoke validate PASS |
 | Browser runner | 8/8 PASS na rzeczywistym lokalnym Chrome |
 | Finalny Maven clean verify w smoke | **497 run / 0 failures / 0 errors / 6 skipped**, BUILD SUCCESS; skippy Azurite wykonano osobno z emulatorem |
 | W tym INBOUND | Scheduler **4/4**, konfiguracja **11/11**, CQN/H2 **23/23**, budżet **39/39**, recovery dwóch JVM **1/1** PASS |
@@ -119,8 +119,8 @@ Lokalny mock UI5 na porcie 8085 uruchomiono tylko na czas testów i zatrzymano p
 własnego procesu worktree. Procesy CAP/Inbox/emulatora zakończyły ich harnessy.
 
 Runtime generatora G1 (LF): SHA-256
-`5e0d23eda95ac46f30366828f50d79f90e9fca6ac0c216b4295fd5d22279d2e8`,
-command domyślny 4059, core-only 4063 znaki. Przed ewentualną zgodą LIVE przeliczyć ponownie na finalnym commicie.
+`6ebdfd14863cc7a69514e3065759712c3485d51053c052b7b9e68a632aad5785`,
+command domyślny 4071, core-only 4075 znaki. Przed ewentualną zgodą LIVE przeliczyć ponownie na finalnym commicie.
 
 ## Problems Encountered
 
@@ -141,6 +141,11 @@ z przypiętym Terser. Testy uruchamiają dokładny wynik minifikacji i kompresji
 Istniejące advisories toolchainu npm: cap-java 2 HIGH, UI5 74 (2 low/15 moderate/54 high/3 critical);
 deploy po dodaniu Terser audit 0. Nie wykonywano niezleconych aktualizacji toolchainu.
 
+Końcowy review wykrył akceptację niepoprawnego nagłówka `CREATE SELECT` bez `VIEW` w importerze
+metadanych. Dodano wymaganie `VIEW` po `CREATE` i scenariusz negatywny, także dla spakowanego runtime.
+G1 63/63 i deploy 105 PASS/1 Go SKIP po poprawce. Nie zmienia to modelu ani kodu Java.
+Końcowy HEAD ponownie przechodzi CI; wcześniejszy run nie stanowi jego akceptacji.
+
 ## Decisions Made
 
 Nie implementowano nowej persystencji budżetu, bo wymaga zmiany schematu/G1 i osobnej decyzji.
@@ -159,7 +164,7 @@ security acceptance i odrębna decyzja wdrożeniowa. G1 LIVE PENDING.
 
 Utworzono i wypchnięto commit implementacji `41b4dd3eba1c12621c72e53697dc935fe281da26`.
 [PR #19](https://github.com/scaamp/AInvoicer/pull/19) jest otwarty do `main`, bez merge i auto-merge.
-Następny commit wyłącznie dokumentuje publikację; kod i lokalne wyniki pozostają identyczne.
+Kolejny commit dokumentuje publikację; późniejszy patch G1 zamyka opisany przypadek `CREATE` bez `VIEW`.
 [Checks aktualnego HEAD](https://github.com/scaamp/AInvoicer/pull/19/checks) są odrębnym dowodem CI,
 wymaganym przed niezależnym review. Końcowy raport agenta podaje zweryfikowane SHA i wynik tego HEAD.
 Zielone CI nie oznacza G1 HANA LIVE ani zgody na aktywację.

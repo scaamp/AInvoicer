@@ -125,7 +125,7 @@ function validLabView(detail, schema) {
         if (tokens[i + 1] === '.') { if (!take(schema) || !take('.')) return false; }
         return take(expected);
     };
-    if (tokens[i] === 'CREATE') i++;
+    if (tokens[i] === 'CREATE') { i++; if (tokens[i] !== 'VIEW') return false; }
     if (tokens[i] === 'VIEW') {
         i++;
         if (!name(LAB_VIEW)) return false;

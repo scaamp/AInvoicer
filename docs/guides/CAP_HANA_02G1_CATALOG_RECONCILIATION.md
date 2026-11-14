@@ -106,9 +106,9 @@ Zachowano `--task-json`, `--print-runtime-source`, nazwę taska i pola JSON CAPI
 Rozszerzony runtime używa Brotli+base64 zamiast gzip, obsługiwanego przez Node 22/24 bez dodatkowych
 pakietów. Test rozpakowuje i wykonuje dokładnie wysyłany program, również dla przypadków negatywnych.
 IN-03B używa przypiętego Terser 5.44.1 (tylko generator) przed Brotli. Lokalnie polecenie ma
-4059 znaków przy limicie 4096; generator odmawia przekroczenia limitu.
+4071 znaków przy limicie 4096; generator odmawia przekroczenia limitu.
 SHA-256 programu runtime w domyślnym trybie:
-`5e0d23eda95ac46f30366828f50d79f90e9fca6ac0c216b4295fd5d22279d2e8`.
+`6ebdfd14863cc7a69514e3065759712c3485d51053c052b7b9e68a632aad5785`.
 Stary hash/gzip i liczba 14 w runbooku G1 są historyczne i nie obowiązują dla tego patcha.
 
 Jedyny SQL to parametryzowany `SELECT ... UNION ALL ...` do `SYS.TABLES`, `SYS.VIEWS`, `SYS.INDEXES`,
@@ -207,7 +207,7 @@ zgodność **widocznego** katalogu, nie audyt wszystkich ukrytych obiektów cał
 
 ## Walidacja offline i dalsze bramki
 
-Aktualne testy IN-03B: katalog **62/62 PASS**, deploy **104 PASS / 1 Go SKIP** lokalnie.
+Aktualne testy IN-03B: katalog **63/63 PASS**, deploy **105 PASS / 1 Go SKIP** lokalnie.
 Niżej zachowano historię oryginalnego G1; pełne nowe wyniki i CI są w [dzienniku IN-03B](../journal/2026-11-14-ksef-in-03b-worker-readiness.md).
 
 Node 24.13.0 / npm 11.6.2 na Windows:

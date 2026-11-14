@@ -229,6 +229,7 @@ const negativeCases = {
     'missing fifth view': r => r.filter(x => x.NAME !== 'BLOBSERVICE_DOCUMENTS'),
     'unknown sixth view': r => [...r, { KIND: 'VIEW', NAME: 'FOREIGN_VIEW', DETAIL: '-', SCHEMA_NAME: SECRET.schema }],
     'missing view definition': r => r.map(x => x.NAME === 'BLOBSERVICE_DOCUMENTS' ? { ...x, DETAIL: '-' } : x),
+    'CREATE without VIEW': r => r.map(x => x.NAME === 'BLOBSERVICE_DOCUMENTS' ? { ...x, DETAIL: x.DETAIL.replace('VIEW BlobService_Documents AS', 'CREATE') } : x),
     'invalid view': r => r.map(x => x.NAME === 'BLOBSERVICE_DOCUMENTS' ? { ...x, DETAIL: x.DETAIL.replace('TRUE:', 'FALSE:') } : x),
     'wrong projection': r => r.map(x => x.NAME === 'BLOBSERVICE_DOCUMENTS' ? { ...x, DETAIL: x.DETAIL.replace('.sha256', '.modifiedBy') } : x),
     'wrong source': r => r.map(x => x.NAME === 'BLOBSERVICE_DOCUMENTS' ? { ...x, DETAIL: x.DETAIL.replace('FROM customer_cap_java_KsefDocuments', 'FROM OTHER_DOCUMENTS') } : x),
