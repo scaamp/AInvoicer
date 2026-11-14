@@ -30,6 +30,12 @@ public class KsefSdkConfiguration {
 
     /** Własny Jackson 2 dla SDK; nie zastępuje mappera Spring Boot 4/Jackson 3. */
     static KSeFClient createClient(String origin) {
+        return createClient(origin, HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5))
+                .followRedirects(HttpClient.Redirect.NEVER).build());
+    }
+
+    /** Pozwala harnessowi testowemu ograniczyć transport; kontrakt i serializacja SDK pozostają wspólne. */
+    static KSeFClient createClient(String origin, HttpClient transport) {
         var mapper = new ObjectMapper().registerModule(new JavaTimeModule())
                 .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -48,8 +54,7 @@ public class KsefSdkConfiguration {
             }
         };
         // Bez redirectów i automatycznych ponowień POST; retry odczytów kontroluje workflow.
-        return new DefaultKsefClient(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5))
-                .followRedirects(HttpClient.Redirect.NEVER).build(), properties, breaker, mapper);
+        return new DefaultKsefClient(transport, properties, breaker, mapper);
     }
 
     @Bean
