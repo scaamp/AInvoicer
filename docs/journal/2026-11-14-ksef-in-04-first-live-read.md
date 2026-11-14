@@ -132,6 +132,20 @@ otwartego PR i weryfikacji CI dokładnego HEAD. Publikacja i CI są raportowane 
 Auth/InvoiceRead bieżącego principal oraz dostęp do historycznej faktury niepotwierdzone.
 Nie ma technicznego dowodu braku InvoiceRead — nie wykonano żadnego testu tego uprawnienia LIVE.
 
+## Publikacja i CI
+
+Implementacja opublikowana jako `ea7a441f42d8d2ec00d4cc5af1f64386e6b733de`.
+[PR #21](https://github.com/scaamp/AInvoicer/pull/21) otwarty do main, bez merge i auto-merge.
+Kolejny commit dokumentuje publikację; nie zmienia przetestowanego kodu.
+[CI aktualnego HEAD](https://github.com/scaamp/AInvoicer/pull/21/checks) musi być SUCCESS
+przed wykonaniem następnego etapu. Końcowy raport agenta podaje sprawdzony SHA i wynik CI;
+wcześniejszy run nie zastępuje weryfikacji bieżącego HEAD.
+
+Polecenia publikacji: jawne `git add` 10 plików, `git diff --cached --check`,
+`node deploy/scripts/check-secrets.mjs` (**2694 pliki PASS** po stage), `git commit`,
+`git push -u origin feature/ksef-in-04-first-live-read`; PR utworzono konektorem GitHub.
+Nie wykonano push do main, merge, auto-merge ani zmiany głównego checkoutu.
+
 ## Next Steps
 
 1. Review opublikowanego PR i weryfikacja CI dokładnego HEAD; bez merge w tym zadaniu.

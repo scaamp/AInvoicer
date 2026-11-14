@@ -20,6 +20,7 @@ Sześć skipów Azurite bez lokalnego emulatora. Wyniki i CI dokładnego HEAD:
 **READY FOR LIVE APPROVAL** po review i zielonym CI. Następny krok właściciela: zatwierdzić jeden zakres
 według [runbooka IN-04](guides/KSEF_IN_04_ONE_SHOT_LIVE_READ.md#następne-działanie-właściciela).
 CF/INBOUND/scheduler, HANA i BlobService bez zmian; nie odblokowano bramek IN-03B/STOR-03.
+[PR #21 i CI aktualnego HEAD](https://github.com/scaamp/AInvoicer/pull/21/checks), bez merge.
 
 **KSEF-IN-03B (14.11.2026) — przygotowanie offline, CF NO-GO.** Audyt potwierdził istniejący pipeline
 i DI. Dodano opcjonalny lokalny scheduler (dwa default OFF, bez startup I/O, bez nakładania ticków),
