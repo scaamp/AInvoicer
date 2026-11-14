@@ -8,6 +8,19 @@ tags: [ainvoicer, cap-java, status]
 
 # Stan projektu
 
+**KSEF-IN-04 (14.11.2026) — przygotowanie do osobnej zgody LIVE.** Izolowany test
+`KsefInboundOneShotLiveTest` korzysta z istniejącego auth/SDK i pipeline odczytu bez Spring/DB/storage.
+Scenariusz NUMBER: jeden GET; BUYER: jedna strona 10 rekordów, jawne okno ≤7 dni i najwyżej jeden GET.
+Dwie zgody opt-in, zatwierdzony NIP/TEST/metoda/scenariusz oraz twardy limit ≤9 żądań także dla auth;
+allowlista transportu i STOP po pierwszym błędzie, bez retry odczytów i bez SEND.
+Auth i InvoiceRead bieżącego principal **NOT VERIFIED**; nie wykonano auth ani odczytu faktur KSeF.
+Testy lokalne: nowe **25/25 PASS**, Maven **522 run / 0 failures / 0 errors / 6 skipped**, BUILD SUCCESS.
+Sześć skipów Azurite bez lokalnego emulatora. Wyniki i CI dokładnego HEAD:
+[dziennik IN-04](journal/2026-11-14-ksef-in-04-first-live-read.md).
+**READY FOR LIVE APPROVAL** po review i zielonym CI. Następny krok właściciela: zatwierdzić jeden zakres
+według [runbooka IN-04](guides/KSEF_IN_04_ONE_SHOT_LIVE_READ.md#następne-działanie-właściciela).
+CF/INBOUND/scheduler, HANA i BlobService bez zmian; nie odblokowano bramek IN-03B/STOR-03.
+
 **KSEF-IN-03B (14.11.2026) — przygotowanie offline, CF NO-GO.** Audyt potwierdził istniejący pipeline
 i DI. Dodano opcjonalny lokalny scheduler (dwa default OFF, bez startup I/O, bez nakładania ticków),
 zachowano bezwarunkowy guard CF. Globalny budżet API nadal niepodłączony i bez repozytorium między JVM;
@@ -18,7 +31,7 @@ wymaga osobnego review/testów. G1 w kodzie uzgodniony z dokładnie jednym widok
 Regresja lokalna: Maven **497/0 failures/0 errors/6 skipped**, G1 **63/63**,
 deploy **105 PASS/1 Go skip**, QUnit **112**, OPA **21**, Inbox **16/73**, R2 **5**, Azurite **6** PASS; oba MTAR PASS.
 [Przewodnik i blockery](guides/KSEF_IN_03B_WORKER_READINESS.md) · [Wyniki regresji / PR](journal/2026-11-14-ksef-in-03b-worker-readiness.md).
-[Otwarty PR #19 i checks HEAD](https://github.com/scaamp/AInvoicer/pull/19/checks); bez merge.
+[PR #19 i checks](https://github.com/scaamp/AInvoicer/pull/19/checks); scalony do main jako `c5041bd` (baza IN-04).
 
 Poniższe wpisy zachowują historyczny stan przed IN-03B.
 
