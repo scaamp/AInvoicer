@@ -155,6 +155,19 @@ Audyt, implementacja i regresja offline zakończone. **GO do niezależnego revie
 lease per dispatch, zatwierdzony adapter HANA BLOB z KSEF-STOR-03, testy HANA/multi-JVM,
 security acceptance i odrębna decyzja wdrożeniowa. G1 LIVE PENDING.
 
+## Publikacja i CI
+
+Utworzono i wypchnięto commit implementacji `41b4dd3eba1c12621c72e53697dc935fe281da26`.
+[PR #19](https://github.com/scaamp/AInvoicer/pull/19) jest otwarty do `main`, bez merge i auto-merge.
+Następny commit wyłącznie dokumentuje publikację; kod i lokalne wyniki pozostają identyczne.
+[Checks aktualnego HEAD](https://github.com/scaamp/AInvoicer/pull/19/checks) są odrębnym dowodem CI,
+wymaganym przed niezależnym review. Końcowy raport agenta podaje zweryfikowane SHA i wynik tego HEAD.
+Zielone CI nie oznacza G1 HANA LIVE ani zgody na aktywację.
+
+Polecenia publikacji: `git add` wyliczonych 17 plików, `git diff --cached --check`, `git commit`,
+`git push -u origin feature/ksef-in-03b-worker-readiness`; PR utworzono konektorem GitHub.
+Nie zmieniono głównego checkoutu i nie wypchnięto niczego na main.
+
 ## Next Steps
 
 1. Niezależny review dokładnego HEAD i jego CI w otwartym PR; bez automatycznego merge.

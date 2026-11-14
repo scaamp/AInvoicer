@@ -18,6 +18,7 @@ wymaga osobnego review/testów. G1 w kodzie uzgodniony z dokładnie jednym widok
 Regresja lokalna: Maven **497/0 failures/0 errors/6 skipped**, G1 **62/62**,
 deploy **104 PASS/1 Go skip**, QUnit **112**, OPA **21**, Inbox **16/73**, R2 **5**, Azurite **6** PASS; oba MTAR PASS.
 [Przewodnik i blockery](guides/KSEF_IN_03B_WORKER_READINESS.md) · [Wyniki regresji / PR](journal/2026-11-14-ksef-in-03b-worker-readiness.md).
+[Otwarty PR #19 i checks HEAD](https://github.com/scaamp/AInvoicer/pull/19/checks); bez merge.
 
 Poniższe wpisy zachowują historyczny stan przed IN-03B.
 
