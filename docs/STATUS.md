@@ -8,6 +8,14 @@ tags: [ainvoicer, cap-java, status]
 
 # Stan projektu
 
+**KSEF-STOR-03 (14.11.2026) — adapter `KsefDocumentStore` nad tabelą `KsefDocuments` OFFLINE; integracja NO-GO.**
+`HanaKsefDocumentStore` + `HanaBlobObjectStorageClient` (CAP `PersistenceService`/CQN, bez JDBC/HTTP) reużywają
+`ContentAddressedDocumentStore`: referencja `ksefdoc:v1`, scope env/kanał/NIP, SHA-256, create-only, limit 3 MiB.
+H2: 21 testów adaptera + 4 pipeline INBOUND PASS, regresja LAB/STOR-01 PASS. Audyt: publiczny POST `BlobService`
+przyjmuje ID klienta, a separacja od LAB zależy tylko od `createdBy` (test potwierdza lukę) → **D-1: dedykowana encja
+bez projekcji** do decyzji właściciela (zmiana G1). Bez beana, wiringu, zmian LAB/INBOUND/G1 i bez LIVE.
+[Przewodnik](guides/KSEF_STOR_03_HANA_BLOB_ADAPTER.md) · [dziennik](journal/2026-11-14-ksef-stor-03-hana-blob-adapter.md).
+
 **Publikacja BLOB-LAB-01 (14.11.2026).** Źródła i raport LAB połączono z aktualnym ORCH-06.
 Nie wykonano nowego deploymentu: CF nadal zawiera pakiet LAB z 13.11 oparty o `4d4dbfc`,
 bez późniejszych zmian CAP-07F. Wdrożony widok `BlobService.Documents` oznacza dodatkową
