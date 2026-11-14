@@ -8,6 +8,9 @@ tags: [ainvoicer, dokumentacja]
 
 # AInvoicer — baza wiedzy projektu
 
+**14.11.2026 — KSEF-STOR-03:** adapter dokumentów KSeF nad `KsefDocuments` (CAP CQN) offline PASS, integracja NO-GO
+do decyzji D-1. [Przewodnik](guides/KSEF_STOR_03_HANA_BLOB_ADAPTER.md) · [dziennik](journal/2026-11-14-ksef-stor-03-hana-blob-adapter.md).
+
 **14.11.2026 — publikacja źródeł BLOB-LAB-01 wraz z ORCH-06.** Bez nowego deploymentu;
 wersja CF z 13.11 nie zawiera jeszcze CAP-07F. [Raport LAB](journal/2026-11-13-blob-lab-01-odata-deployment.md).
 

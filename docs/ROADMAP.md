@@ -80,6 +80,9 @@ Poniższe wpisy zachowują historię wcześniejszych etapów; aktualne bramki s�
   - [ ] G0/G1 — odczyt w sesji właściciela i task katalogowy (GO do zgody).
   - [ ] Runner w sieci CF (wariant R2, osobny etap offline + zgoda) — warunek pierwszego DML (obecnie NO-GO).
   - [ ] G3–G9: check → seed → recover → (restart) → contend → cleanup → verify-cleanup, każda faza osobno.
+- [ ] **KSEF-STOR-03 — adapter HANA `KsefDocuments`:** offline zaimplementowany i przetestowany (H2), niepodłączony.
+  Integracja NO-GO do decyzji D-1 (dedykowana encja bez projekcji vs akceptacja ryzyka DEV/TEST), potem wiring
+  po KSEF-IN-03B i akceptacja HANA LIVE. [Przewodnik](guides/KSEF_STOR_03_HANA_BLOB_ADAPTER.md).
 - [ ] **KSEF-STOR-02 — decyzja właściciela:** [ADR-0008](decisions/ADR-0008-document-storage-dev-test-proposal.md)
   proponuje limitowany BLOB DEV/TEST po CAP-HANA-01; brak implementacji. Object Store nadal OFF bez zgody kosztowej.
 
