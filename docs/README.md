@@ -8,6 +8,11 @@ tags: [ainvoicer, dokumentacja]
 
 # AInvoicer — baza wiedzy projektu
 
+**ORCH-08 — 15.11.2026, integracja w toku:** PR #21/#22/#23 review PASS WITH NOTES; wspólna regresja offline i CI do zakończenia. IN-04 READY FOR LIVE APPROVAL; STOR-04 OFFLINE READY / HANA DEPLOY PENDING; E2E-01A OFFLINE PASS / SEND NO-GO. INBOUND CF/scheduler/SAP WRITE/KSeF SEND OFF. G1 runtime 15/5/6/15, osobny niewykonywalny kontrakt release 16/5/6/16; BLOB-LAB-01 bez zmian. [Review, testy i bramki](journal/2026-11-15-orch-08-ksef-inbound-storage-e2e-integration.md).
+
+Plany osobnych etapów: [IN-04 GET](guides/ORCH_08_IN_04_LIVE_READ_PLAN.md) · [release HANA](guides/ORCH_08_STOR_04_HANA_RELEASE_PLAN.md) · [E2E-01B](guides/ORCH_08_E2E_01B_HARDENING_BACKLOG.md).
+
+
 **14.11.2026 — KSEF-IN-04:** [izolowany odczyt NUMBER/BUYER, preflight i komendy zgody](guides/KSEF_IN_04_ONE_SHOT_LIVE_READ.md).
 [Dziennik i testy offline](journal/2026-11-14-ksef-in-04-first-live-read.md). **READY FOR LIVE APPROVAL**;
 auth/InvoiceRead i rzeczywisty XML nadal NOT VERIFIED, bez aktywacji CF/INBOUND i bez HANA DML.
