@@ -92,7 +92,10 @@ Wszystkie testy lokalne / offline (bez LIVE):
 - Skan sekretów PASS, `git diff --check` PASS. Mutacje walidatora wykryte (8/3/7 FAIL), kod przywrócony.
 - Lokalne artefakty (z niezacommitowanego drzewa, **nie do wdrożenia**): MTAR 0.7.4 `9bbbc6f1…`, payload HDI `6bcf2013…`,
   `runner.jar` `fe517828…`. Release wymaga przebudowy z czystego, scalonego SHA.
-- CI dokładnego HEAD PR: zapis poniżej po publikacji.
+- [PR #27](https://github.com/scaamp/AInvoicer/pull/27): CI run `43714899773` dla `eafc212` — **SUCCESS** (job `offline`
+  12m36s, Node 22): test taska ≤ 4096 PASS, Maven 593/0/0/6, `Undeployed HANA release evidence PASS`,
+  `STOR04_RELEASE_ARTIFACT=PASS hdiAdded=1 hdiChanged=0 hdiRemoved=0`, `R2_BUILD_PASS`. Kolejny commit zawiera wyłącznie
+  ten zapis; jego CI sprawdzić w checks PR. Zielone CI nie oznacza HANA LIVE PASS.
 
 ## Problems Encountered
 
