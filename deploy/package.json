@@ -14,7 +14,8 @@
     "readiness:cf": "node scripts/cf-readiness.mjs",
     "validate:hana": "node scripts/hana-readiness.mjs validate",
     "build:btp:hana": "node scripts/hana-readiness.mjs build",
-    "verify:hana": "node scripts/hana-readiness.mjs verify"
+    "verify:hana": "node scripts/hana-readiness.mjs verify",
+    "verify:stor04-release": "node scripts/stor04-release.mjs verify"
   },
   "devDependencies": {
     "adm-zip": "0.6.1",

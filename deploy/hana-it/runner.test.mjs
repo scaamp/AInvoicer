@@ -94,3 +94,37 @@ test('integrity rejects changed manifest, removed class and corrupted nested dep
         writeFileSync(join(dir, 'runner.jar'), original); assert.throws(() => verify(dir));
     } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+// KSEF-STOR-04R: fazy storage w świeżej JVM — wyłącznie preflight/odmowa, bez Spring/DataSource.
+const storSafe = (phase, writes, consent) => {
+    const base = safe('check');
+    for (const key of Object.keys(base)) if (key.startsWith('AINV_HANA_TEST_')) delete base[key];
+    return { ...base, AINV_STOR04_IT_PHASE: phase.replace('stor04-', ''), AINV_STOR04_IT_CONSENT: consent,
+        AINV_STOR04_IT_RUN_ID: '1e335114-c800-4ff3-9ed8-56a914126af8', AINV_STOR04_IT_NIP: '7770002317',
+        AINV_STOR04_IT_ENVIRONMENT: 'TEST', AINV_STOR04_IT_HDI_NAME: 'ainvoicer-db',
+        AINV_STOR04_IT_COMMIT: verify().commit, AINV_STOR04_IT_MAX_WRITES: writes };
+};
+const STOR = { 'stor04-catalog': ['0', 'READ_ONLY_STOR04_CHECK_APPROVED_HDI'], 'stor04-recover': ['0', 'READ_ONLY_STOR04_CHECK_APPROVED_HDI'],
+    'stor04-roundtrip': ['3', 'WRITE_SYNTHETIC_STOR04_DOCUMENTS_APPROVED_HDI'], 'stor04-contend': ['1', 'WRITE_SYNTHETIC_STOR04_DOCUMENTS_APPROVED_HDI'] };
+
+test('STOR04 phases: packaged harness, commit pin and consent gates enforced in a fresh JVM without connecting', () => {
+    for (const [phase, [writes, consent]] of Object.entries(STOR)) {
+        const ok = run(['--preflight', phase], storSafe(phase, writes, consent));
+        assert.equal(ok.status, 0, phase + ok.stdout); assert.match(ok.stdout, new RegExp('R2_PREFLIGHT_PASS=' + phase));
+        const other = consent.startsWith('READ') ? 'WRITE_SYNTHETIC_STOR04_DOCUMENTS_APPROVED_HDI' : 'READ_ONLY_STOR04_CHECK_APPROVED_HDI';
+        const mutations = [
+            e => { delete e.AINV_STOR04_IT_CONSENT; }, e => { e.AINV_STOR04_IT_CONSENT = other; },
+            e => { e.AINV_STOR04_IT_CONSENT = 'WRITE_SYNTHETIC_DATA_TO_APPROVED_HDI'; },
+            e => { e.AINV_STOR04_IT_COMMIT = 'f'.repeat(40); }, e => { e.AINV_STOR04_IT_ENVIRONMENT = 'PROD'; },
+            e => { e.AINV_STOR04_IT_MAX_WRITES = writes === '0' ? '1' : String(Number(writes) - 1); },
+            e => { e.AINV_STOR04_IT_PHASE = 'all'; }, e => { e.AINV_HANA_TEST_CONSENT = 'WRITE_SYNTHETIC_DATA_TO_APPROVED_HDI'; },
+            e => { e.CI = 'true'; }, e => { e.VCAP_SERVICES = e.VCAP_SERVICES.replace('"user":"OFFLINE"', '"user":"DBADMIN"'); },
+        ];
+        for (const mutate of mutations) { const e = storSafe(phase, writes, consent); mutate(e); assert.equal(run(['--preflight', phase], e).status, 2, phase); }
+        const e = storSafe(phase, writes, consent); delete e.AINV_STOR04_IT_CONSENT;
+        assert.equal(run(['--run', phase], e).status, 2, 'no consent = no Spring, no HANA');
+    }
+    // Zmienne storage przy fazach CAP-HANA-02 = odmowa (rodziny faz się nie mieszają).
+    assert.equal(run(['--preflight', 'check'], { ...safe('check'), AINV_STOR04_IT_CONSENT: 'READ_ONLY_STOR04_CHECK_APPROVED_HDI' }).status, 2);
+    assert.equal(run(['--preflight', 'stor04-cleanup'], storSafe('stor04-catalog', '0', 'READ_ONLY_STOR04_CHECK_APPROVED_HDI')).status, 2);
+});

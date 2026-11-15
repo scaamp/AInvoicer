@@ -3,6 +3,7 @@ package customer.cap_java.ksef.storage;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 
 import com.sap.cds.services.persistence.PersistenceService;
 import com.sap.cds.services.runtime.CdsRuntime;
@@ -60,6 +61,17 @@ public final class HanaKsefDocumentStore {
     static ContentAddressedDocumentStore create(PersistenceService db, CdsRuntime runtime,
             Set<KsefEnvironment> allowedEnvironments, int maxDocumentBytes, long maxInFlightBytes, Duration memoryWait,
             Clock clock, ContentAddressedDocumentStore.Sleeper sleeper) {
+        return create(db, runtime, allowedEnvironments, maxDocumentBytes, maxInFlightBytes, memoryWait, clock, sleeper,
+                UnaryOperator.identity());
+    }
+
+    /**
+     * KSEF-STOR-04R: wariant dla harnessu HANA — dekorator klienta (allowlista i limit zapisów) przy ustawieniach
+     * identycznych z fabryką produkcyjną. Package-private; nie rejestruje beana i niczego nie włącza.
+     */
+    static ContentAddressedDocumentStore create(PersistenceService db, CdsRuntime runtime,
+            Set<KsefEnvironment> allowedEnvironments, int maxDocumentBytes, long maxInFlightBytes, Duration memoryWait,
+            Clock clock, ContentAddressedDocumentStore.Sleeper sleeper, UnaryOperator<ObjectStorageClient> decorator) {
         if (maxDocumentBytes < 1 || maxDocumentBytes > HARD_MAX_DOCUMENT_BYTES
                 || maxInFlightBytes < maxDocumentBytes || maxInFlightBytes > HARD_MAX_IN_FLIGHT_BYTES) {
             throw new IllegalArgumentException("KSEF_DOCUMENT_STORE_LIMIT_INVALID");
@@ -69,6 +81,7 @@ public final class HanaKsefDocumentStore {
                 maxDocumentBytes, Duration.ofSeconds(5), Duration.ofSeconds(20), 3,
                 ObjectStorageSettings.AZURE_PUBLIC_SUFFIXES, false);
         var client = new HanaBlobObjectStorageClient(db, runtime, maxDocumentBytes, maxInFlightBytes, memoryWait, clock);
-        return new ContentAddressedDocumentStore(client, settings, AzureObjectStoreBinding.Access.READ_WRITE, clock, sleeper);
+        return new ContentAddressedDocumentStore(decorator.apply(client), settings, AzureObjectStoreBinding.Access.READ_WRITE,
+                clock, sleeper);
     }
 }

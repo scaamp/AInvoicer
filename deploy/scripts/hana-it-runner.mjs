@@ -21,6 +21,15 @@ export const FLAGS = Object.freeze({ SPRING_PROFILES_ACTIVE: 'cf', AINV_DEPLOYME
     SPRING_SQL_INIT_MODE: 'never', JBP_CONFIG_COMPONENTS: "jres: ['com.sap.xs.java.buildpack.jre.SAPMachineJRE']",
     JBP_CONFIG_SAP_MACHINE_JRE: '{ version: 25.+ }' });
 const MAIN = 'ainvoicer.hanait.Main';
+// KSEF-STOR-04R: harness prywatnej tabeli KsefStoredDocuments; osobne fazy, zgody, pin commitu i limit zapisów.
+export const STOR04_SOURCE = 'cap-java/srv/src/test/java/customer/cap_java/ksef/storage/HanaKsefStoredDocumentsIT.java';
+export const STOR04_CLASS_DIR = 'customer/cap_java/ksef/storage';
+export const STOR04_COMMIT_ENTRY = 'BOOT-INF/classes/ainvoicer/hanait/build-commit.txt';
+export const STOR04_READ_CONSENT = 'READ_ONLY_STOR04_CHECK_APPROVED_HDI';
+export const STOR04_WRITE_CONSENT = 'WRITE_SYNTHETIC_STOR04_DOCUMENTS_APPROVED_HDI';
+export const STOR04_PHASES = Object.freeze({ 'stor04-catalog': { id: 'catalog', write: false, rows: 0 },
+    'stor04-roundtrip': { id: 'roundtrip', write: true, rows: 3 }, 'stor04-contend': { id: 'contend', write: true, rows: 1 },
+    'stor04-recover': { id: 'recover', write: false, rows: 0 } });
 const hash = b => createHash('sha256').update(b).digest('hex');
 const fileHash = p => hash(readFileSync(p));
 const exec = (cmd, args, cwd = root) => {
@@ -42,7 +51,7 @@ export function manifest() {
 function inputs() {
     const paths = ['cap-java/pom.xml', 'cap-java/srv/pom.xml', 'deploy/scripts/hana-it-runner.mjs',
         ...['Main.java', 'OfflineContractTest.java'].map(f => 'deploy/hana-it/src/ainvoicer/hanait/' + f),
-        'cap-java/srv/src/test/java/customer/cap_java/hana/HanaPersistenceIT.java'];
+        'cap-java/srv/src/test/java/customer/cap_java/hana/HanaPersistenceIT.java', STOR04_SOURCE];
     // Właściciel modelu i wszystkie źródła aplikacji są częścią dowodu, bez lokalnych/nieśledzonych plików.
     const git = spawnSync('git', ['ls-files', 'cap-java/db', 'cap-java/srv/src/main'], { cwd: root, encoding: 'utf8' });
     assert.equal(git.status, 0);
@@ -74,6 +83,17 @@ export function assemble() {
     // Wyłącznie wybrany IT; nie przenosimy application-test.yaml, H2 seed ani innych testów LIVE.
     zip.addFile('BOOT-INF/classes/customer/cap_java/hana/HanaPersistenceIT.class',
         readFileSync(join(root, 'cap-java/srv/target/test-classes/customer/cap_java/hana/HanaPersistenceIT.class')));
+    // STOR-04R: wyłącznie klasa harnessu i jej klasy zagnieżdżone (bez testu offline H2 i innych testów).
+    const storDir = join(root, 'cap-java/srv/target/test-classes', STOR04_CLASS_DIR);
+    const storClasses = readdirSync(storDir).filter(n => /^HanaKsefStoredDocumentsIT(\$[A-Za-z0-9]+)*\.class$/.test(n));
+    assert.ok(storClasses.includes('HanaKsefStoredDocumentsIT.class') && storClasses.includes('HanaKsefStoredDocumentsIT$Gate.class'));
+    for (const n of storClasses) zip.addFile('BOOT-INF/classes/' + STOR04_CLASS_DIR + '/' + n, readFileSync(join(storDir, n)));
+    const revision = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' });
+    assert.equal(revision.status, 0);
+    const dirty = spawnSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' });
+    assert.equal(dirty.status, 0);
+    // Pin commitu: faza stor04-* wymaga zgodnego AINV_STOR04_IT_COMMIT; brudne drzewo blokuje generator tasków.
+    zip.addFile(STOR04_COMMIT_ENTRY, Buffer.from(revision.stdout.trim() + '\n', 'ascii'));
     for (const n of readdirSync(join(classes, 'ainvoicer/hanait')))
         zip.addFile('BOOT-INF/classes/ainvoicer/hanait/' + n, readFileSync(join(classes, 'ainvoicer/hanait', n)));
     for (const n of readdirSync(deps)) {
@@ -92,10 +112,8 @@ export function assemble() {
     zip.addFile('BOOT-INF/classpath.idx', Buffer.from(libs.map(e => '- "' + e.entryName + '"').join('\n') + '\n'));
     normalizePermissions(zip).writeZip(join(out, 'runner.jar'));
     writeFileSync(join(out, 'manifest.yml'), YAML.stringify(manifest()));
-    const revision = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' });
-    assert.equal(revision.status, 0);
     writeFileSync(join(out, 'evidence.json'), JSON.stringify({ kind: 'R2_OFFLINE_ONLY', commit: revision.stdout.trim(),
-        inputs: inputs(), originalJar: fileHash(original), junit: version,
+        workingTreeDirty: dirty.stdout.trim() !== '', inputs: inputs(), originalJar: fileHash(original), junit: version,
         files: { 'runner.jar': fileHash(join(out, 'runner.jar')), 'manifest.yml': fileHash(join(out, 'manifest.yml')) },
         entries: Object.fromEntries(zip.getEntries().filter(e => !e.isDirectory).map(e => [e.entryName, hash(e.getData())])) }, null, 2) + '\n');
     verify();
@@ -114,6 +132,8 @@ export function verify(directory = out, checkInputs = true) {
     assert.match(zip.readAsText('META-INF/MANIFEST.MF'), /Start-Class: ainvoicer\.hanait\.Main/);
     const required = ['BOOT-INF/classes/customer/cap_java/Application.class',
         'BOOT-INF/classes/customer/cap_java/hana/HanaPersistenceIT.class',
+        'BOOT-INF/classes/' + STOR04_CLASS_DIR + '/HanaKsefStoredDocumentsIT.class',
+        'BOOT-INF/classes/' + STOR04_CLASS_DIR + '/HanaKsefStoredDocumentsIT$Gate.class',
         'BOOT-INF/classes/ainvoicer/hanait/Main.class', 'BOOT-INF/classes/ainvoicer/hanait/OfflineContractTest.class',
         'BOOT-INF/classes/edmx/csn.json', 'org/springframework/boot/loader/launch/JarLauncher.class'];
     for (const name of required) assert.ok(zip.getEntry(name), 'R2 required class/resource missing: ' + name);
@@ -129,7 +149,36 @@ export function verify(directory = out, checkInputs = true) {
     }
     assert.equal(found.size, requiredClasses.length, 'R2 dependencies incomplete');
     assert.ok(!zip.getEntry('BOOT-INF/classes/schema-h2.sql'));
+    // STOR-04R: pin commitu w JAR = commit evidence; test offline H2 harnessu nigdy nie trafia do runnera.
+    assert.equal(zip.readAsText(STOR04_COMMIT_ENTRY), e.commit + '\n', 'R2 build commit pin mismatch');
+    assert.match(e.commit, /^[0-9a-f]{40}$/);
+    assert.equal(typeof e.workingTreeDirty, 'boolean');
+    assert.ok(!zip.getEntries().some(x => /HarnessOfflineTest|HanaKsefDocumentStoreTest/.test(x.entryName)), 'R2 must not ship H2 tests');
     return e;
+}
+
+/**
+ * KSEF-STOR-04R: jedno zadanie fazy storage. Zgoda, zakres runu i limit zapisów wyłącznie od wywołującego;
+ * commit pochodzi z evidence zweryfikowanego pakietu, a pakiet z brudnego drzewa jest odrzucany.
+ */
+export function stor04TaskRequest(phase, env, build, target = TARGET) {
+    validateTarget(target);
+    const spec = STOR04_PHASES[phase];
+    assert.ok(Object.hasOwn(STOR04_PHASES, phase) && spec, 'STOR04 invalid phase');
+    assert.ok(build && build.workingTreeDirty === false && /^[0-9a-f]{40}$/.test(build.commit), 'STOR04 requires runner built from a clean commit');
+    assert.equal(env.AINV_STOR04_IT_CONSENT, spec.write ? STOR04_WRITE_CONSENT : STOR04_READ_CONSENT, 'STOR04 explicit phase consent required');
+    assert.equal(env.AINV_STOR04_IT_COMMIT, build.commit, 'STOR04 approved commit must equal runner build commit');
+    assert.match(env.AINV_STOR04_IT_RUN_ID || '', /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/);
+    const nip = env.AINV_STOR04_IT_NIP || '';
+    assert.match(nip, /^[1-9]((\d[1-9])|([1-9]\d))\d{7}$/);
+    assert.equal([...nip.slice(0, 9)].reduce((s, c, i) => s + Number(c) * [6, 5, 7, 2, 3, 4, 5, 6, 7][i], 0) % 11, Number(nip[9]));
+    assert.equal(env.AINV_STOR04_IT_ENVIRONMENT, 'TEST');
+    assert.equal(env.AINV_STOR04_IT_HDI_NAME, 'ainvoicer-db');
+    const writes = env.AINV_STOR04_IT_MAX_WRITES || '';
+    assert.match(writes, /^[0-8]$/);
+    assert.ok(spec.write ? Number(writes) >= spec.rows : writes === '0', 'STOR04 write limit does not match phase');
+    return { name: 'stor04-it-' + spec.id + '-' + env.AINV_STOR04_IT_RUN_ID.slice(0, 8), memory_in_mb: 1024, disk_in_mb: 1024,
+        command: `env AINV_STOR04_IT_CONSENT=${env.AINV_STOR04_IT_CONSENT} AINV_STOR04_IT_PHASE=${spec.id} AINV_STOR04_IT_RUN_ID=${env.AINV_STOR04_IT_RUN_ID} AINV_STOR04_IT_NIP=${nip} AINV_STOR04_IT_ENVIRONMENT=TEST AINV_STOR04_IT_HDI_NAME=ainvoicer-db AINV_STOR04_IT_COMMIT=${build.commit} AINV_STOR04_IT_MAX_WRITES=${writes} .java-buildpack/sap_machine_jre/bin/java -Xmx512m -XX:MaxMetaspaceSize=256m -cp . org.springframework.boot.loader.launch.JarLauncher --run ${phase}` };
 }
 
 export function validateTarget(target) { assert.deepEqual(target, TARGET, 'R2 target not approved'); }
@@ -181,7 +230,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
         else if (action === 'commands' && !phase) { verify(); process.stdout.write(commands()); }
         else if (action === 'target-guard' && !phase) process.stdout.write(targetGuard());
         else if (action === 'cleanup-commands' && !phase) process.stdout.write(cleanupCommands());
-        else if (action === 'task') { verify(); process.stdout.write(JSON.stringify(taskRequest(phase, process.env)) + '\n'); }
+        else if (action === 'task') {
+            const build = verify();
+            const request = Object.hasOwn(STOR04_PHASES, phase || '') ? stor04TaskRequest(phase, process.env, build) : taskRequest(phase, process.env);
+            process.stdout.write(JSON.stringify(request) + '\n');
+        }
         else throw new Error();
     } catch { console.error('R2_BLOCKED: invalid input, consent or package; no CF action performed'); process.exitCode = 2; }
 }

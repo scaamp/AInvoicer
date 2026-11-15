@@ -2,7 +2,8 @@
   "version": 1,
   "id": "STOR04-CATALOG-16-5-6-16",
   "status": "UNDEPLOYED_RELEASE_CONTRACT",
-  "executable": false,
+  "executable": true,
+  "validator": "deploy/scripts/hdi-catalog-stor04.cjs",
   "tables": [
     "CDS_OUTBOX_MESSAGES",
     "CUSTOMER_CAP_JAVA_KSEFDOCUMENTS",
