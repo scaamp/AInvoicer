@@ -12,6 +12,10 @@ tags: [ainvoicer, dokumentacja]
 [Dziennik i testy offline](journal/2026-11-14-ksef-in-04-first-live-read.md). **READY FOR LIVE APPROVAL**;
 auth/InvoiceRead i rzeczywisty XML nadal NOT VERIFIED, bez aktywacji CF/INBOUND i bez HANA DML.
 [PR #21 / CI bieżącego HEAD](https://github.com/scaamp/AInvoicer/pull/21/checks), bez merge.
+**15.11.2026 — E2E-01A:** [SAP RAP → FA(3), preflight i plan pojedynczego SEND](guides/E2E_01A_SAP_FA3_PREFLIGHT.md).
+[Dziennik, regresja i CI](journal/2026-11-15-e2e-01a-sap-fa3-preflight.md). Fixture offline XSD/domena PASS;
+brak bieżącego READ H01/zatwierdzonego UUID i rozstrzygnięcia driftu. **SEND NO-GO**, bez zmian LIVE.
+Poniższe wpisy zachowują historię; baza tego zadania `c5041bd` zawiera już merge PR #19.
 
 **14.11.2026 — KSEF-IN-03B:** [audyt pipeline, scheduler OFF, globalny budżet do zatwierdzenia i G1 15/5/6/15](guides/KSEF_IN_03B_WORKER_READINESS.md).
 [Dziennik, regresja i PR](journal/2026-11-14-ksef-in-03b-worker-readiness.md). CF NO-GO, bez operacji LIVE i zmian LAB/storage.

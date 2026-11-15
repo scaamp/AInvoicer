@@ -1,6 +1,6 @@
 ---
 title: "AInvoicer — plan rozwoju"
-date: 2026-11-14
+date: 2026-11-15
 type: roadmap
 status: aktywny
 tags: [ainvoicer, roadmap, cap-java, ksef]
@@ -13,6 +13,13 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
   [Runbook i preflight](guides/KSEF_IN_04_ONE_SHOT_LIVE_READ.md) · [Dowody](journal/2026-11-14-ksef-in-04-first-live-read.md).
 - [ ] **KSEF-IN-04 LIVE:** osobna zgoda właściciela na dokładny SHA/TEST/NIP/metodę/scenariusz/żądania;
   dopiero potem auth/InvoiceRead/GET XML i SHA-256. Obecnie NOT VERIFIED, bez zmian HANA/CF/schedulera.
+- [x] **E2E-01A offline:** audyt kontraktu SAP → FA(3), testowy dry-run bez zapisów i efektów,
+  fixture XSD/domena PASS, hash/rozmiar i plan pierwszego SEND.
+  [Raport](guides/E2E_01A_SAP_FA3_PREFLIGHT.md) · [Regresja i CI](journal/2026-11-15-e2e-01a-sap-fa3-preflight.md).
+- [ ] **E2E-01A LIVE / SEND NO-GO:** wskazany syntetyczny UUID, nowy zatwierdzony READ H01/principal,
+  poprawne NIP/PartyData, brak wcześniejszego SEND/rezerwacji w docelowej bazie, ochrona przed driftem
+  i kontrola statusu/pozycji, zaakceptowane runtime/storage/security. Następnie osobne zlecenie
+  pojedynczego SEND i plan writebacku. Historyczne fixture SDK i PASS offline nie zamykają E2E.
 
 - [x] **KSEF-IN-03B offline:** audyt istniejącego INBOUND, scheduler z dwoma opt-in OFF i zachowanym guardem CF;
   G1 dokładnie CORE14 + LAB + jeden BlobService view (15/5/6/15), weryfikacja definicji i testy negatywne.

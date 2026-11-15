@@ -1,6 +1,6 @@
 ---
 title: "AInvoicer — aktualny stan"
-date: 2026-11-14
+date: 2026-11-15
 type: status
 status: w-trakcie
 tags: [ainvoicer, cap-java, status]
@@ -21,6 +21,17 @@ Sześć skipów Azurite bez lokalnego emulatora. Wyniki i CI dokładnego HEAD:
 według [runbooka IN-04](guides/KSEF_IN_04_ONE_SHOT_LIVE_READ.md#następne-działanie-właściciela).
 CF/INBOUND/scheduler, HANA i BlobService bez zmian; nie odblokowano bramek IN-03B/STOR-03.
 [PR #21 i CI aktualnego HEAD](https://github.com/scaamp/AInvoicer/pull/21/checks), bez merge.
+**E2E-01A (15.11.2026) — preflight SAP → FA(3) offline, SEND NO-GO.** Osobny worktree z
+`main=c5041bd`, bez zmian gałęzi IN-04/STOR-04 i kodu produkcyjnego. Testowy harness używa
+adaptera RAP i generatora z PartyData backendu, bez operacji/rezerwacji/outboxa/storage.
+Fixture offline: domena/XSD PASS, 1719 bajtów, SHA-256 w raporcie. Regresja Maven **527/0 failures/0 errors/6 skipped**,
+w tym **30 nowych przypadków PASS**. Brak narzędzi MCP SAP,
+aktualnego READ H01 i zatwierdzonego UUID; historyczny seed ma niepoprawne kontrolnie NIP.
+Worker nie ponawia READ RAP przed SEND; wersja kompozycji/status i waluta/brutto pozycji wymagają
+rozstrzygnięcia przed próbą. Potrzebne zatwierdzone runtime/storage i osobna zgoda na SEND/writeback.
+[Raport i runbook](guides/E2E_01A_SAP_FA3_PREFLIGHT.md) · [Testy / publikacja / CI](journal/2026-11-15-e2e-01a-sap-fa3-preflight.md).
+Bez SEND, SAP WRITE, zmian H01, CF/HANA i merge. Poniższy wpis IN-03B zachowuje historyczny
+stan przed merge PR #19; aktualna baza tego zadania zawiera już ten merge.
 
 **KSEF-IN-03B (14.11.2026) — przygotowanie offline, CF NO-GO.** Audyt potwierdził istniejący pipeline
 i DI. Dodano opcjonalny lokalny scheduler (dwa default OFF, bez startup I/O, bez nakładania ticków),
