@@ -32,6 +32,8 @@ import pl.akmf.ksef.sdk.client.model.session.SessionInvoiceStatusResponse;
         "spring.datasource.url=jdbc:h2:mem:ksef-worker;DB_CLOSE_DELAY=-1" })
 @ActiveProfiles("test")
 class KsefSubmissionWorkerTest {
+    // Test mechaniki/recovery poniżej bramki. Rzeczywista blokada ma osobne testy CAP/H2.
+    @MockitoBean KsefInitialSendGuard initialSendGuard;
     @Autowired PersistenceService db;
     @Autowired KsefSubmissionWorker worker;
     @MockitoBean KsefAuthentication authentication;

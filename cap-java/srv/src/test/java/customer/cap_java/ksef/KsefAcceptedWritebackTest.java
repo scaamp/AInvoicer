@@ -53,6 +53,8 @@ import pl.akmf.ksef.sdk.client.model.session.SessionInvoiceStatusResponse;
 class KsefAcceptedWritebackTest {
     private static final String WRITES = "customer.cap_java.SapResultWrites";
     private static final Instant VERSION = Instant.parse("2026-10-27T08:15:30.1234567Z");
+    // Test mechaniki/recovery poniżej bramki. Rzeczywista blokada ma osobne testy CAP/H2.
+    @MockitoBean KsefInitialSendGuard initialSendGuard;
     @Autowired PersistenceService db;
     @Autowired KsefSubmissionWorker worker;
     @Autowired KsefAcceptedWriteback accepted;
