@@ -525,10 +525,27 @@ class KsefSendRequestTest {
         when(sap.readInvoice(invoice)).thenReturn(Optional.of(new SapInvoiceSnapshot(header, List.of(item), List.of())));
         if (drift.equals("party")) { doReturn(Optional.empty()).when(parties).forInvoice(anyMap()); }
         byte[] prepared = exact.get().clone();
-        worker.process(id);
+        // ORCH-09: rzeczywisty handler dostawy ma zakończyć kontekst, bez sygnału retry dla collectora.
+        var message = OutboxMessage.create();
+        message.setParams(Map.of("submissionId", id.toString()));
+        var delivery = OutboxMessageEventContext.create("submitInvoice");
+        delivery.setIsInbound(true);
+        delivery.setMessage(message);
+        long queued = outboxCount();
+        worker.onSubmit(delivery);
+        assertTrue(delivery.isCompleted());
         assertEquals("RECONCILIATION_REQUIRED", worker.status(id).get("state"));
         assertEquals("KSEF_SNAPSHOT_POLICY_NOT_APPROVED", worker.status(id).get("lastCode"));
+        var visible = get("operator-a", "test-a", "KsefOperations(" + id + ")");
+        assertEquals(200, visible.status());
+        assertEquals("RECONCILIATION_REQUIRED", visible.body().get("status").asText());
+        assertEquals("KSEF_SNAPSHOT_POLICY_NOT_APPROVED", visible.body().get("errorCode").asText());
+        var historyCount = worker.tx(() -> db.run(Select.from(KsefSubmissionWorker.HISTORY)
+                .where(h -> h.get("submissionId").eq(id.toString()))).rowCount());
         worker.process(id); // restart/duplikat nie rozpoczyna ponownego SEND
+        assertEquals(queued, outboxCount());
+        assertEquals(historyCount, worker.tx(() -> db.run(Select.from(KsefSubmissionWorker.HISTORY)
+                .where(h -> h.get("submissionId").eq(id.toString()))).rowCount()));
         worker.reconcile(id); // brak sesji = diagnostyka bez auth/HTTP
         assertEquals(before.get("snapshotId"), worker.status(id).get("snapshotId"));
         assertEquals(before.get("xmlSha256"), worker.status(id).get("xmlSha256"));
