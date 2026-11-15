@@ -123,9 +123,23 @@ public class KsefSendRequestHandler implements EventHandler {
                 .orElseThrow(() -> fail(ErrorStatuses.UNPROCESSABLE_ENTITY, "KSEF_PARTY_DATA_MISSING"));
         Fa3Document document;
         try {
+            KsefOutboundInvoiceValidator.validate(invoiceId, invoice);
             document = documents.prepare(invoice, party);
         } catch (KsefFailure | Fa3ValidationException invalid) {
             throw fail(ErrorStatuses.UNPROCESSABLE_ENTITY, "KSEF_FA3_INVALID");
+        }
+
+        // Drugi pełny READ wykrywa obserwowany drift, ale nie zamraża kompozycji do SEND.
+        // Do czasu decyzji o wersjonowaniu worker ma niezależną, bezwarunkową blokadę przed auth.
+        java.util.Optional<SapInvoiceSnapshot> reread;
+        try { reread = sap.readInvoice(invoiceId); }
+        catch (RuntimeException unavailable) { throw fail(ErrorStatuses.BAD_GATEWAY, "SAP_INVOICE_READ_FAILED"); }
+        var current = reread.orElseThrow(() -> fail(ErrorStatuses.CONFLICT, "KSEF_COMPOSITION_CHANGED"));
+        var currentParty = parties.forInvoice(current.header())
+                .orElseThrow(() -> fail(ErrorStatuses.CONFLICT, "KSEF_COMPOSITION_CHANGED"));
+        if (!KsefCompositionEvidence.fingerprint(invoice, party)
+                .equals(KsefCompositionEvidence.fingerprint(current, currentParty))) {
+            throw fail(ErrorStatuses.CONFLICT, "KSEF_COMPOSITION_CHANGED");
         }
 
         // (3) Atomowa rezerwacja i zlecenie w ChangeSet żądania OData.
@@ -271,7 +285,11 @@ public class KsefSendRequestHandler implements EventHandler {
 
     private static UUID parseUuid(String value) {
         try {
-            return UUID.fromString(value == null ? "" : value.trim());
+            UUID id = UUID.fromString(value == null ? "" : value);
+            if (!id.toString().equalsIgnoreCase(value) || id.equals(new UUID(0, 0))) {
+                throw new IllegalArgumentException();
+            }
+            return id;
         } catch (IllegalArgumentException invalid) {
             throw fail(ErrorStatuses.BAD_REQUEST, "KSEF_INVOICE_UUID_INVALID");
         }

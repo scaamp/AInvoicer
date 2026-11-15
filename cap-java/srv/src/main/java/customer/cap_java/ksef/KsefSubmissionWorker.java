@@ -52,6 +52,7 @@ public class KsefSubmissionWorker implements EventHandler {
     private final KsefDocumentStore documents;
     private final KsefFa3Documents fa3;
     private final KsefAcceptedWriteback acceptedWriteback;
+    private final KsefInitialSendGuard initialSendGuard;
     private final Clock clock;
     private final boolean enabled;
     private final String configuredNip;
@@ -59,7 +60,7 @@ public class KsefSubmissionWorker implements EventHandler {
     public KsefSubmissionWorker(PersistenceService db, CdsRuntime runtime,
             @org.springframework.context.annotation.Lazy @Qualifier("KsefSubmissionOutbox") OutboxService outbox, KsefAuthentication authentication,
             KsefOnlineSession session, KsefDocumentStore documents, KsefFa3Documents fa3,
-            KsefAcceptedWriteback acceptedWriteback, Clock clock,
+            KsefAcceptedWriteback acceptedWriteback, KsefInitialSendGuard initialSendGuard, Clock clock,
             @Value("${ainv.ksef.enabled:false}") boolean enabled,
             @Value("${ainv.ksef.nip:}") String configuredNip) {
         this.db = db;
@@ -70,6 +71,7 @@ public class KsefSubmissionWorker implements EventHandler {
         this.documents = documents;
         this.fa3 = fa3;
         this.acceptedWriteback = acceptedWriteback;
+        this.initialSendGuard = initialSendGuard;
         this.clock = clock;
         this.enabled = enabled;
         this.configuredNip = configuredNip;
@@ -169,6 +171,9 @@ public class KsefSubmissionWorker implements EventHandler {
                 throw KsefFailure.invalid("KSEF_XML_HASH_MISMATCH");
             }
             fa3.verify(xml);
+            if ("PREPARED".equals(stage)) {
+                tx(() -> { initialSendGuard.requireApproved(id, row, xml, configuredNip); return null; });
+            }
             if ("PREPARED".equals(stage)) { save(claim, "AUTHENTICATING", Map.of()); }
             var tokens = authentication.authenticate((String) row.get("taxpayerNip"));
             if ("PREPARED".equals(stage)) {
