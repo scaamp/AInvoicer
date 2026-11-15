@@ -110,6 +110,14 @@ Retry JDK/SDK produkcyjnego SEND i zachowanie lease po długim zatrzymaniu JVM p
 **H01 preflight:** offline kod gotowy do osobnego zatwierdzonego READ; brak runtime dowodu/principala/UUID.
 **Pierwszy KSeF TEST SEND:** NO-GO, także po samym ustawieniu enabled=true.
 
+## Publikacja i CI
+
+Osobny [PR #26](https://github.com/scaamp/AInvoicer/pull/26) do main, bez merge.
+Commit implementacyjny `4bbd7716333944fa8960eb8a28d59193fa2b1e29`; późniejsze zmiany dziennika
+nie zmieniają wykonywalnego kodu. [Bieżące CI PR](https://github.com/scaamp/AInvoicer/pull/26/checks)
+dotyczy aktualnego HEAD; ostateczny raport sesji podaje zweryfikowane SHA i wynik zakończonego runu.
+Zielonego wcześniejszego SHA nie należy traktować jako dowodu aktualnego HEAD.
+
 ## Next Steps
 
 1. Właściciel wybiera semantykę wersji SAP i writebacku oraz zatwierdza/odrzuca ADR-0010.
