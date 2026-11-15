@@ -8,7 +8,7 @@ tags: [ainvoicer, cap-java, status]
 
 # Stan projektu
 
-**ORCH-08 — 15.11.2026, integracja w toku:** PR #21/#22/#23 review PASS WITH NOTES; wspólna regresja offline i CI do zakończenia. IN-04 READY FOR LIVE APPROVAL; STOR-04 OFFLINE READY / HANA DEPLOY PENDING; E2E-01A OFFLINE PASS / SEND NO-GO. INBOUND CF/scheduler/SAP WRITE/KSeF SEND OFF. G1 runtime 15/5/6/15, osobny niewykonywalny kontrakt release 16/5/6/16; BLOB-LAB-01 bez zmian. [Review, testy i bramki](journal/2026-11-15-orch-08-ksef-inbound-storage-e2e-integration.md).
+**ORCH-08 — 15.11.2026, kod MERGED przez PR #24:** PR #21/#22/#23 review PASS WITH NOTES i MERGED; wspólna regresja offline PASS (Maven585/0/0/6, G1 63, R2 5, QUnit112, OPA21, Inbox16/73, oba MTAR). CI integracji 43705887480 SUCCESS; main po integracji 6911ce8, osobny workflow 43706732579. Draft #20 CLOSED/superseded bez merge. IN-04 READY FOR LIVE APPROVAL; STOR-04 OFFLINE READY / HANA DEPLOY PENDING; E2E-01A OFFLINE PASS / SEND NO-GO. INBOUND CF/scheduler/SAP WRITE/KSeF SEND OFF. G1 runtime 15/5/6/15, osobny niewykonywalny kontrakt release 16/5/6/16; BLOB-LAB-01 bez zmian. [Review, testy i bramki](journal/2026-11-15-orch-08-ksef-inbound-storage-e2e-integration.md).
 
 Plany osobnych etapów: [IN-04 GET](guides/ORCH_08_IN_04_LIVE_READ_PLAN.md) · [release HANA](guides/ORCH_08_STOR_04_HANA_RELEASE_PLAN.md) · [E2E-01B](guides/ORCH_08_E2E_01B_HARDENING_BACKLOG.md).
 

@@ -2,7 +2,7 @@
 title: "ORCH-08 — review i integracja INBOUND, storage i SAP FA(3)"
 date: 2026-11-15
 type: journal
-status: w-trakcie
+status: zakonczony
 tags: [ainvoicer, orch-08, integration, ksef, hana, security]
 ---
 
@@ -28,7 +28,7 @@ Konektor GitHub potwierdził otwarte PR-y, dokładne HEAD i ich zakończone CI S
 | [#22](https://github.com/scaamp/AInvoicer/pull/22) | `5a2c2108fff9afe8fe12365c4226b93733fed9e6` | [43698656934](https://github.com/scaamp/AInvoicer/actions/runs/43698656934) | PASS WITH NOTES |
 | [#23](https://github.com/scaamp/AInvoicer/pull/23) | `1de63760ace1749cbcf12d5eb75660698ca79da9` | [43702661219](https://github.com/scaamp/AInvoicer/actions/runs/43702661219) | PASS WITH NOTES |
 
-Wejściowe CI nie zastępuje CI wspólnego drzewa. Draft #20 pozostaje otwarty do potwierdzonego merge #22.
+Wejściowe CI nie zastępuje CI wspólnego drzewa. Po potwierdzonym merge #22 zamknięto Draft #20 jako superseded.
 
 ## Code review #21 — one-shot
 
@@ -114,7 +114,20 @@ instalacje npm ci z lockfile; bez aktualizacji zależności.
 | Manifest przyszłego katalogu/kompilacja CDS | 2/2 PASS |
 | Deployment tests przed manifestem | 105 PASS / 1 Go SKIP |
 | Browser Security Runner | 8/8 PASS, rzeczywisty lokalny Chrome |
-| Pakiety/pozostała regresja | W TOKU; brak wyniku nie jest PASS |
+| Pełny `mvn clean verify` w finalnym buildzie smoke i ponownie R2 | **585 / 0 failures / 0 errors / 6 skipped**; BUILD SUCCESS; nowe testy wire włączone |
+| G1 | **63/63 PASS**, runtime kontraktu bez zmian |
+| Deployment tests z manifestem | **107 PASS / 1 Go SKIP** lokalnie; kontrola Go uruchomiona w CI SUCCESS |
+| CF JAR security/startup | **10/10 PASS** |
+| AppRouter / UI5 CF build security | **11/11 / 13/13 PASS** |
+| QUnit / OPA | **112 testów, 659 asercji / 21 testów, 150 asercji PASS** |
+| Inbox / rzeczywisty lokalny CAP HTTP | **16 testów / 73 asercje PASS**; A/B, granty, 401/403/404, outage i restart |
+| Azurite | **6/6 PASS** osobno, oficjalny emulator wyłącznie loopback |
+| R2 build/test | **R2_BUILD_PASS; 5/5 PASS**, bez HANA/CF |
+| MTAR identity-smoke i HANA / verify:hana | **PASS**, niewdrożone, deploymentApproved=false |
+| HDI niezależna kompilacja i porównanie | **26 → 27**, +1 tabela, 0 zmian/usunięć istniejących artefaktów |
+| Zawartość gotowego MTAR | **16 hdbtable / 5 hdbview / 6 hdbindex**, hash DDL storage zgodny z kompilacją; harnessy nieobecne w payload CAP |
+| Secret scanner / diff --check | **2713 plików PASS / PASS**, heurystyka nie jest audytem credentiali |
+| CI wspólnego HEAD `2a2ddecfa2741ec22f328d383850bb300ffbc219` | [43705887480](https://github.com/scaamp/AInvoicer/actions/runs/43705887480) **SUCCESS**, wszystkie 24 kroki SUCCESS |
 | LIVE | NIE WYKONANO |
 
 ## Problems Encountered
@@ -125,9 +138,15 @@ kompilatora podczas modyfikacji node_modules przez Maven.
 Nowy test manifestu początkowo nie normalizował niecytowanych nazw DDL do uppercase; poprawiono parser
 z zachowaniem case cytowanych identyfikatorów; ponownie 2/2 PASS. G1 runtime nie zmieniono.
 
+Pierwszy smoke build zatrzymał się po zielonym Maven585 i CF JAR10 na Windows EPERM podczas npm ci:
+lokalny serwer UI5 trzymał natywny moduł keyring. Zatrzymano wyłącznie własny proces serwera,
+powtórzono pełny build, wynik PASS. Próba inspekcji JAR podczas clean nie była testem PASS;
+ostatecznie sprawdzono gotowy payload CAP w MTAR, bez zależności od ponownie czyszczonego target.
+Kod SDK/storage/SEND nie wymagał korekty. Bez force fix lub aktualizacji zależności.
+
 ## Decisions Made / Current State
 
-Warunkowe GO do merge kodu offline po komplecie bramek. READY FOR LIVE APPROVAL IN-04;
+Kod offline scalony po komplecie bramek przez PR #24. READY FOR LIVE APPROVAL IN-04;
 STOR-04 OFFLINE READY / HANA DEPLOY PENDING; E2E-01A OFFLINE PASS / SEND NO-GO.
 INBOUND CF OFF, scheduler OFF, SAP WRITE OFF, KSeF SEND OFF. G1 LIVE niewykonane.
 
@@ -142,12 +161,49 @@ przypięte SDK faktycznie wykonane offline. Bez odczytu endpointów biznesowych 
 
 ## Publikacja / Finalny main
 
-Jeszcze nie wykonano: publikacja wspólnego PR, końcowe CI i warunkowy merge.
-`main` nadal wejściowy c5041bd do potwierdzonego merge. PR #20 pozostaje otwarty do merge #22.
+Wspólny [PR #24](https://github.com/scaamp/AInvoicer/pull/24) scala historię wszystkich trzech PR-ów,
+bez squash/rebase branchy autorów. Przed merge ponownie sprawdzono dokładne SHA i wejściowe CI,
+CI wspólnego HEAD, czyste drzewo, brak automatycznego deploymentu i brak zmian main.
+Rules API: 0 aktywnych reguł dla main; klasyczne branch protection API: 404. Nie zmieniano ochrony,
+nie użyto bypass/force-push ani bezpośredniego push main. Reviews COMMENT opublikowano przy #21/#22/#23.
+
+| PR | Potwierdzony wynik GitHub | Commit zachowany w historii main |
+| --- | --- | --- |
+| #21 | MERGED przez #24 | `45da7ff53e8a027e2f2b32d0ea515540992bf7df` |
+| #23 | MERGED przez #24 | `f64913c1ade9fb63da05ae8a2eb4a53d9ab58626` |
+| #22 | MERGED przez #24 | `9e97063dc5108da1cf947744ed441ff3c3872276` |
+| #24 | MERGED | `6911ce851253f20839e2260595d92ff7fe2c6e64` |
+| #20 | CLOSED / superseded po merge #22, NOT MERGED | HEAD #20 nie jest przodkiem main; dokumentacja historyczna zachowana |
+
+**Main po integracji kodu:** `6911ce851253f20839e2260595d92ff7fe2c6e64`.
+[Workflow push dokładnie tego SHA](https://github.com/scaamp/AInvoicer/actions/runs/43706732579).
+Końcowy wynik workflow jest sprawdzany w GitHub przed zakończeniem ORCH-08; powyższy run jest dowodem
+tego konkretnego SHA, nie innej gałęzi. Późniejszy PR domykający ten dziennik zmienia wyłącznie docs/;
+jego merge nadaje nowy SHA dokumentacyjny bez zmiany kodu. Najnowszy SHA main i jego osobny workflow
+są podane w końcowym raporcie sesji i komentarzu pod #24. Nie zapisujemy własnego przyszłego SHA w treści commita.
+
+Artefakty lokalne (ignorowane deploy/build, **NIE są zgodą na deployment**):
+
+| Dowód | SHA-256 |
+| --- | --- |
+| sourceFilesSha256 | `3b83d19d7b315da89f46330835a33900f6b0da792216283ab184d143f67f77dd` |
+| MTAR smoke 0.7.2 | `24d8d8ac2d35b9e63fa18c74703b2983fc173949eec2021cb09c49f51d429ebd` |
+| MTAR HANA 0.7.3 | `eac3e538477a61ad50fe786a5b79ea71d0e16b0814a3e22f8f33d817be663324` |
+| Storage hdbtable | `27cac1a20896f4e7971198c72e2024d48fa3e7f1e5f3d93c2e7ed2a77304de6a` |
+
+Zachowano bieżący runtime według wcześniejszej dokumentacji: G1 oczekuje 15/5/6/15; nie pobierano
+katalogu HANA ani stanu CF w tej sesji. Repo/pakiet projektuje 16/5/6/16 po przyszłym release.
+KSeF auth/InvoiceRead i SAP H01 E2E niezweryfikowane LIVE; żadnych operacji biznesowych ani deploymentu.
+
+| Osobna bramka | Decyzja ORCH-08 |
+| --- | --- |
+| Pierwszy IN-04 GET | GO do osobnego zatwierdzenia planu; wykonanie NO-GO bez zgody na SHA/kontekst/7 żądań |
+| STOR-04 HANA deployment | GO do przygotowania release; wykonanie NO-GO bez zgód i wersjonowanego wykonywalnego G1 |
+| E2E-01B hardening | GO do osobnego zadania z backlogu; nie zaimplementowano w ORCH-08 |
+| Pierwszy H01 → KSeF TEST SEND | NO-GO: luki produkcyjne, snapshot/freeze, zatwierdzony UUID, runtime/storage/security i zgoda |
 
 ## Next Steps
 
-1. Dokończyć regresję i CI wspólnego PR dokładnego HEAD; merge tylko po PASS i wymaganych review.
-2. Po merge potwierdzić CI finalnego main i dopiero zamknąć #20 jako superseded.
-3. Rekomendowany osobny krok właściciela: zatwierdzić jeden IN-04 NUMBER GET według planu,
+1. Końcowy odczyt CI dokładnego main jest częścią raportu sesji; brak wyniku nigdy nie jest PASS.
+2. Rekomendowany osobny krok właściciela: zatwierdzić jeden IN-04 NUMBER GET według planu,
    po akceptacji SHA/principal/TEST/7 żądań. HANA release i SEND pozostają niezależnymi bramkami.
