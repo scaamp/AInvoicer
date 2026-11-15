@@ -467,7 +467,7 @@ class KsefSendRequestTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"header", "item", "add", "delete", "reference", "status", "party", "unavailable", "missing"})
+    @ValueSource(strings = {"header", "item", "add", "delete", "reference", "status", "party", "unavailable", "remoteServiceError", "missing"})
     void observedDriftOrReadFailureBeforeReservationHasNoEffects(String change) {
         var good = SapInvoiceTestData.outbound(invoice);
         var h = new java.util.LinkedHashMap<>(good.header());
@@ -490,10 +490,15 @@ class KsefSendRequestTest {
         }
         when(sap.readInvoice(invoice)).thenReturn(Optional.of(good), Optional.of(new SapInvoiceSnapshot(h, items, refs)));
         if (change.equals("unavailable")) { when(sap.readInvoice(invoice)).thenReturn(Optional.of(good)).thenThrow(new IllegalStateException("remote")); }
+        if (change.equals("remoteServiceError")) {
+            when(sap.readInvoice(invoice)).thenReturn(Optional.of(good)).thenThrow(new com.sap.cds.services.ServiceException(
+                    com.sap.cds.services.ErrorStatuses.BAD_GATEWAY, "sensitive-remote-detail"));
+        }
         if (change.equals("missing")) { when(sap.readInvoice(invoice)).thenReturn(Optional.of(good), Optional.empty()); }
         long before = outboxCount();
         var result = send("operator-a", "test-a", invoice);
-        assertEquals(change.equals("unavailable") ? 502 : 409, result.status(), result.body()::toString);
+        assertEquals(change.equals("unavailable") || change.equals("remoteServiceError") ? 502 : 409, result.status(), result.body()::toString);
+        assertFalse(result.body().toString().contains("sensitive-remote-detail"));
         assertNoPreparationEffects(before);
     }
 

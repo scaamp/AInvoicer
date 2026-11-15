@@ -131,17 +131,16 @@ public class KsefSendRequestHandler implements EventHandler {
 
         // Drugi pełny READ wykrywa obserwowany drift, ale nie zamraża kompozycji do SEND.
         // Do czasu decyzji o wersjonowaniu worker ma niezależną, bezwarunkową blokadę przed auth.
-        try {
-            var current = sap.readInvoice(invoiceId)
-                    .orElseThrow(() -> fail(ErrorStatuses.CONFLICT, "KSEF_COMPOSITION_CHANGED"));
-            var currentParty = parties.forInvoice(current.header())
-                    .orElseThrow(() -> fail(ErrorStatuses.CONFLICT, "KSEF_COMPOSITION_CHANGED"));
-            if (!KsefCompositionEvidence.fingerprint(invoice, party)
-                    .equals(KsefCompositionEvidence.fingerprint(current, currentParty))) {
-                throw fail(ErrorStatuses.CONFLICT, "KSEF_COMPOSITION_CHANGED");
-            }
-        } catch (ServiceException safe) { throw safe; }
+        java.util.Optional<SapInvoiceSnapshot> reread;
+        try { reread = sap.readInvoice(invoiceId); }
         catch (RuntimeException unavailable) { throw fail(ErrorStatuses.BAD_GATEWAY, "SAP_INVOICE_READ_FAILED"); }
+        var current = reread.orElseThrow(() -> fail(ErrorStatuses.CONFLICT, "KSEF_COMPOSITION_CHANGED"));
+        var currentParty = parties.forInvoice(current.header())
+                .orElseThrow(() -> fail(ErrorStatuses.CONFLICT, "KSEF_COMPOSITION_CHANGED"));
+        if (!KsefCompositionEvidence.fingerprint(invoice, party)
+                .equals(KsefCompositionEvidence.fingerprint(current, currentParty))) {
+            throw fail(ErrorStatuses.CONFLICT, "KSEF_COMPOSITION_CHANGED");
+        }
 
         // (3) Atomowa rezerwacja i zlecenie w ChangeSet żądania OData.
         UUID operationId = UUID.randomUUID();

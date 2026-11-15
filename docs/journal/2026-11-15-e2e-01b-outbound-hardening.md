@@ -66,10 +66,11 @@ HanaKsefDocumentStore/HanaBlobObjectStorageClient, G1/release scripts, LAB, RAP,
 | --- | --- |
 | Pierwszy `mvn -B clean verify -Dcds.cds.skipVersionCheck=true` | BUILD SUCCESS przed rozszerzeniem testów |
 | Focused `mvn -B verify ... -Dtest=KsefSendRequestTest,KsefCompositionEvidenceTest,SapFa3Preflight*Test` | **129/0/0/0 PASS** (74 requestSend + 25 composition + 30 E2E-01A) |
-| Finalny `mvn -B clean verify -Dcds.cds.skipVersionCheck=true` | **BUILD SUCCESS; 662 tests / 0 failures / 0 errors / 6 skipped** (Azurite bez emulatora); sumy niezależnie potwierdzone z XML Surefire |
+| Finalny `mvn -B clean verify -Dcds.cds.skipVersionCheck=true` | **BUILD SUCCESS; 663 tests / 0 failures / 0 errors / 6 skipped** (Azurite bez emulatora), native exit0; poprzedni pełny run 662/0/0/6 również PASS |
 | `npm test --prefix deploy` po instalacji MBT | **107 PASS, 1 Go SKIP**, 0 failure; w tym G1 63/63 i niezależna kompilacja HANA w pamięci, bez DB |
 | `npm run test:runner --prefix sapui5/ainvoicer` | **8/8 PASS**, lokalny Chrome |
 | `npm run build:cf` i `npm run test:cf-build --prefix sapui5/ainvoicer` | **BUILD PASS, 13/13 PASS**; wcześniejszy run przed build miał 12 PASS/1 SKIP |
+| QUnit / OPA na własnym serwerze port18095 | **112/112 (659 asercji) / 21/21 (150 asercji) PASS**, własny worktree, mock SAP |
 | `npm run test:cf-runtime --prefix deploy` | **10/10 PASS**; lokalny gotowy JAR, syntetyczne bindingi |
 | `node deploy/scripts/check-secrets.mjs` po stage nowych plików | **2720 plików PASS**, heurystyka |
 | `git diff --check` | PASS |
@@ -95,6 +96,12 @@ Pierwszy test gotowego JAR-a uruchomiono przed zakończeniem `clean verify`: bra
 spowodował FAIL. Tego wyniku nie zaliczono; ponowiono test dopiero po BUILD SUCCESS. Bez zmian kodu.
 Komentarze wstrzyknięte przez PowerShell5/Python miały uszkodzone znaki polskie; poprawiono UTF-8
 bez zmiany wykonywalnej logiki po końcowym Maven.
+Końcowe review wykryło, że ServiceException z drugiego SAP READ mógłby ominąć maskowanie błędu.
+Rozdzielono obsługę RemoteService od lokalnej odmowy driftu; dodatkowy test wymaga 502 bez treści
+zdalnego błędu i bez zapisów. Pełny Maven ponowiono po tej korekcie: 663/0/0/6, exit0.
+Wcześniejsze QUnit77/OPA13 na zajętym porcie8095 dotyczyły innej lokalnej instancji i nie są
+dowodem tej gałęzi. Jej serwer uruchomiono na sprawdzonym wolnym porcie18095 we własnym worktree;
+istniejącego serwera nie zatrzymywano ani nie modyfikowano.
 
 ## Decisions Made / Current State
 
