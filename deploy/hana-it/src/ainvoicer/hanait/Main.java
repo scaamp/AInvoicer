@@ -25,23 +25,70 @@ public final class Main {
         Map.entry("AINV_SAP_WRITE_ENABLED", "false"), Map.entry("AINV_SAP_WRITE_SWEEPER_ENABLED", "false"),
         Map.entry("AINV_KSEF_STORAGE_PROVIDER", "off"), Map.entry("SPRING_SQL_INIT_MODE", "never"));
 
+    /**
+     * KSEF-STOR-04R: osobna rodzina faz harnessu prywatnej tabeli KsefStoredDocuments. Własne zgody (ogólna
+     * zgoda R2 nie odblokowuje BLOB), pin commitu builda i jawny limit zapisów. Brak fazy łańcuchowej i domyślnej.
+     */
+    static final String STOR04_IT = "customer.cap_java.ksef.storage.HanaKsefStoredDocumentsIT";
+    static final Map<String, String> STOR04_PHASES = Map.of("stor04-catalog", "catalog", "stor04-roundtrip", "roundtrip",
+        "stor04-contend", "contend", "stor04-recover", "recover");
+    static final Set<String> STOR04_READ = Set.of("stor04-catalog", "stor04-recover");
+    static final Map<String, Integer> STOR04_PLANNED_ROWS = Map.of("stor04-catalog", 0, "stor04-roundtrip", 3,
+        "stor04-contend", 1, "stor04-recover", 0);
+    static final String STOR04_COMMIT_RESOURCE = "/ainvoicer/hanait/build-commit.txt";
+
     static void require(boolean condition) {
         if (!condition) throw new IllegalStateException("R2_GATE_BLOCKED");
+    }
+
+    /** Commit, z którego zbudowano runner.jar (zasób dodawany przez `hana-it-runner.mjs assemble`). */
+    static String buildCommit() throws Exception {
+        try (var in = Main.class.getResourceAsStream(STOR04_COMMIT_RESOURCE)) {
+            require(in != null);
+            String commit = new String(in.readAllBytes(), StandardCharsets.US_ASCII).trim();
+            require(commit.matches("[0-9a-f]{40}"));
+            return commit;
+        }
     }
 
     /** Walidacja przed JUnit/Spring: zgoda, dokładny CF/HDI, brak tras, flagi OFF i binding XSUAA. */
     static void gate(Map<String, String> env, String phase) throws Exception {
         require(Runtime.version().feature() == 25);
-        require(PHASES.contains(phase));
+        require(PHASES.contains(phase) || STOR04_PHASES.containsKey(phase));
         require(!"true".equalsIgnoreCase(env.get("GITHUB_ACTIONS")) && !"true".equalsIgnoreCase(env.get("CI")));
+        if (STOR04_PHASES.containsKey(phase)) {
+            // Rodziny faz się nie mieszają: zmienne CAP-HANA-02 przy fazie storage = odmowa (i odwrotnie niżej).
+            for (String key : env.keySet()) require(!key.startsWith("AINV_HANA_TEST_"));
+            String consent = env.get("AINV_STOR04_IT_CONSENT");
+            require(STOR04_READ.contains(phase) ? "READ_ONLY_STOR04_CHECK_APPROVED_HDI".equals(consent)
+                : "WRITE_SYNTHETIC_STOR04_DOCUMENTS_APPROVED_HDI".equals(consent));
+            require(STOR04_PHASES.get(phase).equals(env.get("AINV_STOR04_IT_PHASE")));
+            require("TEST".equals(env.get("AINV_STOR04_IT_ENVIRONMENT")));
+            require("ainvoicer-db".equals(env.get("AINV_STOR04_IT_HDI_NAME")));
+            require(env.getOrDefault("AINV_STOR04_IT_RUN_ID", "").matches("[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}"));
+            require(customer.cap_java.ksef.inbound.KsefTaxpayerContext.isValidNip(env.get("AINV_STOR04_IT_NIP")));
+            require(buildCommit().equals(env.get("AINV_STOR04_IT_COMMIT")));
+            String writes = env.getOrDefault("AINV_STOR04_IT_MAX_WRITES", "");
+            require(writes.matches("[0-8]"));
+            int planned = STOR04_PLANNED_ROWS.get(phase);
+            require(STOR04_READ.contains(phase) ? Integer.parseInt(writes) == 0 : Integer.parseInt(writes) >= planned);
+            platform(env);
+            return;
+        }
+        for (String key : env.keySet()) require(!key.startsWith("AINV_STOR04_IT_"));
         String consent = env.get("AINV_HANA_TEST_CONSENT");
         require("WRITE_SYNTHETIC_DATA_TO_APPROVED_HDI".equals(consent)
             || (READ.contains(phase) && "READ_ONLY_CHECK_APPROVED_HDI".equals(consent)));
         require(phase.equals(env.get("AINV_HANA_TEST_PHASE")));
-        for (var flag : FLAGS.entrySet()) require(flag.getValue().equals(env.get(flag.getKey())));
         require("ainvoicer-db".equals(env.get("AINV_HANA_TEST_HDI_NAME")));
         require(env.getOrDefault("AINV_HANA_TEST_RUN_ID", "").matches("[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}"));
         require(customer.cap_java.ksef.inbound.KsefTaxpayerContext.isValidNip(env.get("AINV_HANA_TEST_NIP")));
+        platform(env);
+    }
+
+    /** Wspólne kontrole platformy obu rodzin faz: flagi OFF, brak nadpisań, aplikacja/target, dokładnie 2 bindingi. */
+    static void platform(Map<String, String> env) throws Exception {
+        for (var flag : FLAGS.entrySet()) require(flag.getValue().equals(env.get(flag.getKey())));
         // Nadpisania konfiguracji/credentiali spoza platformy nie należą do kontraktu R2.
         for (String key : env.keySet()) {
             require(!key.startsWith("SPRING_DATASOURCE") && !key.startsWith("SPRING_CONFIG")
@@ -99,13 +146,21 @@ public final class Main {
             } else {
                 require(args.length == 2 && Set.of("--run", "--preflight").contains(args[0]));
                 gate(System.getenv(), args[1]);
+                boolean stor04 = STOR04_PHASES.containsKey(args[1]);
+                String it = stor04 ? STOR04_IT : IT;
                 if ("--preflight".equals(args[0])) {
-                    Class.forName(IT, false, Main.class.getClassLoader());
+                    Class.forName(it, false, Main.class.getClassLoader());
                     safe.println("R2_PREFLIGHT_PASS=" + args[1]);
                     code = 0;
                 } else {
                     code = 1;
-                    System.setProperty("ainv.hana.integration", "true");
+                    if (stor04) {
+                        // Włącza WYŁĄCZNIE harness storage; jego bramka ponownie sprawdza zgodę/commit przed Spring.
+                        System.setProperty("ainv.hana.stor04", "true");
+                        System.setProperty("ainv.stor04.build-commit", buildCommit());
+                    } else {
+                        System.setProperty("ainv.hana.integration", "true");
+                    }
                     System.setProperty("spring.main.web-application-type", "none");
                     System.setProperty("spring.task.scheduling.enabled", "false");
                     System.setProperty("cds.outbox.persistent.enabled", "false");
@@ -116,10 +171,14 @@ public final class Main {
                         @Override public void println(String line) {
                             if (line != null && (line.matches("HANA_TEST_PHASE_PASS=(check|seed|recover|contend|cleanup|verify-cleanup)")
                                 || line.matches("HANA_UNIQUE_SQLSTATE=[A-Z0-9]{5};VENDOR_CODE=-?[0-9]{1,9}")
-                                || line.matches("HANA_CAS_CHANGED=[01];LEASE_CLAIMED=(true|false)"))) safe.println(line);
+                                || line.matches("HANA_CAS_CHANGED=[01];LEASE_CLAIMED=(true|false)")
+                                || line.matches("STOR04_HARNESS_PASS=(catalog|roundtrip|contend|recover)")
+                                || line.matches("STOR04_CATALOG=COLUMNS:[0-9];PK:[0-9];PROJECTIONS:[0-9]")
+                                || line.matches("STOR04_(ROUNDTRIP|CONTEND)=CREATED:[0-9];ALREADY_EXISTS:[0-9]")
+                                || line.matches("STOR04_RECOVER=DOCUMENTS:[0-9]"))) safe.println(line);
                         }
                     });
-                    code = junit(IT) ? 0 : 1;
+                    code = junit(it) ? 0 : 1;
                     safe.println("R2_PHASE_RESULT=" + args[1] + ";EXIT=" + code);
                 }
             }

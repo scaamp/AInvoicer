@@ -12,7 +12,9 @@ const future = JSON.parse(readFileSync(new URL('../contracts/hdi-catalog-stor04.
 const table = 'CUSTOMER_CAP_JAVA_KSEFSTOREDDOCUMENTS';
 
 test('future STOR-04 contract names exact catalog while active G1 stays on deployed catalog', () => {
-    assert.equal(future.executable, false);
+    // STOR-04R: kontrakt wykonuje wyłącznie osobny walidator release; status nadal = niewdrożony.
+    assert.equal(future.executable, true);
+    assert.equal(future.validator, 'deploy/scripts/hdi-catalog-stor04.cjs');
     assert.equal(future.status, 'UNDEPLOYED_RELEASE_CONTRACT');
     assert.deepEqual(future.tables, [...current.EXPECTED.TABLE, current.LAB_TABLE, table].sort());
     assert.deepEqual(future.views, [...current.EXPECTED.VIEW, current.LAB_VIEW].sort());
