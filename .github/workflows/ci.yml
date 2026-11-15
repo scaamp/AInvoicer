@@ -74,6 +74,8 @@ jobs:
         run: |
           npm run build:btp:hana --prefix deploy
           npm run verify:hana --prefix deploy
+          # KSEF-STOR-04R: kandydat vs wdrożony payload HDI (13.11): dokładnie +1 tabela, 0 zmian/usunięć. Bez deployu.
+          npm run verify:stor04-release --prefix deploy
       - name: Package isolated HANA test runner and exercise offline gates (no HANA or CF)
         run: |
           node deploy/scripts/hana-it-runner.mjs build

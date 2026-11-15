@@ -21,7 +21,9 @@ export const hanaEnv = Object.freeze({
 /** Jedno źródło MTA + walidowany wariant smoke; brak kopiowania deskryptora do utrzymania. */
 export function descriptor(source = loadMta()) {
     const mta = smokeDescriptor(source);
-    mta.version = '0.7.3';
+    // KSEF-STOR-04R: 0.7.3 = wdrożony 13.11 MTAR b30117cf… (4d4dbfc + LAB). Kandydat z tabelą KsefStoredDocuments
+    // musi mieć inną etykietę; etykieta MTA nie jest jednak dowodem zawartości (rozstrzyga SHA payloadów).
+    mta.version = '0.7.4';
     mta.description = 'AInvoicer HANA readiness: existing HDI/XSUAA/Destination, external effects OFF';
     const srv = mta.modules.find(m => m.name === 'ainvoicer-srv');
     srv.properties = { ...Object.fromEntries(Object.entries(srv.properties).filter(([key]) => !(key in smokeEnv))), ...hanaEnv };
@@ -72,7 +74,7 @@ function run(command, args, cwd = root) {
 
 function main() {
     const out = join(root, 'deploy/build'); mkdirSync(out, { recursive: true });
-    const artifact = join(out, 'ainvoicer_0.7.3.mtar');
+    const artifact = join(out, 'ainvoicer_0.7.4.mtar');
     const evidenceFile = join(out, 'hana-release-evidence.json');
     const git = args => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
     if (process.argv[2] === 'validate') { validate(descriptor()); console.log('HANA descriptor PASS; all services must already exist'); return; }
