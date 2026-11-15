@@ -32,6 +32,19 @@ rozstrzygnięcia przed próbą. Potrzebne zatwierdzone runtime/storage i osobna 
 [Raport i runbook](guides/E2E_01A_SAP_FA3_PREFLIGHT.md) · [Testy / publikacja / CI](journal/2026-11-15-e2e-01a-sap-fa3-preflight.md).
 Bez SEND, SAP WRITE, zmian H01, CF/HANA i merge. Poniższy wpis IN-03B zachowuje historyczny
 stan przed merge PR #19; aktualna baza tego zadania zawiera już ten merge.
+**KSEF-STOR-04 (15.11.2026) — prywatny magazyn HANA BLOB, offline; HDI deploy NO-GO bez zgody.**
+Bloker D-1 z KSEF-STOR-03 usunięty strukturalnie: dokumenty workera trafiają do nowej encji
+`KsefStoredDocuments` (PK `environment, channel, ownerSegment, sha256`; bez projekcji OData, bez `createdBy`),
+a laboratorium `KsefDocuments`/`BlobService` pozostało bez zmian. Adapter CQN przez `PersistenceService`,
+idempotencja na fizycznym PK, SHA-256 i rozmiar z backendu, budżet pamięci. Niepodłączony (bez beana), guard CF bez zmian.
+Kompilacja HANA: **+1 tabela, 0 widoków, 0 indeksów, 0 zmian istniejących** (16/5/6/16 PK po deployu).
+G1: zmieniono wyłącznie test niezależnej kompilacji; runtime walidatora nadal 15/5/6/15 (zgoda właściciela 15.11).
+Maven **528 / 0 failures / 0 errors / 6 skipped**, G1 **63/63**, deploy **105 PASS / 1 Go skip**.
+Zastępuje Draft [PR #20](https://github.com/scaamp/AInvoicer/pull/20) bez włączania jego commitów.
+**Bez HDI deploy, migracji i jakichkolwiek operacji LIVE.**
+[Przewodnik](guides/KSEF_STOR_04_PRIVATE_HANA_STORAGE.md) · [Dziennik / regresja / PR](journal/2026-11-15-ksef-stor-04-private-hana-storage.md).
+
+Poniższe wpisy zachowują historyczny stan przed STOR-04 (PR #19 IN-03B został scalony 14.11 jako `c5041bd`).
 
 **KSEF-IN-03B (14.11.2026) — przygotowanie offline, CF NO-GO.** Audyt potwierdził istniejący pipeline
 i DI. Dodano opcjonalny lokalny scheduler (dwa default OFF, bez startup I/O, bez nakładania ticków),
