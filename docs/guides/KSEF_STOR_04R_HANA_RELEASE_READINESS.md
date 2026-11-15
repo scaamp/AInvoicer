@@ -8,6 +8,16 @@ tags: [ainvoicer, ksef, storage, hana, blob, hdi, g1, release, cap-java, securit
 
 # KSEF-STOR-04R — release `KsefStoredDocuments` na istniejący DEV (przygotowanie, bez deploymentu)
 
+**Uściślenie ORCH-09 (15.11):** [audyt R-1, źródła i recovery](../journal/2026-11-15-orch-09-outbound-hana-integration.md#r-1--cf-deploy--m-ustalenia-i-blokada-wykonania)
+potwierdza lokalny MultiApps 3.12.0 i semantykę selekcji w publicznym kodzie. Niepotwierdzony target
+EU20 i plan mixed-version pozostawiają **R-1 BLOCKED dla wykonania LIVE**. W badanym kontrolerze
+zbiorcza wersja MTA przy różnych wersjach entity jest `null`, a zwykłe version-rule jest wtedy
+ignorowane; poniższej sugestii etykiety 0.7.4 nie należy traktować jako gwarancji. Pełny deskryptor
+musi zachować srv/AppRouter bez skip-deploy; `-m` nie chroni modułów usuniętych z deskryptora.
+Kod klienta/kontrolera wskazuje również możliwe przetwarzanie wszystkich zasobów przy samym `-m`
+bez `-r`; zakres zasobów/bindingów wymaga wyjaśnienia przed zgodą. Nie traktować tej komendy jako
+udowodnionego „wyłącznie HDI bez żadnych skutków metadanych MTA”.
+
 [Project Home](../README.md) · [Dziennik](../journal/2026-11-15-ksef-stor-04r-release-readiness.md) ·
 [STOR-04 model/adapter](KSEF_STOR_04_PRIVATE_HANA_STORAGE.md) · [Plan ORCH-08](ORCH_08_STOR_04_HANA_RELEASE_PLAN.md) ·
 [G1](CAP_HANA_02G1_CATALOG_RECONCILIATION.md) · [Runner R2](CAP_HANA_02_R2_RUNNER.md) · [BLOB-LAB-01](BLOB_LAB_01_OWNER_LED_HDI.md)

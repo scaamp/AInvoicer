@@ -8,6 +8,12 @@ tags: [ainvoicer, outbound, snapshot, rap, cap-java, e2e-01b]
 
 # Zatwierdzona wersja do SEND — PROPOSED
 
+**ORCH-09 / E2E-01C (15.11.2026):** [techniczny projekt approval, UI i wyścigów](../guides/E2E_01C_APPROVED_SNAPSHOT_DESIGN.md)
+rozwija tę propozycję; status nadal **PROPOSED**. Rekomendacja C dotyczy zatwierdzonej obserwacji,
+nie zamrożonego SAP. Proponujemy odwołanie do trwałego `SEND_ARMED` przed HTTP i brak zapisu wyniku
+do zmienionej kompozycji SAP. Obecny Header-only CAS nie wystarcza: nowe approved snapshoty wymagają
+atomowej kontroli całej kompozycji w SAP albo wyniku wyłącznie w CAP. Bez zmiany CDS i bez odblokowania SEND.
+
 [Przewodnik E2E-01B](../guides/E2E_01B_OUTBOUND_SEND_HARDENING.md) · [Dziennik](../journal/2026-11-15-e2e-01b-outbound-hardening.md)
 
 ## Kontekst i status
