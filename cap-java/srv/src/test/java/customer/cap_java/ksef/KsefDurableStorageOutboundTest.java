@@ -65,6 +65,8 @@ class KsefDurableStorageOutboundTest {
         }
     }
 
+    // Test mechaniki/recovery poniżej bramki. Rzeczywista blokada ma osobne testy CAP/H2.
+    @MockitoBean KsefInitialSendGuard initialSendGuard;
     @Autowired PersistenceService db;
     @Autowired KsefSubmissionWorker worker;
     @Autowired KsefDocumentStore documents;

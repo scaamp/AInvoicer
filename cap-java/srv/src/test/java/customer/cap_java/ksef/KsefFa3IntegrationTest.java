@@ -34,6 +34,8 @@ import customer.cap_java.sap.SapInvoiceSnapshot;
 class KsefFa3IntegrationTest {
     @Autowired KsefInvoicePreparation preparation;
     @Autowired KsefSubmissionWorker worker;
+    // Test mechaniki/recovery poniżej bramki. Rzeczywista blokada ma osobne testy CAP/H2.
+    @MockitoBean KsefInitialSendGuard initialSendGuard;
     @Autowired PersistenceService db;
     @Autowired KsefFa3Documents fa3;
     @MockitoBean KsefAuthentication authentication;

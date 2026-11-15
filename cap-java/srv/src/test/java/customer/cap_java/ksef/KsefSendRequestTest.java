@@ -25,11 +25,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -79,6 +81,7 @@ class KsefSendRequestTest {
     @MockitoBean KsefOnlineSession session;
     @MockitoBean KsefDocumentStore store;
     @MockitoBean SapKsefResultWriteAdapter sapWrite;
+    @MockitoSpyBean KsefPartyDataProvider parties;
     private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper json = new ObjectMapper();
     private UUID invoice;
@@ -141,7 +144,7 @@ class KsefSendRequestTest {
 
     @ParameterizedTest
     @EnumSource(value = Outcome.class, names = { "APPLIED", "ALREADY_APPLIED", "VERSION_CONFLICT" })
-    void requestThroughAcceptanceUpoAndSapWritebackUsesExactGeneratedBytes(Outcome outcome) throws Exception {
+    void existingPollingThroughAcceptanceUpoAndSapWritebackUsesExactGeneratedBytes(Outcome outcome) throws Exception {
         // Pełny lokalny przepływ: OData/Security -> RAP mock -> realny FA(3)/H2/outbox -> SDK mock -> SAP mock.
         var stored = new java.util.concurrent.atomic.AtomicReference<byte[]>();
         when(store.put(any())).thenAnswer(call -> { stored.set(call.getArgument(0)); return "document.xml"; });
@@ -163,10 +166,15 @@ class KsefSendRequestTest {
         when(session.upo(anyString(), anyString(), any())).thenReturn("<Potwierdzenie/>".getBytes(StandardCharsets.UTF_8));
         UUID operationId = sendOk();
         byte[] exactXml = stored.get().clone();
+        // E2E-01B: pierwszy SEND jest zablokowany. Odtwarzamy już wysłaną operację w POLLING;
+        // ACCEPTED/UPO/writeback pozostają dostępne bez nowego SEND.
+        worker.tx(() -> db.run(Update.entity(KsefSubmissionWorker.SUBMISSIONS).byId(operationId.toString())
+                .data(Map.of("state", "POLLING", "sessionReference", "session-ref", "invoiceReference", "invoice-ref"))));
         worker.process(operationId);
         assertEquals("COMPLETED", worker.status(operationId).get("state"));
         assertNotNull(worker.status(operationId).get("upoStorageRef"));
-        verify(session).send(eq("session-ref"), eq(exactXml), any(), any());
+        assertEquals(KsefInvoiceSnapshotRegistry.sha256Hex(exactXml), worker.status(operationId).get("xmlSha256"));
+        verify(session, never()).send(anyString(), any(), any(), any());
         var pending = get("operator-a", "test-a", "InvoiceIntegrationStatus?$filter=invoiceUUID eq '" + invoice + "'")
                 .body().get("value").get(0);
         assertEquals("ACCEPTED", pending.get("integrationStatus").asText());
@@ -189,7 +197,7 @@ class KsefSendRequestTest {
         assertEquals(outcome == Outcome.VERSION_CONFLICT ? "RECONCILIATION_REQUIRED" : "SUCCEEDED",
                 finished.get("writebackState").asText());
         assertEquals(409, send("operator-peer", "test-peer", invoice).status());
-        verify(session, times(1)).send(anyString(), any(), any(), any());
+        verify(session, never()).send(anyString(), any(), any(), any());
     }
 
     @Test void rapWithConfirmedKsefNumberIsConflictWithoutWrites() throws Exception {
@@ -354,7 +362,7 @@ class KsefSendRequestTest {
      * CAP-07F (E-3): przy KSeF ON semantyka bez zmian i dokładnie jeden odczyt SAP na żądanie —
      * obcy NIP 403, brak faktury 404, własna faktura 200 z rezerwacją (wewnętrzny zapis operacji działa).
      */
-    @Test void transportOnKeepsScopeSemanticsWithExactlyOneSapReadPerRequest() throws Exception {
+    @Test void transportOnKeepsScopeSemanticsAndRechecksCompositionBeforeWrites() throws Exception {
         clearInvocations(sap);
         var foreign = send("operator-b", "test-b", invoice);
         assertEquals(403, foreign.status());
@@ -372,7 +380,7 @@ class KsefSendRequestTest {
         var own = send("operator-a", "test-a", invoice);
         assertEquals(200, own.status(), own.body()::toString);
         assertEquals("QUEUED", own.body().get("status").asText());
-        verify(sap, times(2)).readInvoice(invoice);
+        verify(sap, times(3)).readInvoice(invoice);
         assertEquals(1, count(KsefSendRequestHandler.RESERVATIONS));
         assertEquals(1, sendOperations().size());
     }
@@ -404,6 +412,174 @@ class KsefSendRequestTest {
     }
 
     // ---- pomocnicze --------------------------------------------------------------------------------
+
+    @ParameterizedTest
+    @ValueSource(strings = {"status", "kind", "headerCurrency", "uuid", "version", "buyerNip", "headerNet", "headerVat", "headerGross",
+            "resultEnvironment", "resultTime", "resultRequest", "itemParent", "itemId", "itemNo", "itemVersion", "itemCurrency",
+            "unit", "rate", "category", "quantity", "price", "net", "vat", "gross", "scale", "duplicateId", "duplicateNo", "reference"})
+    void invalidCompositionHasNoPersistenceStorageOrOutboxEffects(String defect) {
+        var good = SapInvoiceTestData.outbound(invoice);
+        var h = new java.util.LinkedHashMap<>(good.header());
+        var i = new java.util.LinkedHashMap<>(good.items().get(0));
+        var items = new ArrayList<Map<String, Object>>(); items.add(i);
+        List<Map<String, Object>> refs = List.of();
+        switch (defect) {
+            case "status" -> h.put("InvoiceStatus", "CANCELLED");
+            case "kind" -> h.put("InvoiceKind", "CORRECTION");
+            case "headerCurrency" -> h.put("CurrencyCode", "EUR");
+            case "uuid" -> h.put("InvoiceUUID", UUID.randomUUID().toString());
+            case "version" -> h.remove("LocalLastChangedAt");
+            case "buyerNip" -> h.put("BuyerNip", "9876543211");
+            case "headerNet" -> h.put("NetAmount", "1.00");
+            case "headerVat" -> h.put("TaxAmount", "1.00");
+            case "headerGross" -> h.put("GrossAmount", "1.00");
+            case "resultEnvironment" -> h.put("KsefEnvironment", "TEST");
+            case "resultTime" -> h.put("KsefRecordedAt", Instant.now());
+            case "resultRequest" -> h.put("KsefWriteRequestId", UUID.randomUUID().toString());
+            case "itemParent" -> i.put("InvoiceUUID", UUID.randomUUID().toString());
+            case "itemId" -> i.put("ItemUUID", "1-1-1-1-1");
+            case "itemNo" -> i.put("ItemNo", "-1");
+            case "itemVersion" -> i.remove("LocalLastChangedAt");
+            case "itemCurrency" -> i.put("CurrencyCode", "EUR");
+            case "unit" -> i.put("UnitCode", "KG");
+            case "rate" -> i.put("TaxRate", "0.00");
+            case "category" -> i.put("TaxCategory", "ZW");
+            case "quantity" -> i.put("Quantity", "0.000");
+            case "price" -> i.put("UnitPrice", "-1.00");
+            case "net" -> i.put("NetAmount", "1.00");
+            case "vat" -> i.put("TaxAmount", "1.00");
+            case "gross" -> i.put("GrossAmount", "1.00");
+            case "scale" -> i.put("NetAmount", "900.001");
+            case "duplicateId", "duplicateNo" -> {
+                var duplicate = new java.util.LinkedHashMap<>(i);
+                duplicate.put(defect.equals("duplicateId") ? "ItemNo" : "ItemUUID",
+                        defect.equals("duplicateId") ? "000020" : UUID.randomUUID().toString());
+                items.add(duplicate);
+            }
+            case "reference" -> refs = List.of(Map.of("InvoiceUUID", UUID.randomUUID().toString(), "RefUUID", UUID.randomUUID().toString()));
+            default -> fail(defect);
+        }
+        when(sap.readInvoice(invoice)).thenReturn(Optional.of(new SapInvoiceSnapshot(h, items, refs)));
+        long before = outboxCount();
+        var result = send("operator-a", "test-a", invoice);
+        assertEquals(422, result.status(), result.body()::toString);
+        assertNoPreparationEffects(before);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"header", "item", "add", "delete", "reference", "status", "party", "unavailable", "missing"})
+    void observedDriftOrReadFailureBeforeReservationHasNoEffects(String change) {
+        var good = SapInvoiceTestData.outbound(invoice);
+        var h = new java.util.LinkedHashMap<>(good.header());
+        var i = new java.util.LinkedHashMap<>(good.items().get(0));
+        List<Map<String, Object>> items = List.of(i), refs = List.of();
+        switch (change) {
+            case "header" -> h.put("SellerName", "Zmieniona nazwa");
+            case "item" -> i.put("Description", "Zmieniona pozycja bez zmiany timestampu");
+            case "add" -> items = List.of(i, Map.of("ItemUUID", UUID.randomUUID().toString()));
+            case "delete" -> items = List.of();
+            case "reference" -> refs = List.of(Map.of("RefUUID", UUID.randomUUID().toString(), "InvoiceUUID", invoice.toString()));
+            case "status" -> h.put("InvoiceStatus", "CANCELLED");
+            case "party" -> {
+                var first = parties.forInvoice(h).orElseThrow();
+                var second = new customer.cap_java.ksef.fa3.SapInvoiceFa3Mapper.PartyData(first.createdAt(),
+                        new customer.cap_java.ksef.fa3.Fa3Invoice.Address("PL", "Inny adres 2", null),
+                        first.buyerAddress(), first.buyerJstSubordinateUnit(), first.buyerVatGroupMember());
+                doReturn(Optional.of(first), Optional.of(second)).when(parties).forInvoice(anyMap());
+            }
+        }
+        when(sap.readInvoice(invoice)).thenReturn(Optional.of(good), Optional.of(new SapInvoiceSnapshot(h, items, refs)));
+        if (change.equals("unavailable")) { when(sap.readInvoice(invoice)).thenReturn(Optional.of(good)).thenThrow(new IllegalStateException("remote")); }
+        if (change.equals("missing")) { when(sap.readInvoice(invoice)).thenReturn(Optional.of(good), Optional.empty()); }
+        long before = outboxCount();
+        var result = send("operator-a", "test-a", invoice);
+        assertEquals(change.equals("unavailable") ? 502 : 409, result.status(), result.body()::toString);
+        assertNoPreparationEffects(before);
+    }
+
+    @Test void initialSapUnavailableHasNoEffects() {
+        when(sap.readInvoice(invoice)).thenThrow(new IllegalStateException("remote"));
+        long before = outboxCount();
+        assertEquals(502, send("operator-a", "test-a", invoice).status());
+        assertNoPreparationEffects(before);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"unchanged", "header", "item", "party"})
+    void unapprovedSnapshotStopsBeforeAuthenticationAndSurvivesDuplicateDelivery(String drift) throws Exception {
+        var exact = new java.util.concurrent.atomic.AtomicReference<byte[]>();
+        when(store.put(any())).thenAnswer(c -> { exact.set(c.getArgument(0)); return "document.xml"; });
+        when(store.get(anyString())).thenAnswer(c -> exact.get());
+        UUID id = sendOk();
+        var before = worker.status(id);
+        var changed = SapInvoiceTestData.outbound(invoice);
+        var header = new java.util.LinkedHashMap<>(changed.header());
+        var item = new java.util.LinkedHashMap<>(changed.items().get(0));
+        if (drift.equals("header")) { header.put("SellerName", "Zmienione po snapshot commit"); }
+        if (drift.equals("item")) { item.put("Description", "Zmienione po snapshot commit"); }
+        when(sap.readInvoice(invoice)).thenReturn(Optional.of(new SapInvoiceSnapshot(header, List.of(item), List.of())));
+        if (drift.equals("party")) { doReturn(Optional.empty()).when(parties).forInvoice(anyMap()); }
+        byte[] prepared = exact.get().clone();
+        worker.process(id);
+        assertEquals("RECONCILIATION_REQUIRED", worker.status(id).get("state"));
+        assertEquals("KSEF_SNAPSHOT_POLICY_NOT_APPROVED", worker.status(id).get("lastCode"));
+        worker.process(id); // restart/duplikat nie rozpoczyna ponownego SEND
+        worker.reconcile(id); // brak sesji = diagnostyka bez auth/HTTP
+        assertEquals(before.get("snapshotId"), worker.status(id).get("snapshotId"));
+        assertEquals(before.get("xmlSha256"), worker.status(id).get("xmlSha256"));
+        assertEquals(1, count(KsefSendRequestHandler.RESERVATIONS));
+        assertEquals(1, sendOperations().size());
+        // PartyData może zablokować wcześniej niż historia; w obu przypadkach nowa operacja nie powstaje.
+        assertTrue(send("operator-a", "test-a", invoice).status() >= 400);
+        assertEquals(1, sendOperations().size());
+        assertArrayEquals(prepared, exact.get());
+        verify(store, times(1)).put(any());
+        verifyNoInteractions(authentication, session, sapWrite);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"source", "length", "environment", "nip", "reservation", "competing", "operationState", "version", "hash"})
+    void workerRejectsBrokenBindingWithoutAnyNetwork(String defect) throws Exception {
+        var exact = new java.util.concurrent.atomic.AtomicReference<byte[]>();
+        when(store.put(any())).thenAnswer(c -> { exact.set(c.getArgument(0)); return "document.xml"; });
+        when(store.get(anyString())).thenAnswer(c -> exact.get());
+        UUID id = sendOk();
+        Object snapshot = worker.status(id).get("snapshotId");
+        worker.tx(() -> {
+            switch (defect) {
+                case "source" -> db.run(Update.entity(KsefSubmissionWorker.SNAPSHOTS).byId(snapshot).data("source", "UNVERIFIED"));
+                case "length" -> db.run(Update.entity(KsefSubmissionWorker.SNAPSHOTS).byId(snapshot).data("xmlByteLength", 1));
+                case "environment" -> db.run(Update.entity(KsefSubmissionWorker.SNAPSHOTS).byId(snapshot).data("environment", "PROD"));
+                case "nip" -> db.run(Update.entity(KsefSubmissionWorker.SUBMISSIONS).byId(id.toString()).data("taxpayerNip", "9876543210"));
+                case "hash" -> db.run(Update.entity(KsefSubmissionWorker.SUBMISSIONS).byId(id.toString()).data("xmlSha256", "0".repeat(64)));
+                case "version" -> db.run(Update.entity(KsefSubmissionWorker.SNAPSHOTS).byId(snapshot).data("sapHeaderVersion", ""));
+                case "operationState" -> db.run(Update.entity(KsefSubmissionWorker.OPERATIONS).byId(id.toString()).data("status", "ACCEPTED"));
+                case "reservation" -> db.run(Update.entity(KsefSendRequestHandler.RESERVATIONS).where(r -> r.get("invoiceUUID").eq(invoice.toString()))
+                        .data("operationId", UUID.randomUUID().toString()));
+                case "competing" -> db.run(Insert.into(KsefSubmissionWorker.OPERATIONS).entry(Map.of(
+                        "ID", UUID.randomUUID().toString(), "sapDocumentRef", invoice.toString(), "taxpayerNip", "1234567802",
+                        "environment", "TEST", "direction", "OUTBOUND", "operationType", "SEND_INVOICE", "status", "UNKNOWN", "idempotencyKey", UUID.randomUUID().toString())));
+            }
+            return null;
+        });
+        worker.process(id);
+        assertEquals("RECONCILIATION_REQUIRED", worker.status(id).get("state"));
+        assertNotEquals("KSEF_SNAPSHOT_POLICY_NOT_APPROVED", worker.status(id).get("lastCode"));
+        assertEquals(1, count(KsefSendRequestHandler.RESERVATIONS));
+        verifyNoInteractions(authentication, session, sapWrite);
+    }
+
+    private long outboxCount() {
+        return worker.tx(() -> db.run(Select.from("cds.outbox.Messages")).rowCount());
+    }
+
+    private void assertNoPreparationEffects(long outboxBefore) {
+        assertTrue(sendOperations().isEmpty());
+        assertEquals(0, count(KsefSendRequestHandler.RESERVATIONS));
+        assertEquals(0, count(KsefSubmissionWorker.SNAPSHOTS));
+        assertEquals(outboxBefore, outboxCount());
+        verifyNoInteractions(store, authentication, session, sapWrite);
+    }
 
     private void rap(SapInvoiceSnapshot snapshot) {
         when(sap.readInvoice(UUID.fromString((String) snapshot.header().get("InvoiceUUID")))).thenReturn(Optional.of(snapshot));

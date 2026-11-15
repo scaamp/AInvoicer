@@ -70,6 +70,7 @@ final class SapFa3Preflight {
         require(snapshot.references().stream().allMatch(ref -> approved.id().toString()
                 .equalsIgnoreCase(text(ref, "InvoiceUUID"))), "PREFLIGHT_REFERENCE_SCOPE");
         var party = parties.forInvoice(header).orElseThrow(() -> new IllegalStateException("PREFLIGHT_PARTY_DATA_MISSING"));
+        KsefOutboundInvoiceValidator.validate(approved.id(), snapshot);
         var document = documents.prepare(snapshot, party);
         documents.verify(document.xml());
         require(snapshot.equals(read(approved.id())), "PREFLIGHT_VERSION_CHANGED_DURING_READ");
