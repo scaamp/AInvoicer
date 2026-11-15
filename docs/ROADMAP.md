@@ -1,6 +1,6 @@
 ---
 title: "AInvoicer — plan rozwoju"
-date: 2026-11-14
+date: 2026-11-15
 type: roadmap
 status: aktywny
 tags: [ainvoicer, roadmap, cap-java, ksef]
@@ -8,11 +8,17 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
 
 # Plan rozwoju
 
+- [x] **KSEF-STOR-04 offline:** prywatna encja `KsefStoredDocuments` (złożony PK, bez OData), adapter CQN,
+  testy równoległości/bezpieczeństwa/INBOUND na H2, kompilacja HANA +1 tabela; G1 tylko test kompilacji.
+  Zastępuje PR #20 (D-1 zamknięte). [Przewodnik](guides/KSEF_STOR_04_PRIVATE_HANA_STORAGE.md) · [Dziennik](journal/2026-11-15-ksef-stor-04-private-hana-storage.md).
+- [ ] **KSEF-STOR-04 — wdrożenie (osobna zgoda):** G1 CORE15 (16/5/6/16 PK) uzgodniony z Codexem, HDI deploy
+  wyłącznie nowej tabeli, G1 LIVE MATCH, pomiary HANA LIVE (409006, BLOB stream, restart). Potem wiring adaptera.
+
 - [x] **KSEF-IN-03B offline:** audyt istniejącego INBOUND, scheduler z dwoma opt-in OFF i zachowanym guardem CF;
   G1 dokładnie CORE14 + LAB + jeden BlobService view (15/5/6/15), weryfikacja definicji i testy negatywne.
   [Przewodnik](guides/KSEF_IN_03B_WORKER_READINESS.md) · [Dziennik / regresja](journal/2026-11-14-ksef-in-03b-worker-readiness.md).
 - [ ] **INBOUND CF NO-GO:** zatwierdzenie i implementacja globalnego budżetu API (schema + nowa wersja G1),
-  wiring wszystkich prób SDK/auth, lease per dispatch/renew, KSEF-STOR-03 HANA BLOB i testy wielu JVM,
+  wiring wszystkich prób SDK/auth, lease per dispatch/renew, wdrożenie i wiring KSEF-STOR-04 HANA BLOB, testy wielu JVM,
   security acceptance, osobne zgody na wydanie/odczyt TEST/aktywację schedulera.
 
 - [x] **14.11 — publikacja źródeł LAB z ORCH-06:** integracja w Git bez ponownego deploymentu.

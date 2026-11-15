@@ -8,9 +8,12 @@ tags: [ainvoicer, dokumentacja]
 
 # AInvoicer — baza wiedzy projektu
 
+**15.11.2026 — KSEF-STOR-04:** [prywatna tabela `KsefStoredDocuments` dla XML/UPO workera, brak OData, wpływ na G1](guides/KSEF_STOR_04_PRIVATE_HANA_STORAGE.md).
+[Dziennik, regresja i PR](journal/2026-11-15-ksef-stor-04-private-hana-storage.md). Offline; HDI deploy wymaga osobnej zgody. Zastępuje PR #20.
+
 **14.11.2026 — KSEF-IN-03B:** [audyt pipeline, scheduler OFF, globalny budżet do zatwierdzenia i G1 15/5/6/15](guides/KSEF_IN_03B_WORKER_READINESS.md).
 [Dziennik, regresja i PR](journal/2026-11-14-ksef-in-03b-worker-readiness.md). CF NO-GO, bez operacji LIVE i zmian LAB/storage.
-[PR #19](https://github.com/scaamp/AInvoicer/pull/19) otwarty do niezależnego review.
+[PR #19](https://github.com/scaamp/AInvoicer/pull/19) scalony 14.11 (`c5041bd`).
 
 **14.11.2026 — publikacja źródeł BLOB-LAB-01 wraz z ORCH-06.** Bez nowego deploymentu;
 wersja CF z 13.11 nie zawiera jeszcze CAP-07F. [Raport LAB](journal/2026-11-13-blob-lab-01-odata-deployment.md).
