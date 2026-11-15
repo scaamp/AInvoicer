@@ -113,7 +113,7 @@ Wszystko lokalnie i offline (H2 / kompilacja / MTAR niewdrożony):
 | Deploy | **105 PASS / 1 SKIP** (Go lokalnie niedostępne; CI ma Go) |
 | Smoke validate / check-secrets | PASS / PASS (2688 plików, heurystyka) |
 | MTAR smoke + HANA + `verify:hana` | **PASS** na commicie kodu `f2b8f0f` (smoke: Maven 528/0/0/6, UI5 CF 71 plików, oba etapy evidence; HANA: release hashes PASS, „Undeployed HANA release evidence PASS”). Payload HDI w MTAR: **16 hdbtable / 5 hdbview / 6 hdbindex**; `KsefStoredDocuments.hdbtable` SHA-256 `27cac1a2…04de6a` = wynik `compile.to.hana`. Evidence: `deploymentApproved=false`, `hdiCreation=NOT EXECUTED`; `workingTreeDirty=true` wyłącznie przez niezacommitowane `docs/` (poza `sourceHash`). Artefakt niewdrożony, w ignorowanym `deploy/build/` |
-| CI dokładnego HEAD | CI_RESULT |
+| CI dokładnego HEAD | wynik rejestrowany w checks PR (gałąź `feature/ksef-stor-04-private-hana-storage`); dziennik nie jest zmieniany po CI, aby końcowy HEAD = przetestowany HEAD |
 | LIVE | **NIE WYKONANO**: HDI deploy, CF, HANA DDL/DML, G1 LIVE, KSeF, SAP WRITE, restarty, service keys |
 
 ## Problems Encountered
