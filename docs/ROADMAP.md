@@ -8,6 +8,12 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
 
 # Plan rozwoju
 
+- [x] **KSEF-IN-04 przygotowanie:** one-shot NUMBER/BUYER na istniejącym auth/SDK/pipeline, domyślnie OFF,
+  dwie zgody i scope, budżet wszystkich żądań, STOP i raport bez danych faktury; testy offline.
+  [Runbook i preflight](guides/KSEF_IN_04_ONE_SHOT_LIVE_READ.md) · [Dowody](journal/2026-11-14-ksef-in-04-first-live-read.md).
+- [ ] **KSEF-IN-04 LIVE:** osobna zgoda właściciela na dokładny SHA/TEST/NIP/metodę/scenariusz/żądania;
+  dopiero potem auth/InvoiceRead/GET XML i SHA-256. Obecnie NOT VERIFIED, bez zmian HANA/CF/schedulera.
+
 - [x] **KSEF-IN-03B offline:** audyt istniejącego INBOUND, scheduler z dwoma opt-in OFF i zachowanym guardem CF;
   G1 dokładnie CORE14 + LAB + jeden BlobService view (15/5/6/15), weryfikacja definicji i testy negatywne.
   [Przewodnik](guides/KSEF_IN_03B_WORKER_READINESS.md) · [Dziennik / regresja](journal/2026-11-14-ksef-in-03b-worker-readiness.md).
