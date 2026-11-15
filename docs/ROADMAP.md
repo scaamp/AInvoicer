@@ -1,6 +1,6 @@
 ---
 title: "AInvoicer — plan rozwoju"
-date: 2026-11-14
+date: 2026-11-15
 type: roadmap
 status: aktywny
 tags: [ainvoicer, roadmap, cap-java, ksef]
@@ -8,11 +8,34 @@ tags: [ainvoicer, roadmap, cap-java, ksef]
 
 # Plan rozwoju
 
+**ORCH-08 — 15.11.2026, integracja w toku:** PR #21/#22/#23 review PASS WITH NOTES; wspólna regresja offline i CI do zakończenia. IN-04 READY FOR LIVE APPROVAL; STOR-04 OFFLINE READY / HANA DEPLOY PENDING; E2E-01A OFFLINE PASS / SEND NO-GO. INBOUND CF/scheduler/SAP WRITE/KSeF SEND OFF. G1 runtime 15/5/6/15, osobny niewykonywalny kontrakt release 16/5/6/16; BLOB-LAB-01 bez zmian. [Review, testy i bramki](journal/2026-11-15-orch-08-ksef-inbound-storage-e2e-integration.md).
+
+Plany osobnych etapów: [IN-04 GET](guides/ORCH_08_IN_04_LIVE_READ_PLAN.md) · [release HANA](guides/ORCH_08_STOR_04_HANA_RELEASE_PLAN.md) · [E2E-01B](guides/ORCH_08_E2E_01B_HARDENING_BACKLOG.md).
+
+
+- [x] **KSEF-IN-04 przygotowanie:** one-shot NUMBER/BUYER na istniejącym auth/SDK/pipeline, domyślnie OFF,
+  dwie zgody i scope, budżet wszystkich żądań, STOP i raport bez danych faktury; testy offline.
+  [Runbook i preflight](guides/KSEF_IN_04_ONE_SHOT_LIVE_READ.md) · [Dowody](journal/2026-11-14-ksef-in-04-first-live-read.md).
+- [ ] **KSEF-IN-04 LIVE:** osobna zgoda właściciela na dokładny SHA/TEST/NIP/metodę/scenariusz/żądania;
+  dopiero potem auth/InvoiceRead/GET XML i SHA-256. Obecnie NOT VERIFIED, bez zmian HANA/CF/schedulera.
+- [x] **E2E-01A offline:** audyt kontraktu SAP → FA(3), testowy dry-run bez zapisów i efektów,
+  fixture XSD/domena PASS, hash/rozmiar i plan pierwszego SEND.
+  [Raport](guides/E2E_01A_SAP_FA3_PREFLIGHT.md) · [Regresja i CI](journal/2026-11-15-e2e-01a-sap-fa3-preflight.md).
+- [ ] **E2E-01A LIVE / SEND NO-GO:** wskazany syntetyczny UUID, nowy zatwierdzony READ H01/principal,
+  poprawne NIP/PartyData, brak wcześniejszego SEND/rezerwacji w docelowej bazie, ochrona przed driftem
+  i kontrola statusu/pozycji, zaakceptowane runtime/storage/security. Następnie osobne zlecenie
+  pojedynczego SEND i plan writebacku. Historyczne fixture SDK i PASS offline nie zamykają E2E.
+- [x] **KSEF-STOR-04 offline:** prywatna encja `KsefStoredDocuments` (złożony PK, bez OData), adapter CQN,
+  testy równoległości/bezpieczeństwa/INBOUND na H2, kompilacja HANA +1 tabela; G1 tylko test kompilacji.
+  Zastępuje PR #20 (D-1 zamknięte). [Przewodnik](guides/KSEF_STOR_04_PRIVATE_HANA_STORAGE.md) · [Dziennik](journal/2026-11-15-ksef-stor-04-private-hana-storage.md).
+- [ ] **KSEF-STOR-04 — wdrożenie (osobna zgoda):** G1 CORE15 (16/5/6/16 PK) uzgodniony z Codexem, HDI deploy
+  wyłącznie nowej tabeli, G1 LIVE MATCH, pomiary HANA LIVE (409006, BLOB stream, restart). Potem wiring adaptera.
+
 - [x] **KSEF-IN-03B offline:** audyt istniejącego INBOUND, scheduler z dwoma opt-in OFF i zachowanym guardem CF;
   G1 dokładnie CORE14 + LAB + jeden BlobService view (15/5/6/15), weryfikacja definicji i testy negatywne.
   [Przewodnik](guides/KSEF_IN_03B_WORKER_READINESS.md) · [Dziennik / regresja](journal/2026-11-14-ksef-in-03b-worker-readiness.md).
 - [ ] **INBOUND CF NO-GO:** zatwierdzenie i implementacja globalnego budżetu API (schema + nowa wersja G1),
-  wiring wszystkich prób SDK/auth, lease per dispatch/renew, KSEF-STOR-03 HANA BLOB i testy wielu JVM,
+  wiring wszystkich prób SDK/auth, lease per dispatch/renew, wdrożenie i wiring KSEF-STOR-04 HANA BLOB, testy wielu JVM,
   security acceptance, osobne zgody na wydanie/odczyt TEST/aktywację schedulera.
 
 - [x] **14.11 — publikacja źródeł LAB z ORCH-06:** integracja w Git bez ponownego deploymentu.

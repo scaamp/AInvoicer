@@ -1,12 +1,55 @@
 ---
 title: "AInvoicer — aktualny stan"
-date: 2026-11-14
+date: 2026-11-15
 type: status
 status: w-trakcie
 tags: [ainvoicer, cap-java, status]
 ---
 
 # Stan projektu
+
+**ORCH-08 — 15.11.2026, integracja w toku:** PR #21/#22/#23 review PASS WITH NOTES; wspólna regresja offline i CI do zakończenia. IN-04 READY FOR LIVE APPROVAL; STOR-04 OFFLINE READY / HANA DEPLOY PENDING; E2E-01A OFFLINE PASS / SEND NO-GO. INBOUND CF/scheduler/SAP WRITE/KSeF SEND OFF. G1 runtime 15/5/6/15, osobny niewykonywalny kontrakt release 16/5/6/16; BLOB-LAB-01 bez zmian. [Review, testy i bramki](journal/2026-11-15-orch-08-ksef-inbound-storage-e2e-integration.md).
+
+Plany osobnych etapów: [IN-04 GET](guides/ORCH_08_IN_04_LIVE_READ_PLAN.md) · [release HANA](guides/ORCH_08_STOR_04_HANA_RELEASE_PLAN.md) · [E2E-01B](guides/ORCH_08_E2E_01B_HARDENING_BACKLOG.md).
+
+
+**KSEF-IN-04 (14.11.2026) — przygotowanie do osobnej zgody LIVE.** Izolowany test
+`KsefInboundOneShotLiveTest` korzysta z istniejącego auth/SDK i pipeline odczytu bez Spring/DB/storage.
+Scenariusz NUMBER: jeden GET; BUYER: jedna strona 10 rekordów, jawne okno ≤7 dni i najwyżej jeden GET.
+Dwie zgody opt-in, zatwierdzony NIP/TEST/metoda/scenariusz oraz twardy limit ≤9 żądań także dla auth;
+allowlista transportu i STOP po pierwszym błędzie, bez retry odczytów i bez SEND.
+Auth i InvoiceRead bieżącego principal **NOT VERIFIED**; nie wykonano auth ani odczytu faktur KSeF.
+Testy lokalne: nowe **25/25 PASS**, Maven **522 run / 0 failures / 0 errors / 6 skipped**, BUILD SUCCESS.
+Sześć skipów Azurite bez lokalnego emulatora. Wyniki i CI dokładnego HEAD:
+[dziennik IN-04](journal/2026-11-14-ksef-in-04-first-live-read.md).
+**READY FOR LIVE APPROVAL** po review i zielonym CI. Następny krok właściciela: zatwierdzić jeden zakres
+według [runbooka IN-04](guides/KSEF_IN_04_ONE_SHOT_LIVE_READ.md#następne-działanie-właściciela).
+CF/INBOUND/scheduler, HANA i BlobService bez zmian; nie odblokowano bramek IN-03B/STOR-03.
+[PR #21 i CI aktualnego HEAD](https://github.com/scaamp/AInvoicer/pull/21/checks), bez merge.
+**E2E-01A (15.11.2026) — preflight SAP → FA(3) offline, SEND NO-GO.** Osobny worktree z
+`main=c5041bd`, bez zmian gałęzi IN-04/STOR-04 i kodu produkcyjnego. Testowy harness używa
+adaptera RAP i generatora z PartyData backendu, bez operacji/rezerwacji/outboxa/storage.
+Fixture offline: domena/XSD PASS, 1719 bajtów, SHA-256 w raporcie. Regresja Maven **527/0 failures/0 errors/6 skipped**,
+w tym **30 nowych przypadków PASS**. Brak narzędzi MCP SAP,
+aktualnego READ H01 i zatwierdzonego UUID; historyczny seed ma niepoprawne kontrolnie NIP.
+Worker nie ponawia READ RAP przed SEND; wersja kompozycji/status i waluta/brutto pozycji wymagają
+rozstrzygnięcia przed próbą. Potrzebne zatwierdzone runtime/storage i osobna zgoda na SEND/writeback.
+[Raport i runbook](guides/E2E_01A_SAP_FA3_PREFLIGHT.md) · [Testy / publikacja / CI](journal/2026-11-15-e2e-01a-sap-fa3-preflight.md).
+Bez SEND, SAP WRITE, zmian H01, CF/HANA i merge. Poniższy wpis IN-03B zachowuje historyczny
+stan przed merge PR #19; aktualna baza tego zadania zawiera już ten merge.
+**KSEF-STOR-04 (15.11.2026) — prywatny magazyn HANA BLOB, offline; HDI deploy NO-GO bez zgody.**
+Bloker D-1 z KSEF-STOR-03 usunięty strukturalnie: dokumenty workera trafiają do nowej encji
+`KsefStoredDocuments` (PK `environment, channel, ownerSegment, sha256`; bez projekcji OData, bez `createdBy`),
+a laboratorium `KsefDocuments`/`BlobService` pozostało bez zmian. Adapter CQN przez `PersistenceService`,
+idempotencja na fizycznym PK, SHA-256 i rozmiar z backendu, budżet pamięci. Niepodłączony (bez beana), guard CF bez zmian.
+Kompilacja HANA: **+1 tabela, 0 widoków, 0 indeksów, 0 zmian istniejących** (16/5/6/16 PK po deployu).
+G1: zmieniono wyłącznie test niezależnej kompilacji; runtime walidatora nadal 15/5/6/15 (zgoda właściciela 15.11).
+Maven **528 / 0 failures / 0 errors / 6 skipped**, G1 **63/63**, deploy **105 PASS / 1 Go skip**.
+Zastępuje Draft [PR #20](https://github.com/scaamp/AInvoicer/pull/20) bez włączania jego commitów.
+**Bez HDI deploy, migracji i jakichkolwiek operacji LIVE.**
+[Przewodnik](guides/KSEF_STOR_04_PRIVATE_HANA_STORAGE.md) · [Dziennik / regresja / PR](journal/2026-11-15-ksef-stor-04-private-hana-storage.md).
+
+Poniższe wpisy zachowują historyczny stan przed STOR-04 (PR #19 IN-03B został scalony 14.11 jako `c5041bd`).
 
 **KSEF-IN-03B (14.11.2026) — przygotowanie offline, CF NO-GO.** Audyt potwierdził istniejący pipeline
 i DI. Dodano opcjonalny lokalny scheduler (dwa default OFF, bez startup I/O, bez nakładania ticków),
@@ -18,7 +61,7 @@ wymaga osobnego review/testów. G1 w kodzie uzgodniony z dokładnie jednym widok
 Regresja lokalna: Maven **497/0 failures/0 errors/6 skipped**, G1 **63/63**,
 deploy **105 PASS/1 Go skip**, QUnit **112**, OPA **21**, Inbox **16/73**, R2 **5**, Azurite **6** PASS; oba MTAR PASS.
 [Przewodnik i blockery](guides/KSEF_IN_03B_WORKER_READINESS.md) · [Wyniki regresji / PR](journal/2026-11-14-ksef-in-03b-worker-readiness.md).
-[Otwarty PR #19 i checks HEAD](https://github.com/scaamp/AInvoicer/pull/19/checks); bez merge.
+[PR #19 i checks](https://github.com/scaamp/AInvoicer/pull/19/checks); scalony do main jako `c5041bd` (baza IN-04).
 
 Poniższe wpisy zachowują historyczny stan przed IN-03B.
 

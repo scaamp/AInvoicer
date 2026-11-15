@@ -28,6 +28,24 @@ const labViewDDL = `VIEW BlobService_Documents AS SELECT
   KsefDocuments_0.createdAt
 FROM customer_cap_java_KsefDocuments AS KsefDocuments_0`;
 
+// KSEF-STOR-04: prywatna tabela workera jest w modelu, ale NIE jest wdrożona. Runtime walidatora (EXPECTED,
+// PRIMARY_KEYS, SQL, task) celowo jej nie zawiera — G1 LIVE obecnego wdrożenia pozostaje CORE14 + LAB.
+// Kontrakt katalogu aktualizuje się dopiero razem z zatwierdzonym HDI deploy (przewodnik KSEF-STOR-04, sekcja 9).
+const STOR04_TABLE = 'CUSTOMER_CAP_JAVA_KSEFSTOREDDOCUMENTS';
+const STOR04_PRIMARY_KEY = ['ENVIRONMENT', 'CHANNEL', 'OWNERSEGMENT', 'SHA256'];
+// Niezależny zapis wyniku compile.to.hana (sqlMapping plain) dla db/ksef-storage.cds.
+const stor04TableDDL = `COLUMN TABLE customer_cap_java_KsefStoredDocuments (
+  environment NVARCHAR(4) NOT NULL,
+  channel NVARCHAR(16) NOT NULL,
+  ownerSegment NVARCHAR(32) NOT NULL,
+  sha256 NVARCHAR(64) NOT NULL,
+  "MIMETYPE" NVARCHAR(100) NOT NULL,
+  sizeBytes BIGINT NOT NULL,
+  storedAt TIMESTAMP NOT NULL,
+  content BLOB NOT NULL,
+  PRIMARY KEY(environment, channel, ownerSegment, sha256)
+)`;
+
 /** Pełny, zgodny katalog: tabele, widoki, unikalne indeksy i PK dla każdej tabeli. */
 function healthyRows(lab = true) {
     return [
@@ -312,21 +330,30 @@ test('OData scope checks exact projection, resolved names, validity and same-sch
     assert.equal(catalog.evaluate(healthyRows(false), SECRET.schema, true).ownerLabOData, 'NOT_REQUESTED');
 });
 
-test('current CDS independently generates exactly CORE14 + LAB + one OData view and expected media key', async () => {
+test('current CDS independently generates exactly CORE14 + LAB + one OData view + undeployed STOR-04 table', async () => {
     const cds = require('../../cap-java/node_modules/@sap/cds-dk/node_modules/@sap/cds');
     const root = fileURLToPath(new URL('../../cap-java/', import.meta.url));
     const model = await cds.load([join(root, 'db'), join(root, 'srv'), join(root, 'node_modules/@sap/cds-dk/node_modules/@sap/cds/srv/outbox.cds')]);
     const artifacts = [...cds.compile.to.hana(model, { sqlMapping: 'plain' })];
     const names = suffix => artifacts.filter(([, f]) => f.file.endsWith(suffix)).map(([sql]) => sql.match(/^(?:COLUMN TABLE|VIEW|UNIQUE INVERTED INDEX) (\S+)/)?.[1]?.toUpperCase()).sort();
-    assert.equal(artifacts.filter(([, f]) => f.file.endsWith('.hdbtable')).length, 15);
-    assert.deepEqual(names('.hdbtable'), [...catalog.EXPECTED.TABLE, catalog.LAB_TABLE].sort());
+    assert.equal(artifacts.filter(([, f]) => f.file.endsWith('.hdbtable')).length, 16);
+    assert.deepEqual(names('.hdbtable'), [...catalog.EXPECTED.TABLE, catalog.LAB_TABLE, STOR04_TABLE].sort());
     assert.deepEqual(names('.hdbview'), [...catalog.EXPECTED.VIEW, 'BLOBSERVICE_DOCUMENTS'].sort());
     assert.equal(artifacts.filter(([, f]) => f.file.endsWith('.hdbindex')).length, 6);
     assert.deepEqual(names('.hdbindex'), [...catalog.EXPECTED.UNIQUE_INDEX].sort());
+    assert.equal(artifacts.length, 16 + 5 + 6, 'STOR-04 nie dodaje widoków, indeksów ani innych artefaktów');
     for (const [sql, file] of artifacts.filter(([, f]) => f.file.endsWith('.hdbtable'))) {
         const table = sql.match(/^COLUMN TABLE (\S+)/)[1].toUpperCase();
         const keys = sql.match(/PRIMARY KEY\(([^)]+)\)/)[1].split(',').map(k => k.trim().toUpperCase());
-        assert.deepEqual(keys, catalog.PRIMARY_KEYS[table], file.file);
+        assert.deepEqual(keys, table === STOR04_TABLE ? STOR04_PRIMARY_KEY : catalog.PRIMARY_KEYS[table], file.file);
+    }
+    // STOR-04: dokładny DDL, brak w runtime kontraktu LIVE i brak jakiejkolwiek projekcji (widoku) na tabelę.
+    const [storDDL] = artifacts.find(([, f]) => f.file === 'customer.cap_java.KsefStoredDocuments.hdbtable');
+    assert.equal(storDDL.trim(), stor04TableDDL);
+    assert.equal(catalog.EXPECTED.TABLE.includes(STOR04_TABLE), false);
+    assert.equal(STOR04_TABLE in catalog.PRIMARY_KEYS, false);
+    for (const [sql] of artifacts.filter(([, f]) => f.file.endsWith('.hdbview'))) {
+        assert.equal(/KsefStoredDocuments/i.test(sql), false, 'żaden widok nie czyta prywatnej tabeli');
     }
     const [ddl] = artifacts.find(([, f]) => f.file === 'BlobService.Documents.hdbview');
     assert.equal(ddl.trim(), labViewDDL);
