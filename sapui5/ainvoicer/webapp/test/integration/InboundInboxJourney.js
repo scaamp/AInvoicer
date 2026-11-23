@@ -11,6 +11,72 @@ sap.ui.define([
 	var CAP_FUTURE = { dataMode: "cap", pageSize: 20, cap: { serviceUrl: "/odata/v4/KsefService/", entitySet: "InboundInvoiceOverview", readTimeoutMs: 300 } };
 	var LONG_INVOICE = "FV/2026/11/SUPPLIER-GAMMA/BRANCH-KRAKOW/PROJECT-0001-EXTENDED-REFERENCE-NUMBER-FOR-LONG-LAYOUT-TEST/ANNEX-A";
 
+	// BETA-01: konfiguracja Inbox jak w artefakcie `build:cf:inbox-beta` (viewXml tylko z --with-xml-download).
+	function betaConfig(bXml) {
+		return { dataMode: "cap", pageSize: 20, environments: ["TEST"],
+			cap: { serviceUrl: "/odata/v4/KsefService/", entitySet: "InboundInvoiceOverview", readTimeoutMs: 2000 },
+			capabilities: { viewXml: bXml, checkDuplicate: false, linkSapDocument: false, approveAndPost: false } };
+	}
+	var BETA_XML_ID = "20000000-0000-4000-8000-000000000001";
+	var BETA_NO_XML_ID = "20000000-0000-4000-8000-000000000002";
+	var XSS_INVOICE = "<img src=x onerror=\"window.__inboxXss=1\">FV/XSS";
+	var XSS_SELLER = "<script>window.__inboxXss=2</script>Seller";
+
+	function betaDto(sId, sNumber, bXml, sSeller) {
+		return { id: sId, environment: "TEST", ksefNumber: "1234567802-20261110-0000000000" + sId.slice(-2) + "-AA",
+			invoiceNumber: sNumber, issueDate: "2026-11-09", acquisitionDate: "2026-11-10T10:00:00Z", sellerNip: "1234567802",
+			sellerName: sSeller || "Beta supplier", buyerIdentifierType: "Nip", buyerIdentifierValue: "1234567802", currency: "PLN",
+			grossAmount: "123.45", ingestionStatus: "STORED", parseStatus: "PARSED", integrityStatus: "VERIFIED",
+			sapPostingStatus: "NOT_POSTED", xmlAvailable: bXml };
+	}
+
+	/** Atrapa backendu CAP/AppRoutera dla trybu beta: odpowiedź zależy od oContext.betaMode (bez sieci). */
+	function betaRoute(sMode, sUrl) {
+		var aRows = [betaDto(BETA_XML_ID, "FV/BETA/XML", true), betaDto(BETA_NO_XML_ID, "FV/BETA/NOXML", false)];
+		if (sUrl.indexOf("InboundInvoiceXml(") !== -1) {
+			return sMode === "xml403" ? { status: 403, body: { error: { message: "Forbidden" } } }
+				: { status: 200, contentType: "application/xml", text: "<?xml version=\"1.0\"?><Faktura/>" };
+		}
+		if (sUrl.indexOf("InboundInvoiceOverview(") !== -1) {
+			return { status: 200, body: aRows.filter(function (oRow) { return sUrl.indexOf(oRow.id) !== -1; })[0] };
+		}
+		switch (sMode) {
+			case "401": return { status: 401 };
+			case "403": return { status: 403, body: { error: { message: "Forbidden" } } };
+			case "500": return { status: 500, body: { error: { message: "java.lang.IllegalStateException at com.example" } } };
+			case "html": return { status: 200, contentType: "text/html", text: "<html>login</html>" };
+			case "empty": return { status: 200, body: { "@odata.count": 0, value: [] } };
+			case "xss": return { status: 200, body: { "@odata.count": 1, value: [betaDto(BETA_XML_ID, XSS_INVOICE, true, XSS_SELLER)] } };
+			default: return { status: 200, body: { "@odata.count": 2, value: aRows } };
+		}
+	}
+
+	function betaFetch(oContext) {
+		return function (sUrl, oOptions) {
+			oContext.betaCalls.push({ url: sUrl, method: oOptions.method });
+			var oSpec = betaRoute(oContext.betaMode, sUrl);
+			var sType = oSpec.contentType || "application/json";
+			return Promise.resolve({
+				ok: oSpec.status >= 200 && oSpec.status < 300,
+				status: oSpec.status,
+				headers: { get: function (sName) { return /content-type/i.test(sName) ? sType : null; } },
+				json: function () { return oSpec.body ? Promise.resolve(oSpec.body) : Promise.reject(new SyntaxError("no json")); },
+				blob: function () { return Promise.resolve(new Blob([oSpec.text || ""], { type: sType })); }
+			});
+		};
+	}
+
+	function setupBeta(oController, oContext, sMode, bXml) {
+		oContext.betaCalls = [];
+		oContext.saved = [];
+		oContext.betaMode = sMode;
+		oController._setupAdapter(betaConfig(bXml), betaFetch(oContext));
+		oController._saveFile = function (oBlob, sName) {
+			oContext.saved.push({ name: sName, size: oBlob.size });
+		};
+		oController._load(false);
+	}
+
 	/** fetch, który nigdy nie odpowiada (symulacja braku odpowiedzi serwera); respektuje abort. */
 	function hangingFetch(aCalls) {
 		return function (sUrl, oOptions) {
@@ -95,7 +161,9 @@ sap.ui.define([
 		Then.onTheInboxPage.iShouldSeeTextContaining("inboxDetailsIntegrity", "Integrity conflict");
 		Then.onTheInboxPage.iShouldSeeTextContaining("inboxDetailsSap", "Not in SAP");
 		Then.onTheInboxPage.iShouldSeeTextContaining("inboxDetailsSapDocument", "No SAP document reference");
-		Then.onTheInboxPage.iShouldSeeButtonDisabled("inboxViewXmlButton");
+		// Mock/domyślny build: brak przycisku pobrania XML, jawny powód zamiast atrapy.
+		Then.onTheInboxPage.iShouldSeeControlVisible("inboxDownloadXmlButton", false);
+		Then.onTheInboxPage.iShouldSeeTextContaining("inboxDownloadXmlInfo", "not available in this version");
 		Then.onTheInboxPage.iShouldSeeButtonDisabled("inboxCheckDuplicateButton");
 		Then.onTheInboxPage.iShouldSeeButtonDisabled("inboxLinkSapDocumentButton");
 		Then.onTheInboxPage.iShouldSeeButtonDisabled("inboxApproveAndPostButton");
@@ -182,6 +250,108 @@ sap.ui.define([
 		Then.onTheInboxPage.iShouldSeeTextContaining("inboxModeBadge", "Not available");
 		Then.onTheInboxPage.iShouldSeeNoNetworkRequests();
 		When.onTheInboxPage.iStopRecordingNetworkRequests();
+
+		When.onTheInboxPage.iCallController(function (oController) {
+			oController._setupAdapter(oController.getOwnerComponent().getManifestEntry("/sap.ui5/config/ksefInbox"));
+			oController._load(false);
+		});
+		Then.onTheInboxPage.iShouldSeeRows(20, 26);
+	});
+
+	opaTest("BETA-01: CAP access states (401 sign-in, login page, 403, 5xx, empty) clear data and explain the cause", function (Given, When, Then) {
+		When.onTheInboxPage.iCallController(function (oController) {
+			setupBeta(oController, this.getContext(), "401", false);
+		});
+		Then.onTheInboxPage.iShouldSeeRows(0);
+		Then.onTheInboxPage.iShouldSeeTextContaining("inboxErrorStrip", "session has expired");
+		Then.onTheInboxPage.iShouldSeeControlVisible("inboxSignInAgainLink", true);
+		Then.onTheInboxPage.iShouldSeeEmptyState("error");
+		Then.onTheInboxPage.iShouldSeeControlVisible("inboxDemoStrip", false);
+		Then.onTheInboxPage.iShouldSeeTextContaining("inboxModeBadge", "Read-only");
+
+		When.onTheInboxPage.iCallController(function (oController) {
+			this.getContext().betaMode = "html";
+			oController._load(false);
+		});
+		Then.onTheInboxPage.iShouldSeeTextContaining("inboxErrorStrip", "Sign in again");
+		Then.onTheInboxPage.iShouldSeeControlVisible("inboxSignInAgainLink", true);
+		Then.onTheInboxPage.iShouldSeeRows(0);
+
+		When.onTheInboxPage.iCallController(function (oController) {
+			this.getContext().betaMode = "403";
+			oController._load(false);
+		});
+		Then.onTheInboxPage.iShouldSeeTextContaining("inboxErrorStrip", "not authorized to read the KSeF Inbox");
+		Then.onTheInboxPage.iShouldSeeControlVisible("inboxSignInAgainLink", false);
+
+		When.onTheInboxPage.iCallController(function (oController) {
+			this.getContext().betaMode = "500";
+			oController._load(false);
+		});
+		Then.onTheInboxPage.iShouldSeeTextContaining("inboxErrorStrip", "temporarily unavailable (HTTP 500)");
+		When.onTheInboxPage.iCallController(function (oController) {
+			Opa5.assert.strictEqual(oController.getView().getModel("inbox").getProperty("/error").indexOf("java.lang"), -1,
+				"no server internals shown for 5xx");
+		});
+
+		When.onTheInboxPage.iCallController(function (oController) {
+			this.getContext().betaMode = "empty";
+			oController.onRefresh();
+		});
+		Then.onTheInboxPage.iShouldSeeRows(0, 0);
+		Then.onTheInboxPage.iShouldSeeEmptyState("noData");
+		Then.onTheInboxPage.iShouldSeeControlVisible("inboxErrorStrip", false);
+	});
+
+	opaTest("BETA-01: invoice values from XML are rendered as text in the list", function (Given, When, Then) {
+		When.onTheInboxPage.iCallController(function (oController) {
+			setupBeta(oController, this.getContext(), "xss", false);
+		});
+		Then.onTheInboxPage.iShouldSeeRows(1, 1);
+		Then.onTheInboxPage.iShouldSeeLiteralTextInTable(XSS_INVOICE);
+		Then.onTheInboxPage.iShouldSeeLiteralTextInTable(XSS_SELLER);
+	});
+
+	opaTest("BETA-01: Download XML only with viewXml and xmlAvailable; URL from the UUID; errors stay in the dialog", function (Given, When, Then) {
+		// Beta bez --with-xml-download: brak przycisku nawet dla xmlAvailable=true.
+		When.onTheInboxPage.iCallController(function (oController) {
+			setupBeta(oController, this.getContext(), "ok", false);
+		});
+		Then.onTheInboxPage.iShouldSeeRows(2, 2);
+		When.onTheInboxPage.iOpenInvoice("FV/BETA/XML");
+		Then.onTheInboxPage.iShouldSeeDetails("FV/BETA/XML");
+		Then.onTheInboxPage.iShouldSeeControlVisible("inboxDownloadXmlButton", false);
+		Then.onTheInboxPage.iShouldSeeTextContaining("inboxDownloadXmlInfo", "not available in this version");
+		When.onTheInboxPage.iPressButton("inboxDetailsCloseButton");
+
+		// Beta z --with-xml-download.
+		When.onTheInboxPage.iCallController(function (oController) {
+			setupBeta(oController, this.getContext(), "ok", true);
+		});
+		Then.onTheInboxPage.iShouldSeeRows(2, 2);
+		When.onTheInboxPage.iOpenInvoice("FV/BETA/NOXML");
+		Then.onTheInboxPage.iShouldSeeDetails("FV/BETA/NOXML");
+		Then.onTheInboxPage.iShouldSeeControlVisible("inboxDownloadXmlButton", false);
+		Then.onTheInboxPage.iShouldSeeTextContaining("inboxDownloadXmlInfo", "not stored");
+		When.onTheInboxPage.iPressButton("inboxDetailsCloseButton");
+
+		When.onTheInboxPage.iOpenInvoice("FV/BETA/XML");
+		Then.onTheInboxPage.iShouldSeeDetails("FV/BETA/XML");
+		Then.onTheInboxPage.iShouldSeeControlVisible("inboxDownloadXmlButton", true);
+		When.onTheInboxPage.iPressButton("inboxDownloadXmlButton");
+		Then.onTheInboxPage.iShouldSeeDownloadedFile("KSeF-1234567802-20261110-000000000001-AA.xml",
+			"/odata/v4/KsefService/InboundInvoiceXml(" + BETA_XML_ID + ")/content");
+
+		When.onTheInboxPage.iRunInContext(function () {
+			this.getContext().betaMode = "xml403";
+		});
+		When.onTheInboxPage.iPressButton("inboxDownloadXmlButton");
+		Then.onTheInboxPage.iShouldSeeTextContaining("inboxDetailsErrorStrip", "could not be downloaded");
+		Then.onTheInboxPage.iShouldSeeTextContaining("inboxDetailsErrorStrip", "not authorized");
+		When.onTheInboxPage.iRunInContext(function () {
+			Opa5.assert.strictEqual(this.getContext().saved.length, 1, "failed download saves no file");
+		});
+		When.onTheInboxPage.iPressButton("inboxDetailsCloseButton");
 
 		When.onTheInboxPage.iCallController(function (oController) {
 			oController._setupAdapter(oController.getOwnerComponent().getManifestEntry("/sap.ui5/config/ksefInbox"));

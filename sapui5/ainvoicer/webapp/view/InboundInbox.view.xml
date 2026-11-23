@@ -198,7 +198,17 @@
                     visible="{= !!${inbox>/error} }"
                     close=".onErrorClose"
                     class="sapUiSmallMarginBeginEnd sapUiTinyMarginTop"
-                />
+                >
+                    <!-- 401 / wygasła sesja AppRoutera: ponowne logowanie przez przeładowanie (XSUAA), bez tokenów w UI. -->
+                    <link>
+                        <Link
+                            id="inboxSignInAgainLink"
+                            text="{i18n>inboxSignInAgain}"
+                            visible="{inbox>/loginRequired}"
+                            press=".onSignInAgain"
+                        />
+                    </link>
+                </MessageStrip>
                 <MessageStrip
                     id="inboxRejectedStrip"
                     type="Warning"
