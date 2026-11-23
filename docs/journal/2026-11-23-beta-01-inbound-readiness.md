@@ -144,6 +144,13 @@ Windows, JDK 25.0.4.1, Maven 3.9.16, Node 24.13.0, CAP 5.2.0, SDK MF 3.0.29 (`3c
 Lokalne MTAR powstały z roboczego drzewa. Dowód z czystego checkoutu pochodzi z CI. Instalacja zależności
 zgłosiła istniejące ustalenia `npm audit` w narzędziach UI5, MBT i Azurite. BETA-01.1 używa tych samych wersji.
 
+Pierwszy bieg CI dla `96c0672` zatrzymał się podczas konfiguracji `demo-web-app`, gdy Gradle Plugin Portal
+nie rozwiązał pluginu GraalVM 0.10.2. Instalator uruchamia przypięte `:ksef-client:publishToMavenLocal`
+z `--configure-on-demand`, dzięki czemu do budowy biblioteki potrzebna jest konfiguracja modułu i projektu
+głównego. Zweryfikowano na świeżej kopii SDK, Gradle 8.8 i JDK 21.0.12 (`BUILD SUCCESSFUL`, JAR 3.0.29
+w izolowanym repozytorium Maven). Pin commita SDK i wymagane kroki CI zachowują swoje reguły.
+[Pierwszy bieg CI](https://github.com/scaamp/AInvoicer/actions/runs/45234057359).
+
 **Merge readiness:** GO dla patcha offline po pełnej regresji i SUCCESS CI dokładnego HEAD na [PR #29](https://github.com/scaamp/AInvoicer/pull/29/checks).
 **BETA LIVE NO-GO**. Obowiązują bramki CF EU20 `BLOCKED_AUTH`, R-1, STOR-04/CURRENT i NEW G1, budżet fizycznych prób
 i sign-off XSUAA. Po ewentualnym merge następny krok to osobno zatwierdzony read-only PRECHECK EU20 po odnowieniu
