@@ -52,6 +52,18 @@ ainv:
         enabled: false
       environment: TEST
       initial-from: ""
+      # KSEF-IN-05: prywatny magazyn HANA (KsefStoredDocuments) dla INBOUND/TEST. Domyślnie OFF; wymaga bazy HANA.
+      # allow-local-h2 dopuszcza H2 wyłącznie lokalnie (testy offline), w chmurze jest ignorowane.
+      storage:
+        hana:
+          enabled: false
+          allow-local-h2: false
+      # KSEF-IN-05: pobranie oryginalnego XML (KsefService.InboundInvoiceXml(<id>)/content). Domyślnie OFF.
+      xml-download:
+        enabled: false
+      # KSEF-IN-05: wewnętrzny import jednej faktury po numerze KSeF (bez OData/schedulera). Wymaga inbound.enabled.
+      manual-import:
+        enabled: false
     nip: ${AINV_KSEF_NIP:}
     token: ${AINV_KSEF_TOKEN:}
     test-xades: false

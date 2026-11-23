@@ -8,7 +8,6 @@ import org.springframework.stereotype.Component;
 
 import com.sap.cds.ql.CQL;
 import com.sap.cds.ql.Predicate;
-import com.sap.cds.ql.Select;
 import com.sap.cds.ql.cqn.*;
 import com.sap.cds.services.ErrorStatuses;
 import com.sap.cds.services.ServiceException;
@@ -17,7 +16,6 @@ import com.sap.cds.services.cds.CqnService;
 import com.sap.cds.services.handler.EventHandler;
 import com.sap.cds.services.handler.annotations.Before;
 import com.sap.cds.services.handler.annotations.ServiceName;
-import com.sap.cds.services.request.UserInfo;
 
 /** Odczyt stagingu bez uprawnień KSeF auth, synchronizacji, systemUser ani dostępu do XML. */
 @Component
@@ -37,7 +35,8 @@ public class InboundOverviewHandler implements EventHandler {
         }
         CqnSelect query = context.getCqn();
         validate(query);
-        Predicate scope = allowed(context.getUserInfo());
+        // Wspólny model zakresu z pobraniem XML (KSEF-IN-05): NIP z XSUAA ∩ grant BUYER/TEST.
+        Predicate scope = InboundGrantScope.visible(context.getUserInfo(), "id");
         context.setCqn(CQL.copy(query, new Modifier() {
             @Override public CqnPredicate where(Predicate where) {
                 return where == null ? scope : where.and(scope);
@@ -62,21 +61,6 @@ public class InboundOverviewHandler implements EventHandler {
             }
             @Override public long top(long top) { return Math.min(top, 100); }
         }));
-    }
-
-    /** V1: dokładnie jeden poprawny NIP i CompanyCode; spółka jest kontekstem, nie własnością dokumentu. */
-    private static Predicate allowed(UserInfo user) {
-        List<String> nips = user.getAttributeValues("taxpayerNips");
-        List<String> companies = user.getAttributeValues("companyCodes");
-        if (!user.isAuthenticated() || !user.hasRole("KsefOperator")
-                || nips == null || companies == null || nips.size() != 1 || companies.size() != 1
-                || !customer.cap_java.ksef.inbound.KsefTaxpayerContext.isValidNip(nips.getFirst())
-                || companies.getFirst() == null || !companies.getFirst().matches("[A-Z0-9]{4}")) {
-            return CQL.get("id").isNull(); // UUID jest kluczem NOT NULL: fail closed także dla count.
-        }
-        return CQL.get("environment").eq("TEST").and(CQL.get("id").in(
-                Select.from("customer.cap_java.KsefInboundAccessGrants").columns("documentId")
-                    .where(g -> g.get("contextNip").eq(nips.getFirst()).and(g.get("subjectRole").eq("BUYER")))));
     }
 
     /** Whitelist CQN po parserze OData: brak apply/search/expand/nawigacji i kosztownych wyrażeń. */
