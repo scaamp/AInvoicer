@@ -187,10 +187,13 @@ class HanaDocumentStoreInboundPipelineTest {
      */
     @Test void offlineH2SynchronizationKeepsBomCrlfAndIsIdempotentAcrossRestart() throws Exception {
         byte[] bom = new byte[] {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
-        byte[] original = new byte[bom.length + xml.length];
+        // CRLF budowane jawnie: końce linii fixture zależą od checkoutu Git (autocrlf na Windows vs LF w CI).
+        byte[] crlf = new String(xml, java.nio.charset.StandardCharsets.UTF_8).replace("\r\n", "\n").replace("\n", "\r\n")
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] original = new byte[bom.length + crlf.length];
         System.arraycopy(bom, 0, original, 0, bom.length);
-        System.arraycopy(xml, 0, original, bom.length, xml.length);
-        assertTrue(new String(original, java.nio.charset.StandardCharsets.UTF_8).contains("\r\n"), "fixture ma CRLF");
+        System.arraycopy(crlf, 0, original, bom.length, crlf.length);
+        assertTrue(new String(original, java.nio.charset.StandardCharsets.UTF_8).contains("\r\n"), "payload ma CRLF");
         when(sdk.getInvoice(anyString(), anyString())).thenReturn(original);
         when(sdk.queryInvoiceMetadata(eq(0), anyInt(), any(), any(), any())).thenReturn(response(false, false,
                 HWM.toString(), sdkItem(metadataJson(ksefNumber(1), "2026-11-02T09:00:00Z", hashOf(original)))));
