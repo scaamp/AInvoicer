@@ -1,6 +1,7 @@
 package customer.cap_java;
 
 import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.List;
@@ -111,22 +112,27 @@ public class InboundInvoiceXmlHandler implements EventHandler {
         try {
             xml = inbound.store().get((String) row.get("xmlStorageRef"));
         } catch (KsefFailure failure) {
-            log.warn("INBOUND_XML_READ_FAILED code={} retryable={}", failure.getMessage(), failure.retryable());
+            log.warn("INBOUND_XML_READ_FAILED code=STORAGE_FAILURE retryable={}", failure.retryable());
             throw new ServiceException(failure.retryable() ? UNAVAILABLE : ErrorStatuses.SERVER_ERROR,
                     "INBOUND_XML_UNAVAILABLE");
         } catch (RuntimeException failure) {
-            log.warn("INBOUND_XML_READ_FAILED code=UNEXPECTED type={}", failure.getClass().getSimpleName());
+            log.warn("INBOUND_XML_READ_FAILED code=UNEXPECTED");
             throw new ServiceException(ErrorStatuses.SERVER_ERROR, "INBOUND_XML_UNAVAILABLE");
         }
-        Object size = row.get("sizeBytes");
-        boolean intact = xml != null && xml.length > 0
-                && MessageDigest.isEqual(KsefInvoiceSnapshotRegistry.sha256Hex(xml).getBytes(), String.valueOf(row.get("sha256")).getBytes())
-                && (size == null || ((Number) size).longValue() == xml.length);
+        boolean intact = xml != null && hasExpectedSize(row.get("sizeBytes"), xml.length)
+                && row.get("sha256") instanceof String sha256
+                && MessageDigest.isEqual(KsefInvoiceSnapshotRegistry.sha256Hex(xml).getBytes(StandardCharsets.US_ASCII),
+                        sha256.getBytes(StandardCharsets.US_ASCII));
         if (!intact) {
             log.warn("INBOUND_XML_READ_FAILED code=INTEGRITY_MISMATCH");
             throw new ServiceException(ErrorStatuses.SERVER_ERROR, "INBOUND_XML_UNAVAILABLE");
         }
         return xml;
+    }
+
+    /** Integer64 z CAP; wartości tekstowe i ułamkowe nie są poprawnym rozmiarem BLOB. */
+    static boolean hasExpectedSize(Object size, int byteCount) {
+        return byteCount > 0 && size instanceof Long length && length == byteCount;
     }
 
     /**

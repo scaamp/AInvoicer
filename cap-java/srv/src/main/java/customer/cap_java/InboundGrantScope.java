@@ -20,6 +20,8 @@ import customer.cap_java.ksef.inbound.KsefTaxpayerContext;
  * dokumentu INBOUND — brak kolumny spółki w stagingu; wiele/błędne wartości = brak dostępu (fail closed).
  * Dostęp do dokumentu daje wyłącznie grant {@code KsefInboundAccessGrants (contextNip, BUYER)} w środowisku TEST;
  * pola faktury (np. {@code buyerIdentifierValue}) nigdy nie są podstawą widoczności.
+ * Beta 0.1 wymaga jednej zatwierdzonej pary NIP/CompanyCode w przypisaniach XSUAA.
+ * Dwie poprawne spółki tego samego NIP mają ten sam zakres odczytu. Multi-company wymaga osobnej decyzji.
  */
 final class InboundGrantScope {
     static final String OPERATOR_ROLE = "KsefOperator";

@@ -117,17 +117,34 @@ Kontrakt `InboundManualImport.importOne(ksefNumber)` (Java, bez akcji OData):
 6. Checkpoint synchronizacji **nie** jest zmieniany. Błąd → wspólna polityka `InboundSynchronization.finishFailed`
    (niejednoznaczny auth/redeem lub konflikt/quarantine → `BLOCKED`, wymaga operatora; brak automatycznego retry).
 
-Budżet żądań jednego przebiegu: auth jak w IN-04 (challenge, TOKEN/XAdES, status ≤ 3, redeem; certyfikaty MF przy TOKEN)
-+ **metadata ×1 + GET ×1**. Wynik `Result(outcome, documentId)` nie zawiera XML, referencji ani tokenu.
+**`NOT_FOUND`** oznacza pustą odpowiedź dla numeru w sprawdzonym oknie PermanentStorage oraz zakresie TEST/NIP/BUYER.
+Import zapisuje tylko cooldown `WAITING`. Późniejszy jawny import może znaleźć fakturę, która stała się widoczna
+w tym oknie. Dokument zapisany trwale poza oknem może odnaleźć synchronizacja obejmująca jego datę PermanentStorage.
+Kod nie zapisuje negatywnego rekordu faktury, grantu ani checkpointu. HWM wyznacza kompletność danych w czasie,
+a kontrakt MF nie gwarantuje, że PermanentStorage mieści się między datą z numeru −1 i +30 dni. Zakres zapytania
+pozostaje taki sam. Działanie filtra `ksefNumber` w TEST nadal wymaga potwierdzenia LIVE.
+[OpenAPI MF](https://github.com/CIRFMF/ksef-api/blob/d4460b6c77616c423924254d8be1cbc2858027c6/open-api.json) ·
+[HWM MF](https://github.com/CIRFMF/ksef-api/blob/d4460b6c77616c423924254d8be1cbc2858027c6/pobieranie-faktur/hwm.md).
 
-**Założenia NIEZWERYFIKOWANE LIVE:** (a) filtr `ksefNumber` w zapytaniu metadanych działa w KSeF TEST zgodnie z
-OpenAPI/SDK 3.0.29; (b) segment `RRRRMMDD` numeru = dzień nadania numeru, a PermanentStorage mieści się w oknie.
-`NOT_FOUND` nie dowodzi nieistnienia faktury.
+**Budżet fizycznych żądań HTTP — BLOCKED LIVE.** Produkcyjny manual import używa współdzielonego SDK MF 3.0.29
+i JDK `HttpClient`. Jedno `open()` obejmuje challenge, TOKEN/XAdES, do 15 odczytów statusu w limicie rozpoczęcia
+pollingu 60 s i jeden redeem. TOKEN może pobrać certyfikaty MF przy inicjalizacji kryptografii. Przed metadata i GET
+`session.token()` może wykonać refresh. Metadata i GET mają po jednej próbie aplikacyjnej. SDK korzysta z `send`,
+circuit breaker jest wyłączony, redirecty mają `NEVER`. JDK może jednak ponowić fizyczny GET w obrębie jednego `send`
+po utracie odpowiedzi. `OneShotWireRetryTest` liczy żądania odebrane na loopback: pass obu wariantów potwierdza retry
+na domyślnej JVM i pojedynczą próbę w izolowanej JVM z flagami harnessu. Wynik `Result(outcome, documentId)`
+zawiera wyłącznie status i opcjonalne ID dokumentu. Niejednoznaczny start auth/redeem/refresh blokuje lease.
+[Właściwości transportu JDK 25](https://docs.oracle.com/en/java/javase/25/docs/api/java.net.http/module-summary.html).
 
-**Minimalny kontrakt bezpieczeństwa do otwarcia guardu (poza zakresem IN-05):** globalny budżet API między JVM
-(IN-03A/IN-03B), renew/kontrola lease przed każdą próbą HTTP, wdrożona tabela STOR-04 + G1 CORE15, decyzja o
-wywołującym (akcja OData z rolą operatora + audyt albo zadanie operatorskie), test LIVE filtra `ksefNumber` w
-zatwierdzonym one-shot, security sign-off. Do tego czasu import działa tylko lokalnie (`inbound.enabled` + flaga).
+**Minimalny patch przed LIVE:** wykorzystać istniejące wstrzykiwanie transportu SDK oraz wzorzec `OneShotHttpClient`.
+Wydzielić transport dla manual importu z wyłączonym replay, bez przekierowań i challenge proxy. Rezerwować przed
+każdą próbą jeden slot wspólnego budżetu na import (propozycja 1–9, domyślnie 9), obejmującego certyfikaty, auth,
+polling, redeem, refresh, metadata i GET. Fencing lease przed I/O i trwałe `BLOCKED` przy nieznanym wyniku auth.
+Zakres transportu musi objąć także kryptografię TOKEN. Właściwości JDK z harnessu działają na poziomie JVM, więc
+wymagają izolacji procesu, jeśli posłużą do dowodu. W CAP potrzebny jest transport z polityką per klient, aby
+zachować retry/reconciliation OUTBOUND. Test loopback kompletnej ścieżki ma policzyć sukces, wyczerpanie przed
+metadata/GET, polling, timeout i utratę odpowiedzi auth. Dodatkowe bramki LIVE to globalny budżet między JVM,
+STOR-04/G1, decyzja o wywołującym i sign-off. Guard CF pozostaje aktywny.
 
 ## 6. B4 — kontrakt pobrania XML (backend)
 
@@ -155,7 +172,7 @@ Kolejność kontroli w `InboundInvoiceXmlHandler` (@On READ; CAP nie wykonuje ż
 | 5 | bezpośredni `GET …/content` (URI kończy się `/content`) | 403 `INBOUND_XML_DIRECT_GET_ONLY` (`$batch`, odczyt encji bez `/content`) |
 | 6 | magazyn INBOUND podłączony | 503 `INBOUND_XML_UNAVAILABLE` |
 | 7 | **jedno CQN w DB przed BLOB:** `ID` ∧ `environment=TEST` ∧ grant `(NIP, BUYER)` ∧ `STORED` ∧ `VERIFIED` ∧ `xmlStorageRef` ∧ `parseStatus ∈ {PARSED, UNSUPPORTED_SCHEMA}` | 404 `INBOUND_XML_NOT_FOUND` (obcy = nieistniejący = nieudostępniony) |
-| 8 | `store.get(xmlStorageRef)` w scope INBOUND/TEST + SHA-256 i długość względem wiersza | 500 (lub 503 przy błędzie chwilowym) `INBOUND_XML_UNAVAILABLE` |
+| 8 | `store.get(xmlStorageRef)` w scope INBOUND/TEST, niepusty XML, dodatnie `sizeBytes` typu Integer64 zgodne z liczbą bajtów i zgodny SHA-256 | 500 (lub 503 przy błędzie chwilowym) `INBOUND_XML_UNAVAILABLE` |
 
 Odpowiedź 200: oryginalne bajty, `Content-Type: application/xml`,
 `Content-Disposition: attachment; filename="<ksefNumber>.xml"` (alfabet `[0-9A-Za-z-]`, inaczej `<id>.xml`),
@@ -169,6 +186,12 @@ poprawny NIP (`taxpayerNips`) i **dokładnie jeden** CompanyCode (`companyCodes`
 grant `KsefInboundAccessGrants(contextNip, BUYER)`. CompanyCode jest **kontekstem sesji**, nie właściwością dokumentu
 INBOUND (staging nie ma kolumny spółki): ten sam NIP z inną spółką widzi te same dokumenty; wiele/błędne wartości →
 brak dostępu. `KsefScopeUserInfoProvider` dodatkowo zeruje niejednoznaczne pary (N NIP × M spółek).
+
+**Polityka Beta 0.1:** jeden zatwierdzony kontekst NIP/CompanyCode dla całej grupy beta. Szablon XSUAA
+`KsefOperator` ma dwa niezależne atrybuty i przyjmie inną poprawnie sformatowaną parę przypisaną przez administratora.
+Istniejąca konfiguracja pozwala ograniczyć dostęp operacyjnie przez jedną rolę beta z oboma statycznymi wartościami,
+przypisanie tylko zatwierdzonym użytkownikom i sprawdzenie ich efektywnych atrybutów JWT przed aktywacją. Aplikacja
+filtruje dokumenty według wpisu BUYER/TEST dla NIP. **Multi-company dla jednego NIP jest NO-GO dla Beta 0.1.**
 
 ## 7. Macierz bezpieczeństwa (B5)
 

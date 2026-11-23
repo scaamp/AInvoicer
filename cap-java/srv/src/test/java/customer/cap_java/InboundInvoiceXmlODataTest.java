@@ -150,8 +150,15 @@ class InboundInvoiceXmlODataTest {
 
     /** CompanyCode jest kontekstem sesji (V1), nie własnością dokumentu INBOUND: ten sam NIP z inną spółką widzi dokument. */
     @Test void companyCodeIsSessionContextNotDocumentOwnership() throws Exception {
-        assertEquals(200, get("operator-other-company", xml(OWN)).statusCode());
+        var otherCompany = get("operator-other-company", xml(OWN));
+        assertEquals(200, otherCompany.statusCode());
+        assertArrayEquals(XML, otherCompany.body());
         assertEquals(200, get("operator-peer", xml(OWN)).statusCode());
+        String list = "InboundInvoiceOverview?$top=100";
+        var approved = ids(get("operator-a", list));
+        assertTrue(approved.contains(OWN));
+        assertEquals(approved, ids(get("operator-other-company", list)));
+        assertEquals(404, get("operator-other-company", xml(FOREIGN)).statusCode());
     }
 
     @Test void tenantBIsolatedFromTenantADocumentsWithIndistinguishable404() throws Exception {
@@ -253,6 +260,46 @@ class InboundInvoiceXmlODataTest {
         assertFalse(response.body().contains(MARKER), response::body);
         assertEquals(200, response.statusCode(), response::body);
         assertTrue(response.body().contains("403") && response.body().contains("INBOUND_XML_DIRECT_GET_ONLY"), response::body);
+    }
+
+    @Test void batchOverviewKeyReadStillEnforcesBuyerGrant() throws Exception {
+        String boundary = "batch_in05_read";
+        String payload = "--" + boundary + "\r\nContent-Type: application/http\r\nContent-Transfer-Encoding: binary\r\n\r\n"
+                + "GET InboundInvoiceOverview(" + OWN + ") HTTP/1.1\r\nAccept: application/json\r\n\r\n\r\n--" + boundary + "--\r\n";
+        byte[] body = payload.getBytes(StandardCharsets.UTF_8);
+        String contentType = "multipart/mixed;boundary=" + boundary;
+        var own = request("operator-a", "test-a", "POST", "$batch", contentType, body);
+        var foreign = request("operator-b", "test-b", "POST", "$batch", contentType, body);
+        assertEquals(200, own.statusCode());
+        assertTrue(text(own).contains("HTTP/1.1 200") && text(own).contains(ksefNumber(OWN)));
+        assertEquals(200, foreign.statusCode());
+        assertTrue(text(foreign).contains("HTTP/1.1 404"));
+        assertFalse(text(foreign).contains(ksefNumber(OWN)));
+        assertSafe(foreign);
+    }
+
+    @Test void missingZeroOrIncorrectStagingSizeFailsWithIntactBlob(CapturedOutput output) throws Exception {
+        for (Long size : new Long[] {null, 0L, -1L, XML.length - 1L, XML.length + 1L}) {
+            var data = new HashMap<String, Object>();
+            data.put("sizeBytes", size);
+            db.run(Update.entity(DOCUMENTS).data(data).byId(OWN));
+            var response = get("operator-a", xml(OWN));
+            assertEquals(500, response.statusCode(), String.valueOf(size));
+            assertTrue(text(response).contains("INBOUND_XML_UNAVAILABLE"));
+            assertFalse(text(response).contains(KsefInvoiceSnapshotRegistry.sha256Hex(XML)));
+            assertSafe(response);
+        }
+        assertArrayEquals(XML, storage.store().get(reference));
+        assertFalse(output.getAll().contains(MARKER));
+        assertFalse(output.getAll().contains(reference));
+        assertFalse(output.getAll().contains(KsefInvoiceSnapshotRegistry.sha256Hex(XML)));
+    }
+
+    @Test void stagingSizeRequiresInteger64AndNonemptyXml() {
+        assertTrue(InboundInvoiceXmlHandler.hasExpectedSize(2L, 2));
+        assertFalse(InboundInvoiceXmlHandler.hasExpectedSize("2", 2));
+        assertFalse(InboundInvoiceXmlHandler.hasExpectedSize(2.5, 2));
+        assertFalse(InboundInvoiceXmlHandler.hasExpectedSize(0L, 0));
     }
 
     @Test void storageOrIntegrityFailuresAreGeneric5xxWithoutDetails(CapturedOutput output) throws Exception {

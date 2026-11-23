@@ -31,7 +31,7 @@ import customer.cap_java.ksef.inbound.persistence.CqnInboundSyncLeaseRepository;
  * {@code ainv.ksef.inbound.enabled=true} i {@code ainv.ksef.inbound.manual-import.enabled=true} (oba domyślnie OFF);
  * w chmurze blokuje go bezwarunkowy guard {@code KSEF_INBOUND_CLOUD_ACTIVATION_NOT_READY}.
  *
- * <p>Przebieg (jeden, ograniczony budżet żądań KSeF):
+ * <p>Przebieg (limity wywołań aplikacyjnych; transport SDK/JDK nie egzekwuje budżetu HTTP):
  * <ol>
  *   <li>walidacja numeru (wzorzec + CRC) i okna dat <b>przed</b> auth — błąd = zero HTTP;</li>
  *   <li>trwały lease {@code KsefInboundSyncLeases} tego samego zakresu co synchronizacja (TEST, NIP z konfiguracji,
@@ -45,18 +45,22 @@ import customer.cap_java.ksef.inbound.persistence.CqnInboundSyncLeaseRepository;
  * Checkpoint synchronizacji nie jest zmieniany. Brak automatycznego retry: każdy błąd kończy lease według tej samej
  * polityki co synchronizacja ({@link InboundSynchronization#finishFailed}); niejednoznaczny auth/redeem = BLOCKED.
  *
- * <p>Założenie NIEZWERYFIKOWANE LIVE: segment daty {@code RRRRMMDD} numeru KSeF odpowiada dniu nadania numeru
- * (acquisition), a PermanentStorage nie jest wcześniejsze niż ten dzień − 1 (strefa czasowa) i nie późniejsze niż
- * {@link #LOOKAHEAD}. {@code NOT_FOUND} nie dowodzi więc nieistnienia faktury.
+ * <p>Okno z segmentu daty {@code RRRRMMDD} jest ograniczeniem operacyjnym. Kompletność wyników przed upływem
+ * okna zależy od HWM KSeF, a kontrakt nie gwarantuje, że PermanentStorage mieści się w tym oknie.
  */
 public final class InboundManualImport {
     /** Margines strefy czasowej przed datą z numeru KSeF. */
     static final Duration LOOKBACK = Duration.ofDays(1);
-    /** Maksymalne opóźnienie PermanentStorage względem daty z numeru (≤ limit zakresu MF 100 dni). */
+    /** Górna granica zapytania względem daty z numeru KSeF. */
     static final Duration LOOKAHEAD = Duration.ofDays(30);
     private static final DateTimeFormatter NUMBER_DATE = DateTimeFormatter.BASIC_ISO_DATE;
 
-    public enum Outcome { STORED, NOT_FOUND, BUSY }
+    public enum Outcome {
+        STORED,
+        /** Brak wyniku w sprawdzonym oknie PermanentStorage i kontekście TEST/NIP/BUYER. */
+        NOT_FOUND,
+        BUSY
+    }
 
     /** Wynik bez XML, referencji magazynu i danych auth; {@code documentId} = deterministyczny UUID stagingu. */
     public record Result(Outcome outcome, String documentId) { }
@@ -126,7 +130,7 @@ public final class InboundManualImport {
         }
     }
 
-    /** Okno PermanentStorage z daty w numerze KSeF; numer „z przyszłości” jest odrzucany przed auth. */
+    /** Okno PermanentStorage przycięte do teraz; puste okno kończy import przed auth. */
     MetadataQuery query(String ksefNumber) {
         LocalDate day = LocalDate.parse(ksefNumber.substring(11, 19), NUMBER_DATE);
         OffsetDateTime from = day.atStartOfDay().atOffset(ZoneOffset.UTC).minus(LOOKBACK);

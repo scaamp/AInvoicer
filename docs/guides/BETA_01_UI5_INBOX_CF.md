@@ -167,12 +167,23 @@ Wynik 2026-11-23: `mvn -B clean verify '-Dcds.cds.skipVersionCheck=true'` w `cap
 (baseline 16/73; +4 asercje komunikatów 401/403) — A (3/22), B, brak grantu, brak roli (403), anonim (401), outage (2/5),
 restart (3/22). Wyłącznie loopback, syntetyczne dane, bez SDK/KSeF/SAP/BTP. Pobranie XML nie jest objęte E2E (brak backendu).
 
+### 6.2 BETA-01.1 — obowiązkowa weryfikacja w GitHub Actions
+
+Workflow `Offline security and smoke build` wymaga kolejno `build:cf`, `build:cf:inbox-beta` oraz
+`build:cf:inbox-beta -- --with-xml-download`. Obie odmiany beta zapisują do `dist-cf-inbox-beta/`, więc każda
+przechodzi weryfikację przed nadpisaniem. Build zwraca błąd, gdy brakuje `manifest.json`, `index.html` lub
+`Component-preload.js` albo gdy ich zawartość nie spełnia reguł wariantu. Verifier kontroluje oba manifesty,
+fixture i wzorce sekretów. `sendInvoice`, `syncInbound` i `approveAndPost` są OFF we wszystkich wariantach.
+Domyślny Inbox jest `disabled`, a w becie `viewXml` wymaga jawnego przełącznika. Testy `test:cf-build` sprawdzają
+weryfikator również na niekompletnych artefaktach. Dowód wykonania znajduje się w checkach PR #29 dla jego HEAD.
+[Workflow](../../.github/workflows/ci.yml) · [PR #29](https://github.com/scaamp/AInvoicer/pull/29/checks).
+
 ## 7. Czego NIE zweryfikowano
 
 - Brak deploymentu CF, brak MTAR z betą, brak testu z XSUAA/AppRouterem LIVE (401 dla `X-Requested-With`, wygaśnięcie sesji,
   link „Sign in again” → XSUAA) — tylko atrapa w OPA i 401 lokalnego CAP w E2E.
-- Brak backendu `InboundInvoiceXml(<uuid>)/content` w tej gałęzi: pobranie XML przetestowane wyłącznie atrapą fetch;
-  nazwa encji, typ klucza, `Content-Type` i autoryzacja do potwierdzenia z `$metadata` i E2E po integracji (Agent B).
+- Test przeglądarkowy downloadu nadal używa atrapy fetch. Zintegrowany CAP potwierdza `$metadata`, bajty XML,
+  nagłówki, autoryzację i odrzucenie naruszeń integralności przez lokalne HTTP na H2.
 - Brak HANA/trwałego storage XML, SSO A/B na CF, KSeF, SAP H01.
 - Przeglądarki inne niż Chrome headless nie były testowane.
 

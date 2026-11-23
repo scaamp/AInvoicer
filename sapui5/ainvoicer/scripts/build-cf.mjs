@@ -210,6 +210,32 @@ function verifyBetaInbox(inbox, buildOptions, label) {
     return errors;
 }
 
+/** Oba manifesty są używane przez UI5. Te same reguły obowiązują dla pliku i kopii w preloadzie. */
+function verifyManifest(manifest, buildOptions, label) {
+    const { ksefCockpit: cockpit = {}, ksefInbox: inbox } = manifest?.["sap.ui5"]?.config || {};
+    const errors = [];
+    if (cockpit.dataMode !== "rap") {
+        errors.push(label + ": dataMode must be rap");
+    }
+    if (cockpit.capabilities?.sendInvoice !== false || cockpit.capabilities.syncInbound !== false
+            || Object.values(cockpit.capabilities).some((value) => value !== false)) {
+        errors.push(label + ": all cockpit capabilities must be false (sendInvoice and syncInbound required)");
+    }
+    if (cockpit.mock || cockpit.cap?.serviceUrl !== CAP_SERVICE_URL || cockpit.rap?.dataSource !== RAP_SERVICE_URL) {
+        errors.push(label + ": ksefCockpit must use the CF CAP/RAP routes without mock");
+    }
+    if (JSON.stringify(cockpit.externalServices) !== JSON.stringify({ ai: false, scanner: false, voice: false, tts: false })) {
+        errors.push(label + ": externalServices must all be explicitly false");
+    }
+    if (buildOptions.variant === "inbox-beta") {
+        errors.push(...verifyBetaInbox(inbox, buildOptions, label));
+    } else if (inbox?.dataMode !== "disabled" || inbox.mock || inbox.cap?.entitySet !== null
+            || JSON.stringify(inbox.capabilities) !== JSON.stringify(inboxCapabilitiesFor(buildOptions))) {
+        errors.push(label + ": ksefInbox must be disabled without mock data, CAP entity or capabilities");
+    }
+    return errors;
+}
+
 /** Manifest osadzony przez UI5 builder w Component-preload.js jako literał JS `'...'`; null = nie znaleziono. */
 export function extractPreloadManifest(text) {
     const match = /"ainvoicer\/manifest\.json":'((?:[^'\\]|\\.)*)'/.exec(text);
@@ -261,8 +287,8 @@ export function verifyArtifact(dir, options) {
     const mutatingEnabled = new RegExp('"(' + mutatingKeys.join("|") + ')"\\s*:\\s*true');
     const errors = [];
     const warnings = new Set();
-    if (!existsSync(join(dir, "manifest.json")) || !existsSync(join(dir, "index.html"))) {
-        errors.push("artifact: manifest.json and index.html are required");
+    if (!["manifest.json", "index.html", "Component-preload.js"].every((file) => existsSync(join(dir, file)))) {
+        errors.push("artifact: manifest.json, index.html and Component-preload.js are required");
         return { errors, warnings: [], files: 0 };
     }
     const files = walk(dir);
@@ -275,6 +301,9 @@ export function verifyArtifact(dir, options) {
         }
         if (/\.json$/i.test(rel) && !/(^|\/)manifest\.json$/.test(rel) && !/sap-ui-cachebuster-info\.json$/.test(rel)) {
             errors.push("unexpected JSON (fixture?) in artifact: " + rel);
+        }
+        if (/(^|\/)\.env(?:\.|$)|\.(?:pem|key|pfx|p12|jks)$/i.test(rel)) {
+            errors.push("credential file in artifact: " + rel);
         }
         if (!TEXT_FILE.test(rel)) {
             continue;
@@ -302,58 +331,19 @@ export function verifyArtifact(dir, options) {
         }
     }
     const manifest = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"));
-    const cockpit = manifest["sap.ui5"].config.ksefCockpit;
-    if (cockpit.dataMode !== "rap") {
-        errors.push("manifest.json: dataMode must be rap");
-    }
-    if (Object.values(cockpit.capabilities || {}).some((value) => value !== false)) {
-        errors.push("manifest.json: all capabilities must be false");
-    }
-    const inbox = manifest["sap.ui5"].config.ksefInbox;
-    if (beta) {
-        errors.push(...verifyBetaInbox(inbox, buildOptions, "manifest.json"));
-    } else if (inbox && (inbox.dataMode !== "disabled" || inbox.mock || (inbox.cap && inbox.cap.entitySet)
-            || Object.values(inbox.capabilities || {}).some((value) => value !== false))) {
-        errors.push("manifest.json: ksefInbox must be disabled without mock data, CAP entity or capabilities");
-    }
-    if (JSON.stringify(cockpit.externalServices) !== JSON.stringify({ ai: false, scanner: false, voice: false, tts: false })) {
-        errors.push("manifest.json: externalServices must all be explicitly false");
-    }
+    errors.push(...verifyManifest(manifest, buildOptions, "manifest.json"));
     if (!readFileSync(join(dir, "index.html"), "utf8").includes(
             'http-equiv="Content-Security-Policy" content="connect-src \'self\'; form-action \'self\'; base-uri \'self\'; object-src \'none\'"')) {
         errors.push("index.html: CF same-origin connection policy is required");
     }
-    const preload = join(dir, "Component-preload.js");
-    if (existsSync(preload) && !/\\?"dataMode\\?"\s*:\s*\\?"rap\\?"/.test(readFileSync(preload, "utf8"))) {
-        errors.push("Component-preload.js: embedded manifest is not dataMode=rap");
+    const embedded = extractPreloadManifest(readFileSync(join(dir, "Component-preload.js"), "utf8"));
+    if (!embedded) {
+        errors.push("Component-preload.js: embedded manifest is required and must be valid JSON");
+    } else {
+        errors.push(...verifyManifest(embedded, buildOptions, "Component-preload.js"));
     }
-    if (existsSync(preload)) {
-        const text = readFileSync(preload, "utf8");
-        const groups = [...text.matchAll(/\\?"externalServices\\?"\s*:\s*\{([^}]+)\}/g)];
-        if (!groups.length || groups.some(([, group]) =>
-                ["ai", "scanner", "voice", "tts"].some(name =>
-                    !new RegExp('\\\\?"' + name + '\\\\?"\\s*:\\s*false(?:\\s*[,}]|\\s*$)').test(group))
-                || /:\s*true/.test(group))) {
-            errors.push("Component-preload.js: externalServices must all be explicitly false");
-        }
-    }
-    if (beta) {
-        // Przeglądarka startuje z manifestu w preload: ten sam kontrakt bety musi obowiązywać także tam.
-        const embedded = existsSync(preload) ? extractPreloadManifest(readFileSync(preload, "utf8")) : null;
-        if (!embedded) {
-            errors.push("Component-preload.js: embedded manifest is required and must be valid JSON");
-        } else {
-            const config = (embedded["sap.ui5"] || {}).config || {};
-            const embeddedCockpit = config.ksefCockpit || {};
-            if (embeddedCockpit.dataMode !== "rap"
-                    || Object.values(embeddedCockpit.capabilities || { missing: true }).some((value) => value !== false)) {
-                errors.push("Component-preload.js: ksefCockpit must be rap with every capability false");
-            }
-            errors.push(...verifyBetaInbox(config.ksefInbox, buildOptions, "Component-preload.js"));
-        }
-        if (!existsSync(join(dir, "model", "ksef", "inbound", "InboundInboxAdapter.js"))) {
-            errors.push("artifact: Inbox adapter is missing");
-        }
+    if (beta && !existsSync(join(dir, "model", "ksef", "inbound", "InboundInboxAdapter.js"))) {
+        errors.push("artifact: Inbox adapter is missing");
     }
     return { errors, warnings: [...warnings].sort(), files: files.length };
 }

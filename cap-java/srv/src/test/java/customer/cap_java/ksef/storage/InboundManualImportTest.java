@@ -6,9 +6,12 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import java.net.http.HttpTimeoutException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -16,6 +19,8 @@ import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -42,7 +47,7 @@ import pl.akmf.ksef.sdk.client.model.invoice.InvoiceQueryFilters;
 /**
  * KSEF-IN-05 (B3) — OFFLINE H2 z fałszywym klientem SDK KSeF (mock, zero HTTP) i fałszywym auth:
  * import jednej faktury po numerze KSeF przez istniejący sink i adapter {@link HanaKsefDocumentStore}.
- * Dowodzi budżetu żądań (metadata ×1, GET ×1, brak retry), trwałego statusu i fail-closed przed auth.
+ * Sprawdza liczbę wywołań SDK (metadata ×1, GET ×1, brak retry aplikacyjnego), trwały status i fail-closed przed auth.
  * Nie dowodzi kontraktu MF LIVE (filtr {@code ksefNumber}, semantyka daty w numerze) ani HANA Cloud.
  */
 @SpringBootTest(classes = Application.class, properties = {
@@ -140,11 +145,42 @@ class InboundManualImportTest {
         assertEquals(1, rows(STORE).size());
     }
 
-    @Test void emptyPageIsNotFoundWithoutGetOrStagingRow() throws Exception {
+    @Test void emptyPageIsNotFoundWithoutTombstoneAndCanBeImportedAfterCooldown() throws Exception {
+        var found = response(false, false, null, sdkItem(metadataJson(NUMBER, "2026-11-02T09:00:00Z", hashOf(xml))));
         when(sdk.queryInvoiceMetadata(anyInt(), anyInt(), any(), any(), any())).thenReturn(response(false, false, null));
-        assertEquals(InboundManualImport.Outcome.NOT_FOUND, importer(CLOCK, store(db)).importOne(NUMBER).outcome());
+        var missing = importer(CLOCK, store(db)).importOne(NUMBER);
+        assertEquals(InboundManualImport.Outcome.NOT_FOUND, missing.outcome());
+        assertNull(missing.documentId());
         verify(sdk, never()).getInvoice(anyString(), anyString());
         assertTrue(rows(DOCUMENTS).isEmpty());
+        assertTrue(rows(GRANTS).isEmpty());
+        assertTrue(rows(CHECKPOINTS).isEmpty());
+        assertEquals("WAITING", rows(LEASES).getFirst().get("lastCode"));
+        assertEquals(InboundManualImport.Outcome.BUSY, importer(CLOCK, store(db)).importOne(NUMBER).outcome());
+        when(sdk.queryInvoiceMetadata(anyInt(), anyInt(), any(), any(), any())).thenReturn(found);
+        assertEquals(InboundManualImport.Outcome.STORED,
+                importer(Clock.offset(CLOCK, Duration.ofHours(1)), store(db)).importOne(NUMBER).outcome());
+    }
+
+    @ParameterizedTest
+    @CsvSource({"2026-10-30T23:59:59Z, NOT_FOUND", "2026-10-31T00:00:00Z, STORED",
+            "2026-12-01T00:00:00Z, STORED", "2026-12-01T00:00:01Z, NOT_FOUND"})
+    void metadataWindowBoundsTheResult(String permanentStorage, InboundManualImport.Outcome expected) throws Exception {
+        var timestamp = OffsetDateTime.parse(permanentStorage);
+        var found = response(false, false, null, sdkItem(metadataJson(NUMBER, permanentStorage, hashOf(xml))));
+        var empty = response(false, false, null);
+        when(sdk.queryInvoiceMetadata(anyInt(), anyInt(), any(), any(), any())).thenAnswer(call -> {
+            var range = call.<InvoiceQueryFilters>getArgument(3).getDateRange();
+            assertEquals(OffsetDateTime.parse("2026-10-31T00:00:00Z"), range.getFrom());
+            assertEquals(OffsetDateTime.parse("2026-12-01T00:00:00Z"), range.getTo());
+            return timestamp.isBefore(range.getFrom()) || timestamp.isAfter(range.getTo()) ? empty : found;
+        });
+        var afterWindow = Clock.fixed(Instant.parse("2026-12-02T00:00:00Z"), ZoneOffset.UTC);
+        assertEquals(expected, importer(afterWindow, store(db)).importOne(NUMBER).outcome());
+        int stored = expected == InboundManualImport.Outcome.STORED ? 1 : 0;
+        verify(sdk, times(stored)).getInvoice(eq(NUMBER), anyString());
+        assertEquals(stored, rows(DOCUMENTS).size());
+        assertTrue(rows(CHECKPOINTS).isEmpty());
     }
 
     @Test void ambiguousOrForeignMetadataIsRejectedWithoutGet() throws Exception {
@@ -167,6 +203,16 @@ class InboundManualImportTest {
         assertEquals("DOWNLOAD_FAILED", rows(DOCUMENTS).getFirst().get("lastCode"));
         assertTrue(rows(GRANTS).isEmpty());
         assertTrue(rows(STORE).isEmpty());
+    }
+
+    @Test void timeoutDoesNotTriggerAnotherGetOrAuthenticationAtApplicationLayer() throws Exception {
+        when(sdk.getInvoice(anyString(), anyString())).thenThrow(new RuntimeException(new HttpTimeoutException("synthetic")));
+        assertThrows(InboundFailure.class, () -> importer(CLOCK, store(db)).importOne(NUMBER));
+        verify(sdk, times(1)).getInvoice(eq(NUMBER), anyString());
+        verify(access, times(1)).open();
+        assertEquals("DOWNLOAD_FAILED", rows(DOCUMENTS).getFirst().get("lastCode"));
+        assertEquals("WAITING", rows(LEASES).getFirst().get("lastCode"));
+        assertTrue(rows(GRANTS).isEmpty());
     }
 
     @Test void storageOutageKeepsStorageFailedStatusWithoutGrantThenLaterImportRecovers() throws Exception {

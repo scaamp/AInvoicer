@@ -103,3 +103,48 @@ Techniczny kandydat Beta 0.1 **OFFLINE**. CF PRECHECK **BLOCKED_AUTH**, R-1 **R1
 1. Review i merge PR przez właściciela (bez auto-merge).
 2. Właściciel odnawia sesję CF EU20 → read-only PRECHECK i decyzja R-1.
 3. Kolejne zgody wg [raportu §13](../guides/BETA_01_INBOUND_READINESS.md#13-jakie-dokładnie-kolejne-zgody-musi-wydać-właściciel).
+
+## BETA-01.1 — final hardening
+
+23.11.2026, osobny czysty worktree `D:/AInvoicer-beta-01-1`. Początkowy HEAD PR #29 `c6d0232698daf3a4590d38815d873e815be293f0`
+zawierał bieżący `origin/main=603e171b5467f6d1600193eed666a91e9297b3a9`. GitHub potwierdził SUCCESS obu SHA.
+
+- **CI:** trzy kolejne obowiązkowe buildy CF. Każde uruchomienie egzekwuje komplet plików, konfigurację z obu manifestów,
+  reguły capabilities/TEST, brak fixture i wzorce sekretów. Oba warianty beta są sprawdzane przed nadpisaniem katalogu.
+  Test AppRouter potwierdza zachowanie ścieżki OData, XSUAA i CSRF. [Checki PR #29](https://github.com/scaamp/AInvoicer/pull/29/checks).
+- **XML:** dostęp przez BUYER/TEST przed BLOB. Odbiorca dostaje oryginalne bajty, jeśli rozmiar `Integer64` jest dodatni,
+  zgodny z długością i SHA-256 się zgadza. Błąd daje ogólne 500 bez szczegółów i bez naprawy BLOB. `$batch` odmawia XML,
+  a odczyt Overview w `$batch` egzekwuje ten sam grant. Odczyt w UI5 używa ścieżki same-origin i nie przechodzi na mock.
+- **CompanyCode:** prawidłowa, pojedyncza inna spółka tego samego NIP otrzymuje te same dokumenty przez Overview i XML.
+  Operacyjna kontrola jednej zatwierdzonej pary wymaga statycznej roli i potwierdzenia efektywnych atrybutów XSUAA.
+  Multi-company dla jednego NIP jest NO-GO. [Kontrakt](../guides/KSEF_IN_05_PRIVATE_INBOUND_STORAGE.md#6-b4--kontrakt-pobrania-xml-backend).
+- **Manual import:** `NOT_FOUND` jest wynikiem sprawdzenia ograniczonego okna, bez zapisu negatywnego i bez przesunięcia HWM.
+  Późniejszy jawny import jest możliwy. Auth może pobrać certyfikaty, wykonać polling i refresh. Test `OneShotWireRetryTest`
+  potwierdza możliwy replay pod granicą SDK w domyślnym JDK. Twardy budżet HTTP pozostaje bramką LIVE. Cloud, H2,
+  TEST-only, scheduler, OUTBOUND SEND i sposób naprawy lease zachowują istniejące reguły. [Analiza i patch transportowy](../guides/KSEF_IN_05_PRIVATE_INBOUND_STORAGE.md#5-b3--manual-import-jednej-faktury-implemented-behind-flag).
+
+### Wyniki BETA-01.1
+
+Windows, JDK 25.0.4.1, Maven 3.9.16, Node 24.13.0, CAP 5.2.0, SDK MF 3.0.29 (`3c3a899`), Go 1.26.10.
+
+| Weryfikacja | Wynik offline |
+| --- | --- |
+| Maven `clean verify`, testy skupione | 35/35 PASS: XML HTTP 20, manual import 13, wire retry loopback 2 |
+| `build:btp:smoke` (pełne Maven `clean verify`, JAR security, MTAR) | 715 uruchomień, 0 błędów, 6 pominiętych testów Azurite wykonanych osobno. JAR security 10/10 i MTAR PASS |
+| `npm test --prefix deploy/storage` | Azurite na loopback 6/6 PASS |
+| `test:cf-build` i `test:runner` | 23/23 i 8/8 PASS |
+| UI5 `build`, `build:cf`, `build:cf:inbox-beta`, `build:cf:inbox-beta -- --with-xml-download` | PASS, każdy artefakt CF miał 71 plików |
+| QUnit i OPA przez `serve-mock` | 121 testów / 732 asercje i 24 testy / 193 asercje PASS |
+| `test:inbox:e2e` | 16 testów / 77 asercji PASS (lokalny CAP/H2 HTTP i restart, UI5) |
+| `npm test --prefix deploy` | 201/201 PASS z Go, po zbudowaniu MTAR. G1 15/5/6/15 63/63 i G1 STOR-04 16/5/6/16 86/86 PASS |
+| `build:btp:hana`, `verify:hana`, `verify:stor04-release` | PASS, `STOR04_RELEASE_ARTIFACT=PASS hdiAdded=1 hdiChanged=0 hdiRemoved=0` |
+| `hana-it-runner.mjs build` i `test`, `runner.jar --self-test` | R2 build PASS, 6/6 PASS, `R2_OFFLINE_SELF_TEST=PASS` |
+| Sekrety i whitespace | `check-secrets.mjs`, `git diff --check` PASS |
+
+Lokalne MTAR powstały z roboczego drzewa. Dowód z czystego checkoutu pochodzi z CI. Instalacja zależności
+zgłosiła istniejące ustalenia `npm audit` w narzędziach UI5, MBT i Azurite. BETA-01.1 używa tych samych wersji.
+
+**Merge readiness:** GO dla patcha offline po pełnej regresji i SUCCESS CI dokładnego HEAD na [PR #29](https://github.com/scaamp/AInvoicer/pull/29/checks).
+**BETA LIVE NO-GO**. Obowiązują bramki CF EU20 `BLOCKED_AUTH`, R-1, STOR-04/CURRENT i NEW G1, budżet fizycznych prób
+i sign-off XSUAA. Po ewentualnym merge następny krok to osobno zatwierdzony read-only PRECHECK EU20 po odnowieniu
+sesji przez właściciela. BETA-01.1 nie uruchamiał operacji LIVE ani merge.

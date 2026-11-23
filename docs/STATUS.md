@@ -8,7 +8,13 @@ tags: [ainvoicer, cap-java, status]
 
 # Stan projektu
 
-**BETA-01 — 23.11.2026 (bieżący stan; wpisy niżej to historia):** kandydat **Beta 0.1 KSeF INBOUND OFFLINE**, branch
+**BETA-01.1 — 23.11.2026:** obowiązkowe buildy CF Inbox Beta w CI, ścisła integralność XML i opis ograniczonego
+`NOT_FOUND`. **BETA LIVE NO-GO**. CF PRECHECK i R-1 nadal zablokowane. Pozostają STOR-04/G1, udowodnienie
+fizycznego budżetu HTTP manual importu i weryfikacja jednego kontekstu NIP/CompanyCode w XSUAA. Po ewentualnym
+merge pierwszym krokiem jest osobno zatwierdzony read-only PRECHECK EU20.
+[Wyniki BETA-01.1](journal/2026-11-23-beta-01-inbound-readiness.md#beta-011--final-hardening).
+
+**BETA-01 — 23.11.2026 (stan przed hardeningiem):** kandydat **Beta 0.1 KSeF INBOUND OFFLINE**, branch
 `feature/beta-01-inbound-readiness` z `main=603e171` (CI SUCCESS). Zaimplementowano za flagami domyślnie OFF: wiring
 prywatnego storage HANA (`InboundDocumentStorage`, TEST, fail-closed bez HANA i w chmurze na H2), manual import jednej
 faktury (bez API), download XML `InboundInvoiceXml(<id>)/content` (grant przed BLOB, `no-store`, `attachment`), opt-in

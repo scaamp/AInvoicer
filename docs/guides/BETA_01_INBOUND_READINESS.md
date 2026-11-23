@@ -16,6 +16,9 @@ tags: [ainvoicer, beta, inbound, ksef, hana, sapui5, security, release]
 > **Werdykt 23.11.2026:** techniczny kandydat Beta 0.1 **OFFLINE**. CF PRECHECK **BLOCKED_AUTH**, R-1 **R1_BLOCKED**.
 > Beta 0.1 **NIE jest READY FOR LIVE ACCEPTANCE** i **NIE jest USER-READY**. Nie wykonano żadnej operacji LIVE.
 
+> **BETA-01.1:** hardening i werdykt merge readiness opisano w [dzienniku BETA-01.1](../journal/2026-11-23-beta-01-inbound-readiness.md#beta-011--final-hardening).
+> **BETA LIVE NO-GO** z powodu bramek CF/HANA, budżetu fizycznych żądań i weryfikacji jednej pary XSUAA.
+
 Branch `feature/beta-01-inbound-readiness` z `origin/main=603e171b5467f6d1600193eed666a91e9297b3a9`
 (po `git fetch` nadal najnowszy; CI tego SHA, run 43739912629, sprawdzone przez API GitHub: **SUCCESS**).
 Prace równoległe w osobnych worktree: Agent B (`beta-01/in-05-storage`), Agent C (`beta-01/ui5-inbox`), scalone
@@ -152,9 +155,11 @@ Artefakty lokalne (ignorowane, `workingTreeDirty=true`, **nie do deploymentu**):
 3. **HANA** — CURRENT G1, HDI deploy tabeli STOR-04, NEW G1 16/5/6/16, pomiary HANA (409006, BLOB stream, restart).
 4. **Release `srv`+AppRouter+UI** — pełne MTA z kodem BETA-01 i buildem beta (dziś `mta.yaml` pakuje domyślny UI).
 5. **Zdjęcie blokad chmurowych** — `CloudHanaReadinessGuard` (storage/download) i guard INBOUND dla importu:
-   globalny budżet API między JVM, kontrola lease przed HTTP, decyzja o wywołującym (akcja z audytem vs zadanie operatora).
-6. **Jeden rzeczywisty dokument** — test filtra `ksefNumber`/okna dat w KSeF TEST (one-shot), import, Inbox, download.
-7. **Security sign-off LIVE** — CAP-07E, XSUAA A/B, logout/expiry, nagłówki po AppRouterze.
+   twardy budżet fizycznych żądań dla manual importu, globalny budżet API między JVM, fencing lease przed HTTP i decyzja o wywołującym.
+6. **Jeden rzeczywisty dokument** — test filtra `ksefNumber` i okna dat w KSeF TEST (one-shot), import, Inbox, download.
+   `NOT_FOUND` oznacza brak wyniku w oknie PermanentStorage i kontekście TEST/NIP/BUYER. Późniejszy import pozostaje możliwy.
+7. **Security sign-off LIVE** — CAP-07E, jedna zatwierdzona para w XSUAA, A/B, logout/expiry i nagłówki po AppRouterze.
+   CompanyCode opisuje sesję. Grant NIP/BUYER izoluje dokumenty. Multi-company dla jednego NIP to **NO-GO**.
 
 ## 13. Jakie dokładnie kolejne zgody musi wydać właściciel?
 

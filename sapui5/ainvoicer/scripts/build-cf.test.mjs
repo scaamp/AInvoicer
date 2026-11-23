@@ -78,8 +78,7 @@ test("artifact verification rejects tests, fixtures, credentials and mock mode",
     const dir = mkdtempSync(join(tmpdir(), "ainv-cf-artifact-"));
     try {
         const manifest = transformManifest(sourceManifest());
-        writeFileSync(join(dir, "manifest.json"), JSON.stringify(manifest));
-        writeFileSync(join(dir, "index.html"), '<meta http-equiv="Content-Security-Policy" content="connect-src \'self\'; form-action \'self\'; base-uri \'self\'; object-src \'none\'">');
+        writeArtifact(dir, manifest);
         assert.deepEqual(verifyArtifact(dir).errors, []);
 
         mkdirSync(join(dir, "test", "unit"), { recursive: true });
@@ -87,12 +86,14 @@ test("artifact verification rejects tests, fixtures, credentials and mock mode",
         mkdirSync(join(dir, "localService", "ksef"), { recursive: true });
         writeFileSync(join(dir, "localService", "ksef", "KsefOperations.json"), "[]");
         writeFileSync(join(dir, "leak.js"), "var k = 'sk-" + "A".repeat(24) + "'; var b = 'Basic " + "QWxhZGRpbjpvcGVuIHNlc2FtZQ==" + "';");
+        writeFileSync(join(dir, "test-certificate.p12"), Buffer.from([0]));
         writeFileSync(join(dir, "mock.js"), JSON.stringify({ dataMode: "mock", sendInvoice: true }));
         const errors = verifyArtifact(dir).errors.join("\n");
         assert.match(errors, /test or fixture file in artifact: test\/unit\/unitTests\.qunit\.html/);
         assert.match(errors, /localService\/ksef\/KsefOperations\.json/);
         assert.match(errors, /API key/);
         assert.match(errors, /Basic credential/);
+        assert.match(errors, /credential file in artifact: test-certificate\.p12/);
         assert.match(errors, /non-RAP dataMode in mock\.js/);
         assert.match(errors, /mutating capability enabled in mock\.js/);
     } finally {
@@ -100,10 +101,14 @@ test("artifact verification rejects tests, fixtures, credentials and mock mode",
     }
 });
 
-test("built dist-cf (if present) passes the same verification", { skip: !existsSync(join(project, "dist-cf")) }, () => {
-    const report = verifyArtifact(join(project, "dist-cf"));
-    assert.deepEqual(report.errors, []);
-    assert.ok(report.files > 10);
+test("required files fail verification for every CF variant", () => {
+    for (const options of [undefined, BETA, BETA_XML]) {
+        withArtifactDir((dir) => {
+            assert.match(verifyArtifact(dir, options).errors.join("\n"), /manifest.json, index.html and Component-preload.js are required/);
+            writeArtifact(dir, transformManifest(sourceManifest(), options), null);
+            assert.match(verifyArtifact(dir, options).errors.join("\n"), /Component-preload.js are required/);
+        });
+    }
 });
 
 test("UI5-10: developer manifest uses clearly configured KSeF Inbox mock data with every action OFF", () => {
@@ -140,8 +145,7 @@ test("UI5-10: artifact verification rejects Inbox demo data, mock mode and enabl
     const dir = mkdtempSync(join(tmpdir(), "ainv-cf-inbox-"));
     try {
         const manifest = transformManifest(sourceManifest());
-        writeFileSync(join(dir, "manifest.json"), JSON.stringify(manifest));
-        writeFileSync(join(dir, "index.html"), '<meta http-equiv="Content-Security-Policy" content="connect-src \'self\'; form-action \'self\'; base-uri \'self\'; object-src \'none\'">');
+        writeArtifact(dir, manifest);
         assert.deepEqual(verifyArtifact(dir).errors, []);
 
         const mockInbox = structuredClone(manifest);
@@ -176,7 +180,7 @@ test("stale preload cannot re-enable voice or AI behind a safe manifest and CSP"
         for (const name of ["ai", "scanner", "voice", "tts"]) {
             const manifest = transformManifest(sourceManifest());
             manifest["sap.ui5"].config.ksefCockpit.externalServices[name] = true;
-            writeFileSync(join(dir, "Component-preload.js"), JSON.stringify(manifest));
+            writeFileSync(join(dir, "Component-preload.js"), preloadFor(manifest));
             assert.match(verifyArtifact(dir).errors.join("\n"), /Component-preload.js: externalServices/);
         }
     } finally { rmSync(dir, { recursive: true, force: true }); }
@@ -295,7 +299,7 @@ test("BETA-01: Inbox reads and XML download use the existing XSUAA AppRouter rou
         assert.equal(route.destination, "ainvoicer-cap", path);
         assert.equal(route.authenticationType, "xsuaa", path);
         assert.equal(route.csrfProtection, true, "CSRF for modifying methods; GET reads need no token");
-        assert.equal(new RegExp(route.source).exec(path)[0], path, "relative same-origin path is routed as a whole");
+        assert.equal(path.replace(new RegExp(route.source), route.target), path, "CAP receives the same OData path");
     }
     assert.deepEqual(xsApp.routes.filter((route) => route.authenticationType === "none").map((route) => route.source),
         ["^/resources/(.*)$"], "only UI5 resources are anonymous");
@@ -357,7 +361,7 @@ test("BETA-01: beta verifier rejects mock, PROD, foreign entity, enabled actions
         [(m) => { m["sap.ui5"].config.ksefInbox.pageSize = 1000; }, /pageSize/],
         [(m) => { m["sap.ui5"].config.ksefInbox.dataMode = "mock"; }, /mock dataMode in manifest\.json/],
         [(m) => { m["sap.ui5"].config.ksefInbox.capabilities.approveAndPost = true; }, /mutating capability enabled/],
-        [(m) => { m["sap.ui5"].config.ksefCockpit.capabilities.viewXml = true; }, /all capabilities must be false/],
+        [(m) => { m["sap.ui5"].config.ksefCockpit.capabilities.viewXml = true; }, /all cockpit capabilities must be false/],
         [(m) => { m["sap.ui5"].config.ksefCockpit.dataMode = "cap"; }, /dataMode must be rap/]
     ];
     for (const [mutate, expected] of cases) {
@@ -380,10 +384,11 @@ test("BETA-01: beta verifier rejects mock, PROD, foreign entity, enabled actions
         writeArtifact(dir, beta(), stale);
         const errors = verifyArtifact(dir, BETA_XML).errors.join("\n");
         assert.match(errors, /mutating capability enabled in Component-preload\.js/);
-        assert.match(errors, /Component-preload\.js: ksefCockpit must be rap with every capability false/);
+        assert.match(errors, /Component-preload\.js: all cockpit capabilities must be false/);
     });
     withArtifactDir((dir) => {
-        writeArtifact(dir, beta(), null);
+        writeArtifact(dir, beta());
+        writeFileSync(join(dir, "Component-preload.js"), "invalid embedded manifest");
         assert.match(verifyArtifact(dir, BETA_XML).errors.join("\n"), /embedded manifest is required/);
     });
     withArtifactDir((dir) => {
@@ -399,12 +404,16 @@ test("BETA-01: beta verifier rejects mock, PROD, foreign entity, enabled actions
     });
 });
 
-const betaDist = join(project, VARIANTS["inbox-beta"].dist);
-test("BETA-01: built dist-cf-inbox-beta (if present) passes the beta verification", { skip: !existsSync(betaDist) }, () => {
-    const manifest = JSON.parse(readFileSync(join(betaDist, "manifest.json"), "utf8"));
-    const options = { variant: "inbox-beta", xmlDownload: manifest["sap.ui5"].config.ksefInbox.capabilities.viewXml === true };
-    const report = verifyArtifact(betaDist, options);
-    assert.deepEqual(report.errors, []);
-    assert.ok(report.files > 10);
-    assert.notDeepEqual(verifyArtifact(betaDist).errors, [], "the default verifier never accepts the beta artifact");
+test("default CF rejects a beta Inbox or missing send/sync flags in the embedded manifest", () => {
+    withArtifactDir((dir) => {
+        const manifest = transformManifest(sourceManifest());
+        writeArtifact(dir, manifest, transformManifest(sourceManifest(), BETA));
+        assert.match(verifyArtifact(dir).errors.join("\n"), /Component-preload\.js: ksefInbox must be disabled/);
+        for (const key of ["sendInvoice", "syncInbound"]) {
+            const stale = structuredClone(manifest);
+            delete stale["sap.ui5"].config.ksefCockpit.capabilities[key];
+            writeArtifact(dir, manifest, stale);
+            assert.match(verifyArtifact(dir).errors.join("\n"), /Component-preload\.js: all cockpit capabilities must be false/);
+        }
+    });
 });
