@@ -139,7 +139,7 @@ logi poza Git. Standardowy build nie wykonuje żadnej operacji LIVE.
 | Inbox E2E — prawdziwy lokalny CAP/H2 + UI5 w konfiguracji beta | **16 testów / 77 asercji** PASS (baseline 16/73) |
 | Secret scan `check-secrets.mjs` | PASS (2745 plików, heurystyka) |
 | `git diff --check` | PASS |
-| GitHub Actions | wynik dokładnego HEAD PR — [dziennik](../journal/2026-11-23-beta-01-inbound-readiness.md) |
+| GitHub Actions PR [#29](https://github.com/scaamp/AInvoicer/pull/29) | `41d40d9` FAILURE (test zależny od końców linii, naprawiony); `a7a2b09` run 45189036841 **SUCCESS 24/24**; końcowy HEAD dokumentacji — [dziennik](../journal/2026-11-23-beta-01-inbound-readiness.md) |
 | LIVE (CF/HANA/KSeF/H01) | **NIE WYKONANO** |
 
 Artefakty lokalne (ignorowane, `workingTreeDirty=true`, **nie do deploymentu**): smoke MTAR

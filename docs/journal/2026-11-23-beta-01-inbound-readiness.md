@@ -79,7 +79,12 @@ diff-check PASS. Wszystko offline. **LIVE: NIE WYKONANO.**
   `cap-java/node_modules` (test niezależnej kompilacji CDS). Po `npm ci` w izolowanym worktree 63/63.
 - Pierwszy bieg `mvn verify` w tle został przerwany przed testami — nie liczony; wynik pochodzi z `build:btp:smoke`.
 - `test:cf-build` w regresji: 1 skip, bo artefakt beta budowano po tym kroku; po buildzie 23/23.
-- Środowisko nie ma `gh` CLI — PR tworzony przez GitHub API (szczegóły poniżej).
+- Środowisko nie ma `gh` CLI — PR [#29](https://github.com/scaamp/AInvoicer/pull/29) utworzony przez GitHub API.
+- **CI PR #29, HEAD `41d40d9`, run 45187654430: FAILURE** (krok „identity-smoke MTAR”, Maven): test B
+  `offlineH2SynchronizationKeepsBomCrlfAndIsIdempotentAcrossRestart` zakładał CRLF w fixture; lokalnie Windows
+  `autocrlf=true` dawał CRLF, checkout CI ma LF. Poprawka `a7a2b09`: payload BOM+CRLF budowany jawnie. Odtworzenie
+  lokalne z fixture LF: 89/0/0/0 testów inbound. **CI `a7a2b09`, run 45189036841: SUCCESS, 24/24 kroków.**
+  Pozostałe nowe testy używają wyłącznie jawnych literałów `\r\n` (multipart) — niezależne od platformy.
 
 ## Decisions Made
 
