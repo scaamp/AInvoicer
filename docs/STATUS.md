@@ -1,12 +1,24 @@
 ---
 title: "AInvoicer — aktualny stan"
-date: 2026-11-15
+date: 2026-11-23
 type: status
 status: w-trakcie
 tags: [ainvoicer, cap-java, status]
 ---
 
 # Stan projektu
+
+**BETA-01 — 23.11.2026 (bieżący stan; wpisy niżej to historia):** kandydat **Beta 0.1 KSeF INBOUND OFFLINE**, branch
+`feature/beta-01-inbound-readiness` z `main=603e171` (CI SUCCESS). Zaimplementowano za flagami domyślnie OFF: wiring
+prywatnego storage HANA (`InboundDocumentStorage`, TEST, fail-closed bez HANA i w chmurze na H2), manual import jednej
+faktury (bez API), download XML `InboundInvoiceXml(<id>)/content` (grant przed BLOB, `no-store`, `attachment`), opt-in
+`build:cf:inbox-beta` (domyślny `build:cf` bez zmian), UX 401/403/5xx/XSS. Regresja **OFFLINE PASS**: Maven707/0/0/6,
+JAR security10, deploy199/1 Go SKIP (G1 63, STOR-04 86), QUnit121, OPA24, Inbox16/77, R2 6+self-test, oba MTAR, +1/0/0.
+**CF PRECHECK BLOCKED_AUTH** (lokalna sesja US10, brak MultiApps), **R-1 BLOCKED**, CURRENT G1 gotowy do zgody (63/63,
+`6ebdfd14…`/4071, niewykonany). Guard `KSEF_INBOUND_CLOUD_ACTIVATION_NOT_READY` i SEND guard bez zmian. KSEF-IN-04 LIVE
+PASS **OWNER-REPORTED** (4688 B, SHA `b94b1eee…b3bd`). **Nie READY FOR LIVE ACCEPTANCE, nie USER-READY.**
+[Raport i 15 odpowiedzi](guides/BETA_01_INBOUND_READINESS.md) · [Beta roadmapa](BETA_ROADMAP.md) ·
+[Dziennik](journal/2026-11-23-beta-01-inbound-readiness.md). Bez operacji LIVE.
 
 **ORCH-09 — 15.11.2026, workstreamy MERGED:** PR #26 (Codex) i #27 (Claude Code) review **PASS WITH NOTES**, CI dokładnych HEAD SUCCESS; merge kolejno `40e6c12` → `8e6a5c6`. Wspólna regresja **OFFLINE PASS**: Maven671/0/0/6 + Azurite6, G1 stary63/nowy86, deploy199/1 Go SKIP, R2 6+self-test, JAR security10, QUnit112, OPA21, Inbox16/73, oba MTAR i release +1/0/0. **LIVE PENDING; SEND BLOCKED; HANA DEPLOY PENDING.** Default G1 nadal 15/5/6/15; osobny 16/5/6/16 przygotowany, niewykonany. **R-1 BLOCKED dla wykonania LIVE** (mixed-version MTA i zakres zasobów `-m` wymagają preflightu). [Review / wyniki / merge](journal/2026-11-15-orch-09-outbound-hana-integration.md). [E2E-01C — projekt approval](guides/E2E_01C_APPROVED_SNAPSHOT_DESIGN.md), ADR-0010 nadal PROPOSED; brak zmian CDS i odblokowania SEND. Końcowy SHA/CI main po PR dokumentacji w raporcie sesji.
 
