@@ -34,11 +34,16 @@ sap.ui.define([
                     });
                 });
             }
+            var mHeaders = { "content-type": oSpec.contentType || null, "content-length": oSpec.contentLength || null };
             return Promise.resolve({
                 ok: oSpec.status >= 200 && oSpec.status < 300,
                 status: oSpec.status,
+                headers: { get: function (sName) { return mHeaders[String(sName).toLowerCase()] || null; } },
                 json: function () {
                     return oSpec.body === undefined ? Promise.reject(new SyntaxError("no json")) : Promise.resolve(oSpec.body);
+                },
+                blob: function () {
+                    return Promise.resolve(new Blob([oSpec.text || ""], { type: oSpec.contentType || "" }));
                 }
             });
         };
@@ -85,11 +90,16 @@ sap.ui.define([
         });
     });
 
-    QUnit.test("future actions are always OFF, even if the manifest enables them", function (assert) {
+    QUnit.test("future actions are always OFF; only viewXml can be enabled, and only explicitly in CAP mode", function (assert) {
         assert.deepEqual(new InboundInboxAdapter(MOCK_CONFIG).getCapabilities(),
-            { viewXml: false, checkDuplicate: false, linkSapDocument: false, approveAndPost: false });
+            { viewXml: false, checkDuplicate: false, linkSapDocument: false, approveAndPost: false }, "mock never pretends a download");
         assert.deepEqual(new InboundInboxAdapter(Object.assign({}, CAP_CONFIG, { capabilities: MOCK_CONFIG.capabilities })).getCapabilities(),
-            { viewXml: false, checkDuplicate: false, linkSapDocument: false, approveAndPost: false });
+            { viewXml: true, checkDuplicate: false, linkSapDocument: false, approveAndPost: false }, "BETA-01: viewXml only");
+        assert.deepEqual(new InboundInboxAdapter(CAP_CONFIG).getCapabilities(),
+            { viewXml: false, checkDuplicate: false, linkSapDocument: false, approveAndPost: false }, "default OFF");
+        assert.deepEqual(new InboundInboxAdapter(Object.assign({}, CAP_CONFIG, { capabilities: { viewXml: "true" } })).getCapabilities().viewXml,
+            false, "only boolean true enables");
+        assert.deepEqual(new InboundInboxAdapter({ dataMode: "disabled", capabilities: { viewXml: true } }).getCapabilities().viewXml, false);
         assert.notOk(InboundInboxAdapter.prototype.post || InboundInboxAdapter.prototype.requestPosting, "no write API");
     });
 
@@ -192,6 +202,7 @@ sap.ui.define([
             assert.strictEqual(oCall.options.redirect, "error");
             assert.strictEqual(oCall.options.headers.Accept, "application/json;IEEE754Compatible=true");
             assert.strictEqual(oCall.options.headers["OData-MaxVersion"], "4.0");
+            assert.strictEqual(oCall.options.headers["X-Requested-With"], "XMLHttpRequest", "AppRouter answers 401 instead of a login page");
             assert.notOk(oCall.options.headers.Authorization, "no credentials added by the UI");
             assert.strictEqual(oPage.rows.length, 1);
             assert.strictEqual(oPage.rejected, 1, "row without valid id is skipped and reported");
@@ -256,5 +267,123 @@ sap.ui.define([
                 });
             });
         });
+    });
+
+    QUnit.module("InboundInboxAdapter — BETA-01 session, access and service errors");
+
+    QUnit.test("AppRouter login page (HTML with 200) is LOGIN_REQUIRED, never data; 401/403 keep their status", function (assert) {
+        function adapterFor(oSpec) {
+            return new InboundInboxAdapter(CAP_CONFIG, fakeFetch(function () { return oSpec; }));
+        }
+        return Promise.all([
+            expectRejection(assert, adapterFor({ status: 200, contentType: "text/html; charset=utf-8", body: { value: [] } }).loadPage({}),
+                "LOGIN_REQUIRED"),
+            expectRejection(assert, adapterFor({ status: 200, contentType: "text/html" }).loadInvoice(ID), "LOGIN_REQUIRED"),
+            expectRejection(assert, adapterFor({ status: 401 }).loadPage({}), "HTTP", function (oError) {
+                assert.strictEqual(oError.status, 401);
+            }),
+            expectRejection(assert, adapterFor({ status: 403, body: { error: { message: "Forbidden" } } }).loadPage({}), "HTTP", function (oError) {
+                assert.strictEqual(oError.status, 403);
+            }),
+            expectRejection(assert, adapterFor({ status: 503 }).loadPage({}), "HTTP", function (oError) {
+                assert.strictEqual(oError.status, 503);
+            })
+        ]);
+    });
+
+    QUnit.test("404 on the list means a missing service (HTTP), 404 on a key read stays NOT_FOUND", function (assert) {
+        var fnFetch = fakeFetch(function () { return { status: 404, body: { error: { message: "No service" } } }; });
+        return Promise.all([
+            expectRejection(assert, new InboundInboxAdapter(CAP_CONFIG, fnFetch).loadPage({}), "HTTP", function (oError) {
+                assert.strictEqual(oError.status, 404);
+            }),
+            expectRejection(assert, new InboundInboxAdapter(CAP_CONFIG, fnFetch).loadInvoice(ID), "NOT_FOUND")
+        ]);
+    });
+
+    QUnit.module("InboundInboxAdapter — BETA-01 XML download");
+
+    var XML_CONFIG = Object.assign({}, CAP_CONFIG, {
+        capabilities: { viewXml: true, checkDuplicate: false, linkSapDocument: false, approveAndPost: false }
+    });
+
+    QUnit.test("content URL is built only from a valid UUID (lower-case key literal, same service path)", function (assert) {
+        var oAdapter = new InboundInboxAdapter(XML_CONFIG);
+        assert.strictEqual(oAdapter.getXmlContentUrl(ID.toUpperCase()),
+            "/odata/v4/KsefService/InboundInvoiceXml(" + ID + ")/content");
+        ["x') or (1 eq 1", "../InboundInvoiceOverview", "", "blob://container/xml/" + ID, ID + "/../x", " " + ID, null, 42]
+            .forEach(function (vId) {
+                assert.throws(function () { oAdapter.getXmlContentUrl(vId); }, function (oError) {
+                    return oError.code === "PARSE";
+                }, "rejected id: " + String(vId));
+            });
+        assert.throws(function () {
+            new InboundInboxAdapter(Object.assign({}, XML_CONFIG, { cap: { serviceUrl: "https://evil.example/" } })).getXmlContentUrl(ID);
+        }, function (oError) { return oError.code === "PARSE"; }, "foreign service path rejected");
+    });
+
+    QUnit.test("download is offered only with viewXml AND xmlAvailable === true; storage references are ignored", function (assert) {
+        var oOn = new InboundInboxAdapter(XML_CONFIG);
+        var oOff = new InboundInboxAdapter(CAP_CONFIG);
+        var oRow = { id: ID, xmlAvailable: true, xmlStorageRef: "evil/../../secret.xml" };
+        assert.ok(oOn.canDownloadXml(oRow));
+        assert.notOk(oOff.canDownloadXml(oRow), "viewXml=false: no button");
+        assert.notOk(oOn.canDownloadXml({ id: ID, xmlAvailable: false }), "xmlAvailable=false: no button");
+        assert.notOk(oOn.canDownloadXml({ id: ID, xmlAvailable: "true" }), "only boolean true");
+        assert.notOk(oOn.canDownloadXml({ id: ID }), "missing flag");
+        assert.notOk(oOn.canDownloadXml({ id: "not-a-uuid", xmlAvailable: true }), "invalid id");
+        assert.notOk(oOn.canDownloadXml(null));
+        assert.strictEqual(oOn.getXmlContentUrl(oRow.id).indexOf("evil"), -1, "URL never uses the storage reference");
+    });
+
+    QUnit.test("downloadXml reads the XML blob with a same-origin GET; disabled or invalid id makes no request", function (assert) {
+        var fnFetch = fakeFetch(function (sUrl) {
+            return sUrl.indexOf("/InboundInvoiceXml(") !== -1
+                ? { status: 200, contentType: "application/xml", text: "<Faktura/>" } : null;
+        });
+        return Promise.all([
+            expectRejection(assert, new InboundInboxAdapter(CAP_CONFIG, fnFetch).downloadXml(ID), "DISABLED"),
+            expectRejection(assert, new InboundInboxAdapter(MOCK_CONFIG, fnFetch).downloadXml(ID), "DISABLED"),
+            expectRejection(assert, new InboundInboxAdapter(XML_CONFIG, fnFetch).downloadXml("x') or (1 eq 1"), "PARSE")
+        ]).then(function () {
+            assert.strictEqual(fnFetch.calls.length, 0, "no HTTP without capability or with an invalid id");
+            return new InboundInboxAdapter(XML_CONFIG, fnFetch).downloadXml(ID);
+        }).then(function (oBlob) {
+            var oCall = fnFetch.calls[0];
+            assert.strictEqual(fnFetch.calls.length, 1);
+            assert.strictEqual(oCall.url, "/odata/v4/KsefService/InboundInvoiceXml(" + ID + ")/content");
+            assert.strictEqual(oCall.options.method, "GET");
+            assert.strictEqual(oCall.options.credentials, "same-origin");
+            assert.strictEqual(oCall.options.redirect, "error");
+            assert.ok(/application\/xml/.test(oCall.options.headers.Accept));
+            assert.strictEqual(oCall.options.headers["X-Requested-With"], "XMLHttpRequest");
+            assert.notOk(oCall.options.headers["X-CSRF-Token"], "GET needs no CSRF token");
+            assert.strictEqual(oBlob.size, "<Faktura/>".length);
+        });
+    });
+
+    QUnit.test("downloadXml classifies login page, access errors, wrong type, empty and oversized content", function (assert) {
+        function download(oSpec) {
+            return new InboundInboxAdapter(XML_CONFIG, fakeFetch(function () { return oSpec; })).downloadXml(ID);
+        }
+        return Promise.all([
+            expectRejection(assert, download({ status: 200, contentType: "text/html", text: "<html>login</html>" }), "LOGIN_REQUIRED"),
+            expectRejection(assert, download({ status: 401 }), "HTTP", function (oError) { assert.strictEqual(oError.status, 401); }),
+            expectRejection(assert, download({ status: 403 }), "HTTP", function (oError) { assert.strictEqual(oError.status, 403); }),
+            expectRejection(assert, download({ status: 404 }), "NOT_FOUND"),
+            expectRejection(assert, download({ status: 200, contentType: "application/json", text: "{}" }), "PARSE"),
+            expectRejection(assert, download({ status: 200, contentType: "application/xml", text: "" }), "PARSE"),
+            expectRejection(assert, download({ status: 200, contentType: "application/xml", contentLength: "20000000", text: "<a/>" }), "PARSE"),
+            expectRejection(assert, download({ networkError: true }), "NETWORK")
+        ]);
+    });
+
+    QUnit.test("file name uses a safe KSeF number or the internal UUID only", function (assert) {
+        assert.strictEqual(InboundInboxAdapter.xmlFileName({ id: ID, ksefNumber: "1234567802-20261110-000000000001-AA" }),
+            "KSeF-1234567802-20261110-000000000001-AA.xml");
+        assert.strictEqual(InboundInboxAdapter.xmlFileName({ id: ID.toUpperCase(), ksefNumber: "../../etc/passwd" }),
+            "KSeF-inbound-" + ID + ".xml");
+        assert.strictEqual(InboundInboxAdapter.xmlFileName({ id: ID, ksefNumber: "<script>x</script>" }), "KSeF-inbound-" + ID + ".xml");
+        assert.strictEqual(InboundInboxAdapter.xmlFileName({ id: "bad", ksefNumber: null }), "KSeF-inbound-invoice.xml");
     });
 });

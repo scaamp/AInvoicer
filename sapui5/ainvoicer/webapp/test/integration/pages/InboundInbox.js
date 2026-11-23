@@ -73,6 +73,15 @@ sap.ui.define([
 					});
 				},
 
+				/** Kod testu bez szukania kontrolek (działa także przy otwartym dialogu, który blokuje stronę). */
+				iRunInContext: function (fnCallback) {
+					return this.waitFor({
+						success: function () {
+							fnCallback.call(this);
+						}
+					});
+				},
+
 				iCallController: function (fnCallback) {
 					return this.waitFor({
 						id: "inboxPage",
@@ -289,6 +298,43 @@ sap.ui.define([
 						success: function () {
 							Opa5.assert.deepEqual(this.getContext().fetchCalls, [], "no HTTP request");
 						}
+					});
+				},
+
+				/** BETA-01: zapisany plik (atrapa _saveFile) i dokładny URL żądania GET zbudowany z UUID. */
+				iShouldSeeDownloadedFile: function (sFileName, sExpectedUrl) {
+					return this.waitFor({
+						check: function () {
+							return (this.getContext().saved || []).length > 0;
+						},
+						success: function () {
+							var oContext = this.getContext();
+							var aXmlCalls = oContext.betaCalls.filter(function (oCall) { return oCall.url.indexOf("InboundInvoiceXml") !== -1; });
+							Opa5.assert.strictEqual(oContext.saved[0].name, sFileName, "file name " + sFileName);
+							Opa5.assert.ok(oContext.saved[0].size > 0, "non-empty XML blob");
+							Opa5.assert.strictEqual(aXmlCalls.length, 1, "one XML request");
+							Opa5.assert.strictEqual(aXmlCalls[0].url, sExpectedUrl, "URL built from the internal UUID");
+							Opa5.assert.strictEqual(aXmlCalls[0].method, "GET", "read-only request");
+						},
+						errorMessage: "XML file was not saved"
+					});
+				},
+
+				/** XSS: wartości z XML w tabeli są tekstem (brak elementów z wartości, brak wykonania skryptu). */
+				iShouldSeeLiteralTextInTable: function (sLiteral) {
+					return this.waitFor({
+						id: "inboxTable",
+						viewName: sViewName,
+						check: function (oTable) {
+							return !oTable.getBusy() && !!oTable.getDomRef() && oTable.getDomRef().textContent.indexOf(sLiteral) !== -1;
+						},
+						success: function (oTable) {
+							var oDomRef = oTable.getDomRef();
+							Opa5.assert.strictEqual(oDomRef.querySelectorAll("img[src='x'], script, svg[onload]").length, 0,
+								"no element created from invoice values");
+							Opa5.assert.strictEqual(Opa5.getWindow().__inboxXss, undefined, "no script executed");
+						},
+						errorMessage: "literal value not rendered as text: " + sLiteral
 					});
 				},
 

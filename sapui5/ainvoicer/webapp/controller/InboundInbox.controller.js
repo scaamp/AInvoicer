@@ -26,15 +26,25 @@ sap.ui.define([
             + String(oDate.getDate()).padStart(2, "0");
     }
 
+    /** Czas życia tymczasowego URL blob dla pobieranego XML (przeglądarka zaczyna zapis synchronicznie po kliknięciu). */
+    var BLOB_URL_TTL_MS = 10000;
+
     /**
      * KSeF Inbox (UI5-10): faktury zakupowe ODEBRANE z KSeF (staging CAP), osobna domena od zakładki
-     * PURCHASE kokpitu (faktury z SAP RAP). Widok jest wyłącznie do odczytu: wszystkie akcje mutujące
-     * (podgląd XML, duplikaty, powiązanie FI/MM, księgowanie) są wyłączone — backend ich nie obsługuje.
+     * PURCHASE kokpitu (faktury z SAP RAP). Widok jest wyłącznie do odczytu: akcje mutujące (duplikaty,
+     * powiązanie FI/MM, księgowanie) są wyłączone — backend ich nie obsługuje. BETA-01: pobranie oryginalnego XML
+     * (odczyt) tylko przy capability `viewXml` i `xmlAvailable === true`.
      * Dane pochodzą z InboundInboxAdapter; kontroler nie wykonuje HTTP i nie zna adresów usług.
      */
     return Controller.extend("ainvoicer.controller.InboundInbox", {
 
         formatter: InboundFormatter,
+
+        /** Tekst zamiast przycisku pobrania XML: powód niedostępności (wersja bez funkcji / XML niezapisany). */
+        xmlDownloadInfo: function (bEnabled, bXmlAvailable) {
+            var oBundle = this.getOwnerComponent().getModel("i18n").getResourceBundle();
+            return oBundle.getText(bEnabled === true && bXmlAvailable !== true ? "inboxXmlDownloadNotStored" : "inboxXmlDownloadNotInVersion");
+        },
 
         /** Formatter tekstów i18n z parametrami: parts: ['i18n>key', 'inbox>/value', ...]; brak wartości = myślnik. */
         formatMessage: function (sPattern) {
@@ -45,7 +55,7 @@ sap.ui.define([
         },
 
         onInit: function () {
-            this.getView().setModel(new JSONModel({ invoice: {}, busy: false, error: "" }), "inboxDetails");
+            this.getView().setModel(new JSONModel({ invoice: {}, busy: false, error: "", downloading: false }), "inboxDetails");
             var oConfig = this.getOwnerComponent().getManifestEntry("/sap.ui5/config/ksefInbox");
             this._setupAdapter(oConfig, null);
             this.getOwnerComponent().getRouter().getRoute("RouteInboundInbox")
@@ -68,6 +78,7 @@ sap.ui.define([
                 loaded: false,
                 error: "",
                 errorCode: "",
+                loginRequired: false,
                 rows: [],
                 count: 0,
                 hasMore: false,
@@ -118,12 +129,13 @@ sap.ui.define([
             };
         },
 
-        /** Stan akcji przyszłych: zawsze wyłączone z jawnym powodem (tooltip + tekst w szczegółach). */
+        /** Stan akcji: wyłączone z jawnym powodem (tooltip + tekst); `viewXml` wg capability adaptera (BETA-01). */
         _actionStates: function () {
             var oCaps = this._oAdapter.getCapabilities();
             var sReason = this._text("inboxActionUnavailableReason");
+            var sXmlReason = this._text("inboxXmlDownloadNotInVersion");
             return InboundContract.FutureActions.reduce(function (oResult, sAction) {
-                oResult[sAction] = { enabled: oCaps[sAction] === true, reason: sReason };
+                oResult[sAction] = { enabled: oCaps[sAction] === true, reason: sAction === "viewXml" ? sXmlReason : sReason };
                 return oResult;
             }, {});
         },
@@ -164,6 +176,7 @@ sap.ui.define([
             oModel.setProperty("/busy", true);
             oModel.setProperty("/error", "");
             oModel.setProperty("/errorCode", "");
+            oModel.setProperty("/loginRequired", false);
 
             return this._oAdapter.loadPage({
                 filters: oModel.getProperty("/filters"),
@@ -195,6 +208,7 @@ sap.ui.define([
                 oModel.setProperty("/count", 0);
                 oModel.setProperty("/hasMore", false);
                 oModel.setProperty("/errorCode", (oError && oError.code) || "");
+                oModel.setProperty("/loginRequired", this._isLoginRequired(oError));
                 oModel.setProperty("/error", this._errorText(oError));
                 oModel.setProperty("/empty", this._emptyState("error"));
                 return [];
@@ -225,11 +239,43 @@ sap.ui.define([
                     return this._text("inboxErrorParse");
                 case ErrorCode.NOT_FOUND:
                     return this._text("inboxErrorNotFound");
+                case ErrorCode.LOGIN_REQUIRED:
+                    return this._text("inboxErrorUnauthorized");
                 case ErrorCode.HTTP:
-                    return this._text("inboxErrorHttp", [oError.status || "?", oError.message || ""]);
+                    return this._httpErrorText(oError);
                 default:
                     return this._text("inboxErrorGeneric");
             }
+        },
+
+        /**
+         * HTTP: 401 → ponowne logowanie, 403 → brak roli/uprawnień, 404 listy → brak usługi, 5xx → usługa niedostępna
+         * (bez treści odpowiedzi serwera/AppRoutera). Inne kody (np. 400 INBOX_QUERY_UNSUPPORTED) z komunikatem OData.
+         */
+        _httpErrorText: function (oError) {
+            var iStatus = oError.status;
+            if (iStatus === 401) {
+                return this._text("inboxErrorUnauthorized");
+            }
+            if (iStatus === 403) {
+                return this._text("inboxErrorForbidden");
+            }
+            if (iStatus === 404) {
+                return this._text("inboxErrorServiceNotFound");
+            }
+            if (iStatus >= 500 && iStatus <= 599) {
+                return this._text("inboxErrorServer", [iStatus]);
+            }
+            return this._text("inboxErrorHttp", [iStatus || "?", oError.message || ""]);
+        },
+
+        _isLoginRequired: function (oError) {
+            return !!oError && (oError.code === ErrorCode.LOGIN_REQUIRED || (oError.code === ErrorCode.HTTP && oError.status === 401));
+        },
+
+        /** Ponowne logowanie: przeładowanie strony przez AppRouter prowadzi do XSUAA (bez obsługi tokenów w UI). */
+        onSignInAgain: function () {
+            window.location.reload();
         },
 
         // ------------------------------------------------------------------ filtry, sortowanie, strony
@@ -311,6 +357,7 @@ sap.ui.define([
 
         onErrorClose: function () {
             this._model().setProperty("/error", "");
+            this._model().setProperty("/loginRequired", false);
         },
 
         // ------------------------------------------------------------------ szczegóły
@@ -324,7 +371,7 @@ sap.ui.define([
         /** Pokazuje wiersz natychmiast, potem odczytuje aktualny rekord z adaptera (błąd nie zamyka dialogu). */
         _openDetails: function (oRow) {
             var oDetails = this.getView().getModel("inboxDetails");
-            oDetails.setData({ invoice: oRow, busy: true, error: "" });
+            oDetails.setData({ invoice: oRow, busy: true, error: "", downloading: false });
             var pRefresh = this._oAdapter.loadInvoice(oRow.id).then(function (oFresh) {
                 if (oDetails.getProperty("/invoice/id") === oFresh.id) {
                     oDetails.setProperty("/invoice", oFresh);
@@ -345,7 +392,55 @@ sap.ui.define([
         },
 
         onDetailsAfterClose: function () {
-            this.getView().getModel("inboxDetails").setData({ invoice: {}, busy: false, error: "" });
+            this.getView().getModel("inboxDetails").setData({ invoice: {}, busy: false, error: "", downloading: false });
+        },
+
+        /**
+         * BETA-01: pobranie oryginalnego XML bieżącej faktury. Ponowna kontrola capability i `xmlAvailable` (obrona
+         * przed skrótami/zmianą stanu); URL buduje adapter wyłącznie z UUID. Błąd pokazany w dialogu, bez danych zastępczych.
+         */
+        onDownloadXml: function () {
+            var oDetails = this.getView().getModel("inboxDetails");
+            var oRow = oDetails.getProperty("/invoice");
+            if (!this._oAdapter.canDownloadXml(oRow)) {
+                MessageBox.information(this.xmlDownloadInfo(this._oAdapter.getCapabilities().viewXml, oRow && oRow.xmlAvailable));
+                return Promise.resolve(false);
+            }
+            if (oDetails.getProperty("/downloading")) {
+                return Promise.resolve(false);
+            }
+            oDetails.setProperty("/downloading", true);
+            oDetails.setProperty("/error", "");
+            return this._oAdapter.downloadXml(oRow.id).then(function (oBlob) {
+                this._saveFile(oBlob, InboundInboxAdapter.xmlFileName(oRow));
+                MessageToast.show(this._text("inboxXmlDownloaded"));
+                return true;
+            }.bind(this), function (oError) {
+                var sReason = oError && oError.code === ErrorCode.NOT_FOUND ? this._text("inboxXmlErrorNotFound") : this._errorText(oError);
+                oDetails.setProperty("/error", this._text("inboxXmlDownloadError", [sReason]));
+                return false;
+            }.bind(this)).finally(function () {
+                oDetails.setProperty("/downloading", false);
+            });
+        },
+
+        /** Zapis pliku przez tymczasowy URL blob (bez localStorage, bez renderowania XML w stronie). */
+        _saveFile: function (oBlob, sFileName) {
+            var sUrl = URL.createObjectURL(oBlob);
+            var oLink = document.createElement("a");
+            oLink.href = sUrl;
+            oLink.download = sFileName;
+            oLink.rel = "noopener";
+            oLink.style.display = "none";
+            document.body.appendChild(oLink);
+            try {
+                oLink.click();
+            } finally {
+                document.body.removeChild(oLink);
+                setTimeout(function () {
+                    URL.revokeObjectURL(sUrl);
+                }, BLOB_URL_TTL_MS);
+            }
         },
 
         /** Kopiowanie pełnego numeru KSeF. Bez API schowka pole tekstowe pozostaje do ręcznego zaznaczenia. */

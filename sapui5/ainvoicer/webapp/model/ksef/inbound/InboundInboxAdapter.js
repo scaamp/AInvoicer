@@ -15,7 +15,10 @@ sap.ui.define([
         TIMEOUT: "TIMEOUT",
         NETWORK: "NETWORK",
         PARSE: "PARSE",
-        NOT_FOUND: "NOT_FOUND"
+        NOT_FOUND: "NOT_FOUND",
+        // BETA-01: sesja AppRoutera wygasła / brak logowania. AppRouter zwraca 401 dla żądań z
+        // X-Requested-With; bez niego oddaje stronę HTML przekierowania do XSUAA (HTTP 200) — oba przypadki tutaj.
+        LOGIN_REQUIRED: "LOGIN_REQUIRED"
     });
 
     var DEFAULT_PAGE_SIZE = 20;
@@ -25,6 +28,27 @@ sap.ui.define([
     var SERVICE_PATH = /^\/(?!\/)[A-Za-z0-9_/-]+\/$/;
     var ENTITY_SET = /^[A-Za-z_][A-Za-z0-9_]{0,127}$/;
     var MODULE_PATH = /^[A-Za-z0-9_]+(\/[A-Za-z0-9_.-]+)+\.json$/;
+
+    /**
+     * BETA-01: kontrakt pobrania oryginalnego XML (backend przygotowuje Agent B):
+     * GET <cap.serviceUrl>InboundInvoiceXml(<uuid>)/content → XML jako attachment. URL powstaje WYŁĄCZNIE
+     * z wewnętrznego `id` (UUID); nigdy z referencji storage ani innych pól odpowiedzi.
+     */
+    var XML_ENTITY_SET = "InboundInvoiceXml";
+    var XML_CONTENT_PATH = "/content";
+    /** Górny limit pobieranego pliku w przeglądarce (ochrona pamięci); faktury KSeF są znacznie mniejsze. */
+    var MAX_XML_BYTES = 10 * 1024 * 1024;
+    var XML_FILE_NAME = /^[0-9A-Za-z-]{1,64}$/;
+
+    /** Rodzaje odczytu: lista/szczegóły (JSON OData) albo plik XML (blob). */
+    var JSON_READ = Object.freeze({ accept: "application/json;IEEE754Compatible=true", odata: true, body: "json" });
+    var XML_READ = Object.freeze({ accept: "application/xml, text/xml;q=0.9", odata: false, body: "blob" });
+
+    function contentType(oResponse) {
+        var oHeaders = oResponse && oResponse.headers;
+        var sType = oHeaders && typeof oHeaders.get === "function" ? oHeaders.get("content-type") : null;
+        return typeof sType === "string" ? sType.toLowerCase() : "";
+    }
 
     function adapterError(sCode, sMessage, mDetails) {
         var oError = new Error(sMessage);
@@ -65,6 +89,27 @@ sap.ui.define([
             return typeof sMessage === "string" ? sMessage.substring(0, MAX_MESSAGE_LENGTH) : "";
         }, function () {
             return "";
+        });
+    }
+
+    /** Treść XML jako Blob: tylko typ XML (lub octet-stream), niepusta i w limicie rozmiaru. */
+    function readXmlBlob(oResponse, sType) {
+        if (sType && !/^(application|text)\/([a-z0-9.+-]*\+)?xml\b|^application\/octet-stream\b/.test(sType)) {
+            return rejectWith(ErrorCode.PARSE, "INBOX_XML_CONTENT_TYPE");
+        }
+        var sLength = oResponse.headers && typeof oResponse.headers.get === "function" ? oResponse.headers.get("content-length") : null;
+        if (sLength && /^\d+$/.test(sLength) && Number(sLength) > MAX_XML_BYTES) {
+            return rejectWith(ErrorCode.PARSE, "INBOX_XML_TOO_LARGE");
+        }
+        return Promise.resolve().then(function () {
+            return oResponse.blob();
+        }).then(function (oBlob) {
+            if (!oBlob || typeof oBlob.size !== "number" || oBlob.size === 0 || oBlob.size > MAX_XML_BYTES) {
+                throw adapterError(ErrorCode.PARSE, "INBOX_XML_INVALID");
+            }
+            return oBlob;
+        }, function (oError) {
+            throw oError && oError.code ? oError : adapterError(ErrorCode.NETWORK, "INBOX_NETWORK_ERROR");
         });
     }
 
@@ -114,14 +159,65 @@ sap.ui.define([
     };
 
     /**
-     * Akcje przyszłe: zawsze false. Backend nie ma kontraktu dla podglądu XML, duplikatów, powiązania FI/MM
-     * ani księgowania — flaga w manifeście nie może ich włączyć (INT-0x musi zmienić tę metodę świadomie).
+     * Akcje przyszłe: duplikaty, powiązanie FI/MM i księgowanie są zawsze false — flaga w manifeście ich nie włączy.
+     * BETA-01: `viewXml` (pobranie oryginalnego XML) wyłącznie w trybie CAP i przy jawnym `capabilities.viewXml === true`
+     * (wariant builda beta z --with-xml-download). Tryb mock nigdy nie udaje pobrania.
      */
     InboundInboxAdapter.prototype.getCapabilities = function () {
+        var oConfigured = this._oConfig.capabilities || {};
+        var bXml = this._sMode === Mode.CAP && oConfigured.viewXml === true;
         return InboundContract.FutureActions.reduce(function (oResult, sAction) {
-            oResult[sAction] = false;
+            oResult[sAction] = sAction === "viewXml" ? bXml : false;
             return oResult;
         }, {});
+    };
+
+    /** Czy wolno pokazać/wywołać pobranie XML dla wiersza: capability + jawne xmlAvailable=true + poprawny UUID. */
+    InboundInboxAdapter.prototype.canDownloadXml = function (oRow) {
+        return this.getCapabilities().viewXml === true && !!oRow && oRow.xmlAvailable === true
+            && InboundInvoiceMapper.UUID_PATTERN.test(String(oRow.id || ""));
+    };
+
+    /**
+     * Same-origin URL treści XML zbudowany wyłącznie z UUID. Rzuca PARSE dla niepoprawnego id lub ścieżki usługi.
+     * cds.UUID → Edm.Guid: literał klucza bez cudzysłowów (jak w loadInvoice, zweryfikowane w INT-02 dla overview).
+     */
+    InboundInboxAdapter.prototype.getXmlContentUrl = function (sId) {
+        if (typeof sId !== "string" || !InboundInvoiceMapper.UUID_PATTERN.test(sId)) {
+            throw adapterError(ErrorCode.PARSE, "INBOX_ID_INVALID");
+        }
+        var sServiceUrl = (this._oConfig.cap || {}).serviceUrl;
+        if (typeof sServiceUrl !== "string" || !SERVICE_PATH.test(sServiceUrl) || /(^|\/)\.\.(\/|$)/.test(sServiceUrl)) {
+            throw adapterError(ErrorCode.PARSE, "INBOX_SERVICE_PATH_INVALID");
+        }
+        return sServiceUrl + XML_ENTITY_SET + "(" + sId.toLowerCase() + ")" + XML_CONTENT_PATH;
+    };
+
+    /**
+     * Pobiera oryginalny XML (GET, same-origin, bez przekierowań, z limitem czasu i rozmiaru). Bez capability = DISABLED
+     * bez HTTP. Zwraca Blob; zapis pliku robi kontroler. XML nie jest parsowany ani renderowany w UI.
+     */
+    InboundInboxAdapter.prototype.downloadXml = function (sId) {
+        if (!this.getCapabilities().viewXml) {
+            return rejectWith(ErrorCode.DISABLED, "INBOX_XML_DOWNLOAD_DISABLED");
+        }
+        var sUrl;
+        try {
+            sUrl = this.getXmlContentUrl(sId);
+        } catch (oError) {
+            return Promise.reject(oError);
+        }
+        return this._get(sUrl, XML_READ);
+    };
+
+    /** Nazwa pliku: numer KSeF tylko z bezpiecznych znaków, inaczej wewnętrzne UUID (bez ścieżek i znaków specjalnych). */
+    InboundInboxAdapter.xmlFileName = function (oRow) {
+        var sKsef = oRow && oRow.ksefNumber;
+        if (typeof sKsef === "string" && XML_FILE_NAME.test(sKsef)) {
+            return "KSeF-" + sKsef + ".xml";
+        }
+        var sId = oRow && typeof oRow.id === "string" && InboundInvoiceMapper.UUID_PATTERN.test(oRow.id) ? oRow.id.toLowerCase() : "invoice";
+        return "KSeF-inbound-" + sId + ".xml";
     };
 
     /**
@@ -160,7 +256,13 @@ sap.ui.define([
         var sQuery = InboundQuery.toQueryString(InboundQuery.toODataQuery(oNormalized.filters, oSort, iSkip, iTop));
         var that = this;
         return Promise.resolve().then(function () {
-            return that._getJson(that._capEntityUrl() + "?" + sQuery);
+            return that._getJson(that._capEntityUrl() + "?" + sQuery).catch(function (oError) {
+                // 404 listy = brak usługi/encji (np. backend niewdrożony), nie „brak faktury”.
+                if (oError && oError.code === ErrorCode.NOT_FOUND) {
+                    oError.code = ErrorCode.HTTP;
+                }
+                throw oError;
+            });
         }).then(function (oBody) {
             // Kompletna odpowiedź OData 4.0: tablica value + @odata.count. Inaczej nie pokazujemy „pustej” listy.
             var vCount = oBody && oBody["@odata.count"];
@@ -252,11 +354,18 @@ sap.ui.define([
         return oCap.serviceUrl + oCap.entitySet;
     };
 
-    /**
-     * GET JSON: same-origin, bez przekierowań, z limitem czasu (połączenie + treść). Tylko odczyt —
-     * adapter nie ma metod POST/PATCH/DELETE. Abort przerywa wyłącznie bieżący odczyt.
-     */
+    /** GET JSON OData (lista, szczegóły, mock). */
     InboundInboxAdapter.prototype._getJson = function (sUrl) {
+        return this._get(sUrl, JSON_READ);
+    };
+
+    /**
+     * GET: same-origin, bez przekierowań, z limitem czasu (połączenie + treść). Tylko odczyt —
+     * adapter nie ma metod POST/PATCH/DELETE. Abort przerywa wyłącznie bieżący odczyt.
+     * `X-Requested-With` sprawia, że AppRouter przy braku/wygaśnięciu sesji odpowiada 401 zamiast HTML logowania;
+     * strona HTML z 2xx i tak jest rozpoznawana jako LOGIN_REQUIRED (nigdy jako dane).
+     */
+    InboundInboxAdapter.prototype._get = function (sUrl, oKind) {
         if (!this._fnFetch) {
             return rejectWith(ErrorCode.NETWORK, "fetch is not available");
         }
@@ -278,7 +387,9 @@ sap.ui.define([
                     redirect: "error",
                     signal: oController ? oController.signal : undefined,
                     // Edm.Decimal jako string (bez utraty precyzji); kontrakt OData 4.0 (@odata.count).
-                    headers: { Accept: "application/json;IEEE754Compatible=true", "OData-MaxVersion": "4.0" }
+                    headers: oKind.odata
+                        ? { Accept: oKind.accept, "OData-MaxVersion": "4.0", "X-Requested-With": "XMLHttpRequest" }
+                        : { Accept: oKind.accept, "X-Requested-With": "XMLHttpRequest" }
                 });
             }).then(function (oResponse) {
                 if (!oResponse.ok) {
@@ -286,6 +397,13 @@ sap.ui.define([
                         throw adapterError(oResponse.status === 404 ? ErrorCode.NOT_FOUND : ErrorCode.HTTP,
                             sMessage || "HTTP " + oResponse.status, { status: oResponse.status });
                     });
+                }
+                var sType = contentType(oResponse);
+                if (/^text\/html\b/.test(sType)) {
+                    throw adapterError(ErrorCode.LOGIN_REQUIRED, "INBOX_LOGIN_REQUIRED", { status: oResponse.status });
+                }
+                if (oKind.body === "blob") {
+                    return readXmlBlob(oResponse, sType);
                 }
                 return Promise.resolve().then(function () {
                     return oResponse.json();

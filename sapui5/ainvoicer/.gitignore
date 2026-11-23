@@ -13,3 +13,5 @@ webapp.rap.local/
 # CAP-07.1: wariant CF (scripts/build-cf.mjs) — staging i wynik builda, nie commitujemy.
 dist-cf/
 build/
+# BETA-01: opt-in wariant Inbox beta (scripts/build-cf.mjs --variant=inbox-beta) — wynik builda, nie commitujemy.
+dist-cf-inbox-beta/
