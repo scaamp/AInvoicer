@@ -20,6 +20,25 @@ service KsefService {
   };
 
   /**
+   * KSEF-IN-05: pobranie oryginalnego XML faktury INBOUND jako media stream OData V4:
+   * GET /odata/v4/KsefService/InboundInvoiceXml(<uuid>)/content.
+   * Encja BEZ źródła w DB (@cds.persistence.skip): brak tabeli i widoku HDI (kontrakt G1 bez zmian),
+   * brak projekcji na staging/BLOB. Odpowiedź buduje wyłącznie InboundInvoiceXmlHandler (@On READ):
+   * flaga backendu, zakres XSUAA (1 NIP + 1 CompanyCode) ∩ grant BUYER/TEST sprawdzony PRZED odczytem BLOB,
+   * wiersz STORED/VERIFIED, referencja magazynu czytana po stronie serwera. Klient nigdy nie podaje referencji.
+   */
+  @cds.persistence.skip
+  @restrict: [{ grant: 'READ', to: 'KsefOperator' }]
+  @readonly
+  entity InboundInvoiceXml {
+    key id       : UUID;
+        fileName : String(64);
+        content  : LargeBinary @Core.MediaType: 'application/xml'
+                               @Core.ContentDisposition.Filename: fileName
+                               @Core.ContentDisposition.Type: 'attachment';
+  };
+
+  /**
    * CAP-07F (E-2): publiczna projekcja jest wyłącznie do odczytu. Operacje tworzy tylko logika serwerowa
    * (np. akcja requestSend przez PersistenceService na encji bazowej), nigdy surowy POST/$batch klienta.
    */
