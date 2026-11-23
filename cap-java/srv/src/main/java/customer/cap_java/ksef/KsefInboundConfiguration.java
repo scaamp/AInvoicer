@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.Arrays;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -15,6 +16,7 @@ import customer.cap_java.ksef.fa3.Fa3SchemaValidator;
 import customer.cap_java.ksef.inbound.*;
 import customer.cap_java.ksef.inbound.persistence.*;
 import customer.cap_java.ksef.inbound.sync.*;
+import customer.cap_java.ksef.storage.InboundDocumentStorage;
 import pl.akmf.ksef.sdk.client.interfaces.KSeFClient;
 
 /** Opcjonalny wiring synchronizacji INBOUND. Odczyt stagingu jest rejestrowany osobno, bez HTTP do KSeF. */
@@ -24,12 +26,21 @@ import pl.akmf.ksef.sdk.client.interfaces.KSeFClient;
 public class KsefInboundConfiguration {
     private final KsefTaxpayerContext context;
     private final OffsetDateTime initialFrom;
+    private final KsefDocumentStore store;
 
-    public KsefInboundConfiguration(Environment environment, KsefDocumentStore store,
+    /**
+     * KSEF-IN-05: jeśli zarejestrowano jawny magazyn INBOUND ({@link InboundDocumentStorage}, domyślnie OFF),
+     * ma on pierwszeństwo przed wspólnym {@code KsefDocumentStore}. OUTBOUND nadal dostaje ten sam bean co dotąd.
+     * Guard chmury pozostaje bezwarunkowy: trwały store nie aktywuje INBOUND na CF.
+     */
+    public KsefInboundConfiguration(Environment environment, KsefDocumentStore sharedStore,
+            ObjectProvider<InboundDocumentStorage> inboundStorage,
             @Value("${ainv.ksef.nip:}") String nip,
             @Value("${ainv.ksef.inbound.environment:TEST}") String ksefEnvironment,
             @Value("${ainv.ksef.inbound.initial-from:}") String initialFrom,
             @Value("${ainv.ksef.local-store:}") String localStore) {
+        InboundDocumentStorage dedicated = inboundStorage.getIfAvailable();
+        KsefDocumentStore store = dedicated != null ? dedicated.store() : sharedStore;
         boolean cloud = environment.containsProperty("VCAP_APPLICATION")
                 || Arrays.stream(environment.getActiveProfiles()).anyMatch(p ->
                         java.util.Set.of("cf", "cloud", "prod", "production").contains(p));
@@ -43,6 +54,7 @@ public class KsefInboundConfiguration {
         if (!(store instanceof DurableInboundDocumentStore) && (!(store instanceof LocalTestDocumentStore) || localStore.isBlank())) {
             throw new IllegalStateException("KSEF_INBOUND_DOCUMENT_STORE_REQUIRED");
         }
+        this.store = store;
         this.context = new KsefTaxpayerContext(KsefEnvironment.valueOf(ksefEnvironment), nip);
         if (context.environment() != KsefEnvironment.TEST) {
             throw new IllegalStateException("KSEF_INBOUND_ENVIRONMENT_UNSUPPORTED");
@@ -69,8 +81,21 @@ public class KsefInboundConfiguration {
     }
     @Bean InboundSynchronization inboundSynchronization(Clock clock, KsefInboundAccess access,
             InvoiceRetrievalService retrieval, CqnInboundDocumentRepository documents,
-            CqnSyncCheckpointRepository checkpoints, CqnInboundSyncLeaseRepository leases, KsefDocumentStore store) {
+            CqnSyncCheckpointRepository checkpoints, CqnInboundSyncLeaseRepository leases) {
         return new InboundSynchronization(SyncScope.of(context, KsefSubjectRole.BUYER), initialFrom, clock,
                 access, retrieval, documents, checkpoints, leases, store, new Fa3SchemaValidator());
+    }
+
+    /**
+     * KSEF-IN-05 (B3): wewnętrzny import jednej faktury po numerze KSeF. Domyślnie OFF; bez akcji OData i schedulera.
+     * Tworzony tylko w tej konfiguracji, więc dziedziczy guard chmury i kontekst TEST/NIP z backendu.
+     */
+    @Bean
+    @ConditionalOnProperty(name = "ainv.ksef.inbound.manual-import.enabled", havingValue = "true")
+    InboundManualImport inboundManualImport(Clock clock, KsefInboundAccess access, KSeFClient sdk,
+            CqnInboundDocumentRepository documents, CqnInboundSyncLeaseRepository leases) {
+        return new InboundManualImport(SyncScope.of(context, KsefSubjectRole.BUYER), clock, access,
+                new KsefInboundClient(sdk, context.environment(), KsefInboundClient.DEFAULT_MAX_INVOICE_BYTES, clock),
+                documents, leases, store, new Fa3SchemaValidator());
     }
 }

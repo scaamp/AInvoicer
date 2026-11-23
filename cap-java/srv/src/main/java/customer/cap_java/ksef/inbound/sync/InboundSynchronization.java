@@ -72,25 +72,33 @@ public final class InboundSynchronization {
                 leases.requireOwned(claim.get());
                 sink.accept(metadata);
             });
-            leases.finish(claim.get(), later(null), false);
+            leases.finish(claim.get(), later(clock, null), false);
             return Optional.of(result);
-        } catch (InboundFailure error) {
-            leases.finish(claim.get(), later(error.retryNotBefore()), !error.transientRead());
-            throw error;
-        } catch (KsefFailure error) {
-            // Nieznany wynik redeem/auth nie uruchamia kolejnego auth automatycznie.
-            leases.finish(claim.get(), later(error.retryNotBefore()), error.ambiguous() || !error.retryable());
-            throw error;
         } catch (RuntimeException error) {
-            // Storage/DB można ponowić; konflikt/quarantine wymaga decyzji operatora w kolejnym etapie.
-            boolean blocked = "KSEF_INBOUND_INTEGRITY_CONFLICT".equals(error.getMessage())
-                    || "KSEF_INBOUND_DOCUMENT_QUARANTINED".equals(error.getMessage());
-            leases.finish(claim.get(), later(null), blocked);
+            finishFailed(leases, claim.get(), error, clock);
             throw error;
         }
     }
 
-    private Instant later(Instant retryAfter) {
+    /**
+     * Wspólna polityka zakończenia lease po błędzie (synchronizacja i KSEF-IN-05 manual import).
+     * Nieznany wynik redeem/auth nie uruchamia kolejnego auth automatycznie; storage/DB można ponowić później;
+     * konflikt/quarantine wymaga decyzji operatora (BLOCKED).
+     */
+    static void finishFailed(CqnInboundSyncLeaseRepository leases, CqnInboundSyncLeaseRepository.Claim claim,
+            RuntimeException error, Clock clock) {
+        if (error instanceof InboundFailure failure) {
+            leases.finish(claim, later(clock, failure.retryNotBefore()), !failure.transientRead());
+        } else if (error instanceof KsefFailure failure) {
+            leases.finish(claim, later(clock, failure.retryNotBefore()), failure.ambiguous() || !failure.retryable());
+        } else {
+            boolean blocked = "KSEF_INBOUND_INTEGRITY_CONFLICT".equals(error.getMessage())
+                    || "KSEF_INBOUND_DOCUMENT_QUARANTINED".equals(error.getMessage());
+            leases.finish(claim, later(clock, null), blocked);
+        }
+    }
+
+    static Instant later(Clock clock, Instant retryAfter) {
         Instant minimum = clock.instant().plus(CqnInboundSyncLeaseRepository.MIN_INTERVAL)
                 .plusMillis(ThreadLocalRandom.current().nextLong(1000));
         return retryAfter != null && retryAfter.isAfter(minimum) ? retryAfter : minimum;
