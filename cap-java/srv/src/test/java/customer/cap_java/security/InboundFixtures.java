@@ -10,7 +10,7 @@ import com.sap.cds.ql.Delete;
 import com.sap.cds.ql.Insert;
 import com.sap.cds.services.persistence.PersistenceService;
 
-/** Wyłącznie syntetyczne fixture testowe; brak wywołań KSeF i magazynu XML. */
+/** Wyłącznie syntetyczne fixture testowe; brak wywołań KSeF. XML tylko w opt-in trybie UAT ({@link #seedXml}). */
 public final class InboundFixtures {
     public static final String A = "1234567802", B = "9876543210";
     public static final String OWN = "10000000-0000-4000-8000-000000000001";
@@ -70,6 +70,40 @@ public final class InboundFixtures {
         }
         db.run(Insert.into("customer.cap_java.KsefInboundDocuments").entry(row));
         if (nip != null) { grant(db, id, nip, "BUYER"); }
+    }
+
+    /**
+     * BETA-02 (lokalny UAT, opt-in): dla wierszy STORED w TEST zapisuje syntetyczny XML przez prawdziwy adapter
+     * magazynu ({@code InboundDocumentStorage} na lokalnym H2) i ustawia referencję, SHA-256 oraz rozmiar —
+     * dokładnie tak, jak finalizacja importu. Wiersze CONFLICT/NOT_PARSED zachowują stan bez dostępnego XML.
+     * Treść jest jawnie oznaczona jako syntetyczna; brak danych realnych, KSeF i HANA.
+     */
+    public static int seedXml(PersistenceService db, customer.cap_java.ksef.KsefDocumentStore store) {
+        int stored = 0;
+        for (var row : db.run(com.sap.cds.ql.Select.from("customer.cap_java.KsefInboundDocuments")
+                .columns("ID", "invoiceNumber", "environment", "ingestionStatus", "integrityStatus")).list()) {
+            if (!"STORED".equals(row.get("ingestionStatus")) || !"VERIFIED".equals(row.get("integrityStatus"))
+                    || !"TEST".equals(row.get("environment"))) {
+                continue;
+            }
+            byte[] xml = syntheticXml((String) row.get("invoiceNumber"));
+            String reference = store.put(xml);
+            db.run(com.sap.cds.ql.Update.entity("customer.cap_java.KsefInboundDocuments").byId(row.get("ID"))
+                    .data(Map.of("xmlStorageRef", reference, "sha256", customer.cap_java.sap.KsefInvoiceSnapshotRegistry.sha256Hex(xml),
+                            "sizeBytes", (long) xml.length)));
+            stored++;
+        }
+        return stored;
+    }
+
+    static byte[] syntheticXml(String invoiceNumber) {
+        String number = invoiceNumber == null ? "" : invoiceNumber.replace("&", "&amp;").replace("<", "&lt;")
+                .replace(">", "&gt;").replace("'", "&apos;").replace("\"", "&quot;");
+        return ("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                + "<!-- AInvoicer BETA-02 LOCAL UAT: SYNTHETIC DOCUMENT, NOT FROM KSeF -->\n"
+                + "<Faktura xmlns=\"http://crd.gov.pl/wzor/2025/06/25/13775/\">\n"
+                + "  <Fa><P_2>" + number + "</P_2><P_15>0.00</P_15></Fa>\n"
+                + "</Faktura>\n").getBytes(java.nio.charset.StandardCharsets.UTF_8);
     }
 
     private static void grant(PersistenceService db, String id, String nip, String role) {

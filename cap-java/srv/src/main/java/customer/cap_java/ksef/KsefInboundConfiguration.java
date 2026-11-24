@@ -92,10 +92,39 @@ public class KsefInboundConfiguration {
      */
     @Bean
     @ConditionalOnProperty(name = "ainv.ksef.inbound.manual-import.enabled", havingValue = "true")
-    InboundManualImport inboundManualImport(Clock clock, KsefInboundAccess access, KSeFClient sdk,
-            CqnInboundDocumentRepository documents, CqnInboundSyncLeaseRepository leases) {
-        return new InboundManualImport(SyncScope.of(context, KsefSubjectRole.BUYER), clock, access,
-                new KsefInboundClient(sdk, context.environment(), KsefInboundClient.DEFAULT_MAX_INVOICE_BYTES, clock),
+    InboundManualImport inboundManualImport(Clock clock, CqnInboundDocumentRepository documents,
+            CqnInboundSyncLeaseRepository leases,
+            @Value("${ainv.ksef.inbound.manual-import.max-http-requests:9}") int maxHttpRequests,
+            @Value("${ainv.ksef.inbound.manual-import.max-duration:PT90S}") String maxDuration,
+            @Value("${ainv.ksef.nip:}") String nip,
+            @Value("${ainv.ksef.token:}") String token,
+            @Value("${ainv.ksef.test-xades:false}") boolean testXades) throws java.security.NoSuchAlgorithmException {
+        // BETA-02: limity walidowane przy starcie (1..9 żądań, 1 s..5 min) — błędna konfiguracja = brak beana.
+        var limits = new BudgetedKsefTransport.Limits(maxHttpRequests, java.time.Duration.parse(maxDuration),
+                java.time.Duration.ofSeconds(5));
+        return new InboundManualImport(SyncScope.of(context, KsefSubjectRole.BUYER), clock,
+                budgetedClients(KsefSdkConfiguration.TEST_ORIGIN, javax.net.ssl.SSLContext.getDefault(), limits, clock,
+                        context, nip, token, testXades),
                 documents, leases, store, new Fa3SchemaValidator());
+    }
+
+    /**
+     * BETA-02: per przebieg nowy transport z twardym budżetem, nowy SDK i nowy auth na tym transporcie.
+     * Certyfikaty MF (TOKEN), challenge, auth, polling, redeem, refresh, metadata i GET XML zużywają ten sam budżet;
+     * wspólny bean {@code KSeFClient} (OUTBOUND, synchronizacja) pozostaje nietknięty. XAdES nie tworzy kryptografii.
+     */
+    static InboundManualImport.RunClients budgetedClients(String origin, javax.net.ssl.SSLContext tls,
+            BudgetedKsefTransport.Limits limits, Clock clock, KsefTaxpayerContext context,
+            String nip, String token, boolean testXades) {
+        return fence -> {
+            var transport = new BudgetedKsefTransport(origin, limits, clock, fence, tls);
+            KSeFClient sdk = KsefSdkConfiguration.createClient(origin, transport);
+            // Konstruktor kryptografii SDK pobiera certyfikaty MF — tylko dla TOKEN i już w ramach budżetu/lease.
+            var crypto = token == null || token.isBlank() ? null
+                    : new pl.akmf.ksef.sdk.api.services.DefaultCryptographyService(sdk);
+            var authentication = new KsefAuthentication(sdk, crypto, clock, nip, token, testXades);
+            return new InboundManualImport.Clients(new KsefInboundAccess(authentication, context),
+                    new KsefInboundClient(sdk, context.environment(), KsefInboundClient.DEFAULT_MAX_INVOICE_BYTES, clock));
+        };
     }
 }

@@ -64,6 +64,10 @@ ainv:
       # KSEF-IN-05: wewnętrzny import jednej faktury po numerze KSeF (bez OData/schedulera). Wymaga inbound.enabled.
       manual-import:
         enabled: false
+        # BETA-02: twardy budżet FIZYCZNYCH żądań HTTP jednego przebiegu (BudgetedKsefTransport): 1..9, czas 1 s..5 min.
+        # Obejmuje certyfikaty MF (TOKEN), challenge, auth, polling, redeem, refresh, metadata i GET XML.
+        max-http-requests: 9
+        max-duration: PT90S
     nip: ${AINV_KSEF_NIP:}
     token: ${AINV_KSEF_TOKEN:}
     test-xades: false

@@ -298,6 +298,19 @@ class KsefInboundConfigurationTest {
                         verifyNoInteractions(sdk, auth);
                     });
         }
+        // BETA-02: budżet fizycznych żądań poza 1..9 lub czas poza 1 s..5 min = brak startu (fail closed).
+        for (String invalid : new String[]{"ainv.ksef.inbound.manual-import.max-http-requests=10",
+                "ainv.ksef.inbound.manual-import.max-http-requests=0", "ainv.ksef.inbound.manual-import.max-duration=PT6M"}) {
+            context(new LocalTestDocumentStore(directory.toString()))
+                    .withBean(KSeFClient.class, () -> mock(KSeFClient.class)).withBean(KsefAuthentication.class, () -> mock(KsefAuthentication.class))
+                    .withBean(Clock.class, Clock::systemUTC)
+                    .withBean(PersistenceService.class, () -> mock(PersistenceService.class))
+                    .withBean(CdsRuntime.class, () -> mock(CdsRuntime.class))
+                    .withPropertyValues("ainv.ksef.inbound.enabled=true", "ainv.ksef.nip=1111111111",
+                            "ainv.ksef.inbound.manual-import.enabled=true", invalid,
+                            "ainv.ksef.inbound.initial-from=2026-11-01T00:00:00Z", "ainv.ksef.local-store=" + directory)
+                    .run(app -> assertTrue(messages(app.getStartupFailure()).contains("KSEF_TRANSPORT_LIMITS_INVALID"), invalid));
+        }
         // Sama flaga importu bez ainv.ksef.inbound.enabled nie tworzy niczego.
         context(mock(KsefDocumentStore.class)).withPropertyValues("ainv.ksef.inbound.manual-import.enabled=true")
                 .run(app -> {

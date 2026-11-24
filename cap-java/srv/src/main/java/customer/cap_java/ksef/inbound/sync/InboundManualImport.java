@@ -31,7 +31,8 @@ import customer.cap_java.ksef.inbound.persistence.CqnInboundSyncLeaseRepository;
  * {@code ainv.ksef.inbound.enabled=true} i {@code ainv.ksef.inbound.manual-import.enabled=true} (oba domyślnie OFF);
  * w chmurze blokuje go bezwarunkowy guard {@code KSEF_INBOUND_CLOUD_ACTIVATION_NOT_READY}.
  *
- * <p>Przebieg (limity wywołań aplikacyjnych; transport SDK/JDK nie egzekwuje budżetu HTTP):
+ * <p>Przebieg (limity wywołań aplikacyjnych; od BETA-02 bean produkcyjny dodatkowo egzekwuje twardy budżet
+ * fizycznych żądań HTTP całego przebiegu przez {@code BudgetedKsefTransport} — patrz {@link RunClients}):
  * <ol>
  *   <li>walidacja numeru (wzorzec + CRC) i okna dat <b>przed</b> auth — błąd = zero HTTP;</li>
  *   <li>trwały lease {@code KsefInboundSyncLeases} tego samego zakresu co synchronizacja (TEST, NIP z konfiguracji,
@@ -65,16 +66,35 @@ public final class InboundManualImport {
     /** Wynik bez XML, referencji magazynu i danych auth; {@code documentId} = deterministyczny UUID stagingu. */
     public record Result(Outcome outcome, String documentId) { }
 
+    /** Klienci auth i odczytu jednego przebiegu (wspólny transport SDK). */
+    public record Clients(KsefInboundAccess access, KsefInboundClient client) { }
+
+    /**
+     * BETA-02: fabryka klientów <b>jednego</b> przebiegu. Produkcyjnie ({@code KsefInboundConfiguration}) tworzy
+     * nowy SDK na {@code BudgetedKsefTransport} z twardym budżetem fizycznych żądań; {@code fence} (kontrola lease)
+     * jest wywoływany przez transport przed każdym żądaniem HTTP — po utracie lease nie wychodzi już żaden request.
+     */
+    @FunctionalInterface
+    public interface RunClients {
+        Clients open(Runnable fence);
+    }
+
     private final SyncScope scope;
     private final Clock clock;
-    private final KsefInboundAccess access;
-    private final KsefInboundClient client;
+    private final RunClients clients;
     private final CqnInboundDocumentRepository documents;
     private final CqnInboundSyncLeaseRepository leases;
     private final KsefDocumentStore store;
     private final Fa3SchemaValidator schema;
 
+    /** Stałe klienty bez budżetu transportu — wyłącznie testy offline z atrapą SDK (zero HTTP). */
     public InboundManualImport(SyncScope scope, Clock clock, KsefInboundAccess access, KsefInboundClient client,
+            CqnInboundDocumentRepository documents, CqnInboundSyncLeaseRepository leases, KsefDocumentStore store,
+            Fa3SchemaValidator schema) {
+        this(scope, clock, fixed(access, client), documents, leases, store, schema);
+    }
+
+    public InboundManualImport(SyncScope scope, Clock clock, RunClients clients,
             CqnInboundDocumentRepository documents, CqnInboundSyncLeaseRepository leases, KsefDocumentStore store,
             Fa3SchemaValidator schema) {
         if (Objects.requireNonNull(scope).role() != KsefSubjectRole.BUYER) {
@@ -82,8 +102,7 @@ public final class InboundManualImport {
         }
         this.scope = scope;
         this.clock = Objects.requireNonNull(clock);
-        this.access = Objects.requireNonNull(access);
-        this.client = Objects.requireNonNull(client);
+        this.clients = Objects.requireNonNull(clients);
         this.documents = Objects.requireNonNull(documents);
         this.leases = Objects.requireNonNull(leases);
         this.store = Objects.requireNonNull(store);
@@ -101,6 +120,11 @@ public final class InboundManualImport {
         var claim = leases.claim(scope, Duration.ofMinutes(10));
         if (claim.isEmpty()) { return new Result(Outcome.BUSY, null); }
         try {
+            // Klienci tego przebiegu: każdy fizyczny request (certyfikaty, auth, polling, redeem, refresh, metadata,
+            // GET) przechodzi przez budżet i fencing lease; brak współdzielenia z OUTBOUND/synchronizacją.
+            Clients run = clients.open(() -> leases.requireOwned(claim.get()));
+            KsefInboundAccess access = run.access();
+            KsefInboundClient client = run.client();
             var session = access.open();
             var context = new KsefTaxpayerContext(scope.environment(), scope.contextNip());
             leases.requireOwned(claim.get());
@@ -128,6 +152,11 @@ public final class InboundManualImport {
             InboundSynchronization.finishFailed(leases, claim.get(), error, clock);
             throw error;
         }
+    }
+
+    private static RunClients fixed(KsefInboundAccess access, KsefInboundClient client) {
+        var fixedClients = new Clients(Objects.requireNonNull(access), Objects.requireNonNull(client));
+        return fence -> fixedClients;
     }
 
     /** Okno PermanentStorage przycięte do teraz; puste okno kończy import przed auth. */

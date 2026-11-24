@@ -35,7 +35,8 @@
     "test": "npm run test:unit && npm run test:opa",
     "serve:inbox": "node scripts/prepare-inbox-local.mjs && fiori run --config ./ui5-inbox.yaml --port 8087",
     "test:inbox": "node scripts/browser-test.mjs qunit http://localhost:8087/test/integration/inboundCap.qunit.html",
-    "test:inbox:e2e": "node scripts/inbox-e2e.mjs"
+    "test:inbox:e2e": "node scripts/inbox-e2e.mjs",
+    "start:beta-uat": "node scripts/beta-uat.mjs"
   },
   "sapuxLayer": "CUSTOMER_BASE"
 }

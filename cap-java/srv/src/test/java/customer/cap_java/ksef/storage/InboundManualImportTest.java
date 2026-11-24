@@ -238,4 +238,37 @@ class InboundManualImportTest {
         verify(access, times(1)).open();
         verifyNoInteractions(sdk);
     }
+
+    // ---- BETA-02: klienci per przebieg i fencing lease przed każdym HTTP ---------------------------------------
+
+    InboundManualImport importer(Clock clock, InboundManualImport.RunClients clients) {
+        return new InboundManualImport(SCOPE, clock, clients, new CqnInboundDocumentRepository(persistence, clock),
+                new CqnInboundSyncLeaseRepository(persistence, clock), store(db), new Fa3SchemaValidator());
+    }
+
+    @Test void eachRunOpensFreshClientsWithAFenceBoundToTheOwnedLease() throws Exception {
+        var opened = new java.util.concurrent.atomic.AtomicInteger();
+        var result = importer(CLOCK, fence -> {
+            opened.incrementAndGet();
+            fence.run(); // właściciel lease: fencing przepuszcza (transport wywołuje go przed każdym żądaniem)
+            return new InboundManualImport.Clients(access, inboundClient(sdk));
+        }).importOne(NUMBER);
+        assertEquals(InboundManualImport.Outcome.STORED, result.outcome());
+        assertEquals(1, opened.get());
+        verify(sdk, times(1)).getInvoice(eq(NUMBER), anyString());
+    }
+
+    @Test void lostLeaseRefusesAllHttpOfTheRun() throws Exception {
+        var clients = (InboundManualImport.RunClients) fence -> {
+            // Inny proces przejął lease po claim (symulacja: podmiana tokenu właściciela w DB).
+            persistence.tx(() -> db.run(com.sap.cds.ql.Update.entity(LEASES)
+                    .data(Map.of("claimToken", java.util.UUID.randomUUID().toString()))));
+            fence.run(); // transport wywołuje fencing przed każdym requestem → tu pierwszy request zostałby odmówiony
+            return new InboundManualImport.Clients(access, inboundClient(sdk));
+        };
+        var error = assertThrows(IllegalStateException.class, () -> importer(CLOCK, clients).importOne(NUMBER));
+        assertEquals("KSEF_INBOUND_LEASE_LOST", error.getMessage());
+        verifyNoInteractions(sdk, access);
+        assertTrue(rows(DOCUMENTS).isEmpty());
+    }
 }

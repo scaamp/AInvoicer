@@ -76,6 +76,13 @@ jobs:
           npm run verify:hana --prefix deploy
           # KSEF-STOR-04R: kandydat vs wdrożony payload HDI (13.11): dokładnie +1 tabela, 0 zmian/usunięć. Bez deployu.
           npm run verify:stor04-release --prefix deploy
+      # BETA-02: opt-in kompletne MTAR Beta (srv/HDI bajt w bajt z 0.7.4, AppRouter z UI5 Inbox Beta). Bez deployu.
+      - name: Build and verify undeployed complete Beta MTARs (Inbox read-only and with XML download UI)
+        run: |
+          npm run build:btp:beta --prefix deploy
+          npm run verify:beta --prefix deploy
+          npm run build:btp:beta --prefix deploy -- --with-xml-download
+          npm run verify:beta --prefix deploy -- --with-xml-download
       - name: Package isolated HANA test runner and exercise offline gates (no HANA or CF)
         run: |
           node deploy/scripts/hana-it-runner.mjs build
@@ -105,6 +112,8 @@ jobs:
           npm test
       - name: Inbox against actual local CAP HTTP (A/B, access failures and restart)
         run: npm run test:inbox:e2e --prefix sapui5/ainvoicer
+      - name: Owner local UAT launcher smoke (synthetic XML on local H2, no LIVE calls)
+        run: npm run start:beta-uat --prefix sapui5/ainvoicer -- --smoke
       # Obie odmiany beta zapisują do dist-cf-inbox-beta. Każdy build weryfikuje swój wynik przed kolejnym.
       - name: Build and verify default CF UI (Inbox disabled)
         run: npm run build:cf --prefix sapui5/ainvoicer
