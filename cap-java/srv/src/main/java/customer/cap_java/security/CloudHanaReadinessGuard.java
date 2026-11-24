@@ -28,6 +28,12 @@ public class CloudHanaReadinessGuard {
                 throw new IllegalStateException("HANA readiness requires " + flag + "=false");
             }
         }
+        // KSEF-IN-05: magazyn INBOUND HANA i pobranie XML nie należą do trybu readiness (jawne true = odmowa startu).
+        for (String flag : new String[]{"ainv.ksef.inbound.storage.hana.enabled", "ainv.ksef.inbound.xml-download.enabled"}) {
+            if (Boolean.TRUE.equals(env.getProperty(flag, Boolean.class))) {
+                throw new IllegalStateException("HANA readiness requires " + flag + "=false");
+            }
+        }
         if (!"off".equals(env.getProperty("ainv.ksef.storage.provider", "off"))) {
             throw new IllegalStateException("HANA readiness requires Object Store provider off");
         }

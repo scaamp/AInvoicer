@@ -9,7 +9,8 @@ sap.ui.define([
 	"ainvoicer/test/unit/model/InboundInvoiceMapper",
 	"ainvoicer/test/unit/model/InboundQuery",
 	"ainvoicer/test/unit/model/InboundFormatter",
-	"ainvoicer/test/unit/model/InboundInboxAdapter"
+	"ainvoicer/test/unit/model/InboundInboxAdapter",
+	"ainvoicer/test/unit/view/InboundInboxXss"
 ], function () {
 	"use strict";
 });

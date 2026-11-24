@@ -17,3 +17,17 @@ test('CI has read-only permissions, no credentials and no live mutation commands
     assert.ok(workflow.jobs.offline.steps.some(s => s.with?.['java-version'] === '25'));
     assert.ok(workflow.jobs.offline.steps.some(s => s.with?.['node-version'] === '22'));
 });
+
+test('CI requires all three CF builds in sequence with artifact verification in the build', () => {
+    const { steps } = YAML.parse(readFileSync(join(root, '.github/workflows/ci.yml'), 'utf8')).jobs.offline;
+    const ui5Builds = steps.filter(step => /^npm run build:cf(?: |:inbox-beta )/.test(step.run || ''));
+    assert.deepEqual(ui5Builds.map(step => step.run), [
+        'npm run build:cf --prefix sapui5/ainvoicer',
+        'npm run build:cf:inbox-beta --prefix sapui5/ainvoicer',
+        'npm run build:cf:inbox-beta --prefix sapui5/ainvoicer -- --with-xml-download'
+    ]);
+    for (const step of ui5Builds) {
+        assert.equal(step.if, undefined);
+        assert.equal(step['continue-on-error'], undefined);
+    }
+});

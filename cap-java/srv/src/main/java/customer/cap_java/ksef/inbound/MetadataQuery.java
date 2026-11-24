@@ -19,7 +19,7 @@ import pl.akmf.ksef.sdk.client.model.invoice.InvoiceQueryFilters;
  * Daty są normalizowane do UTC przed wysłaniem.
  */
 public record MetadataQuery(KsefSubjectRole role, DateType dateType, OffsetDateTime from, OffsetDateTime to,
-        boolean restrictToHwm, int pageSize) {
+        boolean restrictToHwm, int pageSize, String ksefNumber) {
     public static final int MIN_PAGE_SIZE = 10;
     public static final int MAX_PAGE_SIZE = 250;
     public static final Duration MAX_RANGE = Duration.ofDays(100);
@@ -43,6 +43,10 @@ public record MetadataQuery(KsefSubjectRole role, DateType dateType, OffsetDateT
         if (pageSize < MIN_PAGE_SIZE || pageSize > MAX_PAGE_SIZE) {
             throw new IllegalArgumentException("KSEF_INBOUND_PAGE_SIZE_INVALID");
         }
+        // KSEF-IN-05: opcjonalny filtr dokładnego numeru KSeF (OpenAPI InvoiceQueryFilters.ksefNumber); walidowany jak ścieżka GET.
+        if (ksefNumber != null && !KsefNumbers.isValid(ksefNumber)) {
+            throw new IllegalArgumentException("KSEF_NUMBER_INVALID");
+        }
         if (restrictToHwm && dateType != DateType.PERMANENT_STORAGE) {
             throw new IllegalArgumentException("KSEF_INBOUND_HWM_REQUIRES_PERMANENT_STORAGE");
         }
@@ -58,6 +62,21 @@ public record MetadataQuery(KsefSubjectRole role, DateType dateType, OffsetDateT
         }
     }
 
+    /** Zapytanie bez filtra numeru (dotychczasowy kontrakt synchronizacji). */
+    public MetadataQuery(KsefSubjectRole role, DateType dateType, OffsetDateTime from, OffsetDateTime to,
+            boolean restrictToHwm, int pageSize) {
+        this(role, dateType, from, to, restrictToHwm, pageSize, null);
+    }
+
+    /**
+     * KSEF-IN-05 (manual import): jedna strona minimalnego rozmiaru dla dokładnie jednego numeru KSeF,
+     * PermanentStorage bez ograniczenia do HWM (import nie przesuwa checkpointu synchronizacji).
+     */
+    public static MetadataQuery singleInvoice(KsefSubjectRole role, String ksefNumber, OffsetDateTime from, OffsetDateTime to) {
+        return new MetadataQuery(role, DateType.PERMANENT_STORAGE, from, Objects.requireNonNull(to, "to"), false,
+                MIN_PAGE_SIZE, Objects.requireNonNull(ksefNumber, "ksefNumber"));
+    }
+
     /** Zapytanie przyrostowe zalecane przez MF: PermanentStorage, rosnąco, ograniczone do HWM, max strona. */
     public static MetadataQuery incremental(KsefSubjectRole role, OffsetDateTime from, OffsetDateTime to) {
         return new MetadataQuery(role, DateType.PERMANENT_STORAGE, from, to, true, MAX_PAGE_SIZE);
@@ -67,6 +86,9 @@ public record MetadataQuery(KsefSubjectRole role, DateType dateType, OffsetDateT
         var filters = new InvoiceQueryFilters();
         filters.setSubjectType(role.sdkType());
         filters.setDateRange(new InvoiceQueryDateRange(dateType.sdk, from, to, restrictToHwm ? Boolean.TRUE : null));
+        if (ksefNumber != null) {
+            filters.setKsefNumber(ksefNumber);
+        }
         return filters;
     }
 }

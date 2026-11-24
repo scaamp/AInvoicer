@@ -9,6 +9,12 @@
 //   4. twardo weryfikuje artefakt (verifyArtifact): brak testów/fixture, brak credentiali, rap + Send OFF
 //      także w Component-preload.js. Każde naruszenie = exit 1, bez częściowego wyniku.
 // Funkcje AI/Scanner/Voice/Legacy pozostają w źródłach; CF blokuje je konfiguracją oraz CSP connect-src self.
+//
+// BETA-01 (opt-in, `npm run build:cf:inbox-beta`, flaga `--variant=inbox-beta`): osobny staging
+// build/cf-inbox-beta-webapp/ i wynik dist-cf-inbox-beta/. Różni się WYŁĄCZNIE sekcją ksefInbox: Inbox czyta
+// read-only CAP `KsefService.InboundInvoiceOverview` przez trasę AppRouter /odata/v4/KsefService/ (XSUAA).
+// Kokpit RAP, Send/sync OFF, Legacy/AI OFF i CSP pozostają identyczne. Pobranie XML (`viewXml`) jest OFF, chyba że
+// orkiestrator świadomie doda `--with-xml-download` po integracji backendu. Domyślne `build:cf` nie zmienia się.
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -18,8 +24,57 @@ export const CAP_SERVICE_URL = "/odata/v4/KsefService/";
 export const RAP_SERVICE_URL = "/rap-ui/";
 const EXCLUDED_SOURCE_DIRS = ["test", "localService"];
 
+/** BETA-01: jedyna encja czytana przez Inbox w wariancie beta i zakres środowisk backendu v1 (TEST). */
+export const INBOX_BETA_ENTITY_SET = "InboundInvoiceOverview";
+export const INBOX_BETA_ENVIRONMENTS = Object.freeze(["TEST"]);
+const INBOX_MAX_PAGE_SIZE = 100;
+const INBOX_DEFAULT_PAGE_SIZE = 20;
+const INBOX_DEFAULT_TIMEOUT_MS = 15000;
+const INBOX_MAX_TIMEOUT_MS = 60000;
+
+/** Warianty builda: osobny staging, konfiguracja ui5 i katalog wyniku (beta nie nadpisuje dist-cf/). */
+export const VARIANTS = Object.freeze({
+    default: Object.freeze({ stage: "cf-webapp", config: "ui5-cf.yaml", dist: "dist-cf" }),
+    "inbox-beta": Object.freeze({ stage: "cf-inbox-beta-webapp", config: "ui5-cf-inbox-beta.yaml", dist: "dist-cf-inbox-beta" })
+});
+
+/**
+ * Normalizacja opcji wariantu (fail-closed): nieznany wariant lub `xmlDownload` poza wariantem beta = błąd.
+ * `xmlDownload` to JEDYNY przełącznik włączający `ksefInbox.capabilities.viewXml` (CLI: --with-xml-download).
+ */
+export function resolveBuildOptions(options = {}) {
+    const variant = options.variant === undefined ? "default" : options.variant;
+    if (typeof variant !== "string" || !Object.prototype.hasOwnProperty.call(VARIANTS, variant)) {
+        throw new Error("unknown CF build variant: " + String(variant));
+    }
+    if (options.xmlDownload !== undefined && typeof options.xmlDownload !== "boolean") {
+        throw new Error("xmlDownload must be a boolean");
+    }
+    const xmlDownload = options.xmlDownload === true;
+    if (xmlDownload && variant !== "inbox-beta") {
+        throw new Error("--with-xml-download is only allowed with --variant=inbox-beta");
+    }
+    return { variant, xmlDownload };
+}
+
+/** Argumenty CLI: wyłącznie znane flagi; każda inna wartość przerywa build (bez zgadywania). */
+export function parseBuildArgs(argv) {
+    const options = {};
+    for (const arg of argv) {
+        if (arg === "--variant=inbox-beta" || arg === "--variant=default") {
+            options.variant = arg.substring("--variant=".length);
+        } else if (arg === "--with-xml-download") {
+            options.xmlDownload = true;
+        } else {
+            throw new Error("unknown build-cf argument: " + arg);
+        }
+    }
+    return resolveBuildOptions(options);
+}
+
 /** Czysta transformacja manifestu developerskiego do wariantu CF. Rzuca błąd zamiast „naprawiać” Send ON. */
-export function transformManifest(source) {
+export function transformManifest(source, options) {
+    const buildOptions = resolveBuildOptions(options);
     const manifest = structuredClone(source);
     const ui5 = manifest["sap.ui5"];
     const cockpit = ui5 && ui5.config && ui5.config.ksefCockpit;
@@ -61,33 +116,143 @@ export function transformManifest(source) {
     }
     // Flex/LREP (/sap/bc/lrep) nie istnieje za approuterem; personalizacja UI wyłączona w wariancie CF.
     ui5.flexEnabled = false;
-    transformInboxConfig(ui5.config);
+    transformInboxConfig(ui5.config, buildOptions);
     return manifest;
 }
 
 export const INBOX_CAPABILITIES = ["viewXml", "checkDuplicate", "linkSapDocument", "approveAndPost"];
 
+/** Oczekiwane capabilities Inbox: wszystko OFF; w becie `viewXml` wyłącznie przez jawne `xmlDownload`. */
+export function inboxCapabilitiesFor(options) {
+    const buildOptions = resolveBuildOptions(options);
+    return Object.fromEntries(INBOX_CAPABILITIES.map((key) => [key,
+        key === "viewXml" && buildOptions.variant === "inbox-beta" && buildOptions.xmlDownload]));
+}
+
 /**
- * UI5-10: KSeF Inbox w CF. Backend read-only istnieje lokalnie (INT-02); bramki trwałości/SSO nadal otwarte, więc
- * wariant CF jest WYŁĄCZONY (dataMode=disabled): bez ścieżki mock, bez encji CAP, bez żadnego HTTP.
- * Włączenie po akceptacji CF wymaga świadomej zmiany tej funkcji i testów — nie przełącznika w manifeście.
+ * UI5-10: KSeF Inbox w CF. Domyślny wariant CF jest WYŁĄCZONY (dataMode=disabled): bez ścieżki mock, bez encji
+ * CAP, bez żadnego HTTP. BETA-01 (tylko `variant=inbox-beta`): read-only CAP `InboundInvoiceOverview`, bez mock,
+ * bez akcji mutujących; to świadomy wariant builda, nie przełącznik w manifeście źródłowym.
  */
-function transformInboxConfig(config) {
+function transformInboxConfig(config, buildOptions) {
     const inbox = config.ksefInbox;
+    const beta = buildOptions.variant === "inbox-beta";
     if (!inbox) {
+        if (beta) {
+            throw new Error("manifest: sap.ui5/config/ksefInbox is required for the inbox-beta variant");
+        }
         return; // brak konfiguracji = adapter i tak działa w trybie disabled
     }
     const enabled = INBOX_CAPABILITIES.filter((key) => (inbox.capabilities || {})[key] !== false);
     if (enabled.length) {
         throw new Error("manifest: ksefInbox capabilities must be explicitly false in source: " + enabled.join(", "));
     }
+    if (!beta) {
+        config.ksefInbox = {
+            dataMode: "disabled",
+            pageSize: inbox.pageSize,
+            environments: inbox.environments,
+            cap: { serviceUrl: CAP_SERVICE_URL, entitySet: null },
+            capabilities: Object.fromEntries(INBOX_CAPABILITIES.map((key) => [key, false]))
+        };
+        return;
+    }
+    if (!inbox.cap || inbox.cap.serviceUrl !== CAP_SERVICE_URL) {
+        throw new Error("manifest: ksefInbox.cap.serviceUrl must be " + CAP_SERVICE_URL);
+    }
+    const pageSize = Number.isSafeInteger(inbox.pageSize) && inbox.pageSize > 0
+        ? Math.min(inbox.pageSize, INBOX_MAX_PAGE_SIZE) : INBOX_DEFAULT_PAGE_SIZE;
+    const timeout = inbox.cap.readTimeoutMs;
+    // Nowy obiekt z listy białej pól: `mock` i inne klucze źródła nie przechodzą do artefaktu.
     config.ksefInbox = {
-        dataMode: "disabled",
-        pageSize: inbox.pageSize,
-        environments: inbox.environments,
-        cap: { serviceUrl: CAP_SERVICE_URL, entitySet: null },
-        capabilities: Object.fromEntries(INBOX_CAPABILITIES.map((key) => [key, false]))
+        dataMode: "cap",
+        pageSize,
+        environments: [...INBOX_BETA_ENVIRONMENTS],
+        cap: {
+            serviceUrl: CAP_SERVICE_URL,
+            entitySet: INBOX_BETA_ENTITY_SET,
+            readTimeoutMs: Number.isSafeInteger(timeout) && timeout > 0 ? Math.min(timeout, INBOX_MAX_TIMEOUT_MS) : INBOX_DEFAULT_TIMEOUT_MS
+        },
+        capabilities: inboxCapabilitiesFor(buildOptions)
     };
+}
+
+/** BETA-01: dokładna kontrola sekcji ksefInbox (manifest i manifest osadzony w Component-preload.js). */
+function verifyBetaInbox(inbox, buildOptions, label) {
+    const errors = [];
+    const fail = (message) => errors.push(label + ": ksefInbox " + message);
+    if (!inbox || typeof inbox !== "object") {
+        fail("is missing");
+        return errors;
+    }
+    const keys = Object.keys(inbox).sort();
+    if (JSON.stringify(keys) !== JSON.stringify(["cap", "capabilities", "dataMode", "environments", "pageSize"])) {
+        fail("has unexpected keys (mock or other): " + keys.join(","));
+    }
+    if (inbox.dataMode !== "cap") {
+        fail("dataMode must be cap");
+    }
+    if (!Number.isSafeInteger(inbox.pageSize) || inbox.pageSize < 1 || inbox.pageSize > INBOX_MAX_PAGE_SIZE) {
+        fail("pageSize must be 1.." + INBOX_MAX_PAGE_SIZE);
+    }
+    if (JSON.stringify(inbox.environments) !== JSON.stringify(INBOX_BETA_ENVIRONMENTS)) {
+        fail("environments must be " + INBOX_BETA_ENVIRONMENTS.join(","));
+    }
+    const cap = inbox.cap || {};
+    if (cap.serviceUrl !== CAP_SERVICE_URL || cap.entitySet !== INBOX_BETA_ENTITY_SET
+            || JSON.stringify(Object.keys(cap).sort()) !== JSON.stringify(["entitySet", "readTimeoutMs", "serviceUrl"])
+            || !Number.isSafeInteger(cap.readTimeoutMs) || cap.readTimeoutMs < 1 || cap.readTimeoutMs > INBOX_MAX_TIMEOUT_MS) {
+        fail("cap must read " + CAP_SERVICE_URL + INBOX_BETA_ENTITY_SET + " with a bounded timeout");
+    }
+    if (JSON.stringify(inbox.capabilities) !== JSON.stringify(inboxCapabilitiesFor(buildOptions))) {
+        fail("capabilities must be " + JSON.stringify(inboxCapabilitiesFor(buildOptions)));
+    }
+    return errors;
+}
+
+/** Oba manifesty są używane przez UI5. Te same reguły obowiązują dla pliku i kopii w preloadzie. */
+function verifyManifest(manifest, buildOptions, label) {
+    const { ksefCockpit: cockpit = {}, ksefInbox: inbox } = manifest?.["sap.ui5"]?.config || {};
+    const errors = [];
+    if (cockpit.dataMode !== "rap") {
+        errors.push(label + ": dataMode must be rap");
+    }
+    if (cockpit.capabilities?.sendInvoice !== false || cockpit.capabilities.syncInbound !== false
+            || Object.values(cockpit.capabilities).some((value) => value !== false)) {
+        errors.push(label + ": all cockpit capabilities must be false (sendInvoice and syncInbound required)");
+    }
+    if (cockpit.mock || cockpit.cap?.serviceUrl !== CAP_SERVICE_URL || cockpit.rap?.dataSource !== RAP_SERVICE_URL) {
+        errors.push(label + ": ksefCockpit must use the CF CAP/RAP routes without mock");
+    }
+    if (JSON.stringify(cockpit.externalServices) !== JSON.stringify({ ai: false, scanner: false, voice: false, tts: false })) {
+        errors.push(label + ": externalServices must all be explicitly false");
+    }
+    if (buildOptions.variant === "inbox-beta") {
+        errors.push(...verifyBetaInbox(inbox, buildOptions, label));
+    } else if (inbox?.dataMode !== "disabled" || inbox.mock || inbox.cap?.entitySet !== null
+            || JSON.stringify(inbox.capabilities) !== JSON.stringify(inboxCapabilitiesFor(buildOptions))) {
+        errors.push(label + ": ksefInbox must be disabled without mock data, CAP entity or capabilities");
+    }
+    return errors;
+}
+
+/** Manifest osadzony przez UI5 builder w Component-preload.js jako literał JS `'...'`; null = nie znaleziono. */
+export function extractPreloadManifest(text) {
+    const match = /"ainvoicer\/manifest\.json":'((?:[^'\\]|\\.)*)'/.exec(text);
+    if (!match) {
+        return null;
+    }
+    const decoded = match[1].replace(/\\(u[0-9a-fA-F]{4}|.)/g, (all, escape) => {
+        if (escape.length === 5) {
+            return String.fromCharCode(parseInt(escape.substring(1), 16));
+        }
+        return { n: "\n", r: "\r", t: "\t", b: "\b", f: "\f", v: "\v", 0: "\0" }[escape] ?? escape;
+    });
+    try {
+        return JSON.parse(decoded);
+    } catch {
+        return null;
+    }
 }
 
 const SECRET_PATTERNS = [
@@ -107,12 +272,23 @@ function walk(dir) {
     });
 }
 
-/** Weryfikacja gotowego artefaktu; zwraca { errors, warnings, files }. */
-export function verifyArtifact(dir) {
+/**
+ * Weryfikacja gotowego artefaktu; zwraca { errors, warnings, files }. Bez opcji = wariant domyślny (bez zmian).
+ * `{ variant: "inbox-beta", xmlDownload }` dokłada dokładną kontrolę bety; reszta reguł jest wspólna.
+ */
+export function verifyArtifact(dir, options) {
+    const buildOptions = resolveBuildOptions(options);
+    const beta = buildOptions.variant === "inbox-beta";
+    // Beta czyta CAP w Inbox (dataMode=cap jest oczekiwany); mock nadal zabroniony wszędzie.
+    const forbiddenDataMode = beta ? /"dataMode"\s*:\s*"mock"/ : /"dataMode"\s*:\s*"(mock|cap)"/;
+    // viewXml=true dopuszczalny tylko w becie z --with-xml-download i tylko w ksefInbox (sprawdzane dokładnie niżej).
+    const mutatingKeys = ["sendInvoice", "syncInbound", "viewXml", "downloadUpo", "checkDuplicate", "linkSapDocument", "approveAndPost"]
+        .filter((key) => !(key === "viewXml" && beta && buildOptions.xmlDownload));
+    const mutatingEnabled = new RegExp('"(' + mutatingKeys.join("|") + ')"\\s*:\\s*true');
     const errors = [];
     const warnings = new Set();
-    if (!existsSync(join(dir, "manifest.json")) || !existsSync(join(dir, "index.html"))) {
-        errors.push("artifact: manifest.json and index.html are required");
+    if (!["manifest.json", "index.html", "Component-preload.js"].every((file) => existsSync(join(dir, file)))) {
+        errors.push("artifact: manifest.json, index.html and Component-preload.js are required");
         return { errors, warnings: [], files: 0 };
     }
     const files = walk(dir);
@@ -126,6 +302,9 @@ export function verifyArtifact(dir) {
         if (/\.json$/i.test(rel) && !/(^|\/)manifest\.json$/.test(rel) && !/sap-ui-cachebuster-info\.json$/.test(rel)) {
             errors.push("unexpected JSON (fixture?) in artifact: " + rel);
         }
+        if (/(^|\/)\.env(?:\.|$)|\.(?:pem|key|pfx|p12|jks)$/i.test(rel)) {
+            errors.push("credential file in artifact: " + rel);
+        }
         if (!TEXT_FILE.test(rel)) {
             continue;
         }
@@ -135,10 +314,10 @@ export function verifyArtifact(dir) {
                 errors.push(label + " pattern in " + rel);
             }
         }
-        if (/"dataMode"\s*:\s*"(mock|cap)"/.test(text)) {
-            errors.push("non-RAP dataMode in " + rel);
+        if (forbiddenDataMode.test(text)) {
+            errors.push((beta ? "mock dataMode in " : "non-RAP dataMode in ") + rel);
         }
-        if (/"(sendInvoice|syncInbound|viewXml|downloadUpo|checkDuplicate|linkSapDocument|approveAndPost)"\s*:\s*true/.test(text)) {
+        if (mutatingEnabled.test(text)) {
             errors.push("mutating capability enabled in " + rel);
         }
         // Syntetyczne faktury Inbox (UI5-10) nigdy nie trafiają do artefaktu CF — ani plik, ani ścieżka.
@@ -152,44 +331,25 @@ export function verifyArtifact(dir) {
         }
     }
     const manifest = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"));
-    const cockpit = manifest["sap.ui5"].config.ksefCockpit;
-    if (cockpit.dataMode !== "rap") {
-        errors.push("manifest.json: dataMode must be rap");
-    }
-    if (Object.values(cockpit.capabilities || {}).some((value) => value !== false)) {
-        errors.push("manifest.json: all capabilities must be false");
-    }
-    const inbox = manifest["sap.ui5"].config.ksefInbox;
-    if (inbox && (inbox.dataMode !== "disabled" || inbox.mock || (inbox.cap && inbox.cap.entitySet)
-            || Object.values(inbox.capabilities || {}).some((value) => value !== false))) {
-        errors.push("manifest.json: ksefInbox must be disabled without mock data, CAP entity or capabilities");
-    }
-    if (JSON.stringify(cockpit.externalServices) !== JSON.stringify({ ai: false, scanner: false, voice: false, tts: false })) {
-        errors.push("manifest.json: externalServices must all be explicitly false");
-    }
+    errors.push(...verifyManifest(manifest, buildOptions, "manifest.json"));
     if (!readFileSync(join(dir, "index.html"), "utf8").includes(
             'http-equiv="Content-Security-Policy" content="connect-src \'self\'; form-action \'self\'; base-uri \'self\'; object-src \'none\'"')) {
         errors.push("index.html: CF same-origin connection policy is required");
     }
-    const preload = join(dir, "Component-preload.js");
-    if (existsSync(preload) && !/\\?"dataMode\\?"\s*:\s*\\?"rap\\?"/.test(readFileSync(preload, "utf8"))) {
-        errors.push("Component-preload.js: embedded manifest is not dataMode=rap");
+    const embedded = extractPreloadManifest(readFileSync(join(dir, "Component-preload.js"), "utf8"));
+    if (!embedded) {
+        errors.push("Component-preload.js: embedded manifest is required and must be valid JSON");
+    } else {
+        errors.push(...verifyManifest(embedded, buildOptions, "Component-preload.js"));
     }
-    if (existsSync(preload)) {
-        const text = readFileSync(preload, "utf8");
-        const groups = [...text.matchAll(/\\?"externalServices\\?"\s*:\s*\{([^}]+)\}/g)];
-        if (!groups.length || groups.some(([, group]) =>
-                ["ai", "scanner", "voice", "tts"].some(name =>
-                    !new RegExp('\\\\?"' + name + '\\\\?"\\s*:\\s*false(?:\\s*[,}]|\\s*$)').test(group))
-                || /:\s*true/.test(group))) {
-            errors.push("Component-preload.js: externalServices must all be explicitly false");
-        }
+    if (beta && !existsSync(join(dir, "model", "ksef", "inbound", "InboundInboxAdapter.js"))) {
+        errors.push("artifact: Inbox adapter is missing");
     }
     return { errors, warnings: [...warnings].sort(), files: files.length };
 }
 
 /** Kopia źródeł bez test/ i localService/ (na poziomie webapp/). */
-export function stageWebapp(webapp, stage) {
+export function stageWebapp(webapp, stage, options) {
     rmSync(stage, { recursive: true, force: true });
     mkdirSync(stage, { recursive: true });
     cpSync(webapp, stage, {
@@ -200,7 +360,7 @@ export function stageWebapp(webapp, stage) {
         }
     });
     const manifestPath = join(stage, "manifest.json");
-    const manifest = transformManifest(JSON.parse(readFileSync(manifestPath, "utf8")));
+    const manifest = transformManifest(JSON.parse(readFileSync(manifestPath, "utf8")), options);
     writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
     // Druga bariera w przeglądarce: nawet pominięta bramka JS nie połączy się ze starym hostem AI.
     const indexPath = join(stage, "index.html");
@@ -210,18 +370,26 @@ export function stageWebapp(webapp, stage) {
 }
 
 function main() {
+    let buildOptions;
+    try {
+        buildOptions = parseBuildArgs(process.argv.slice(2));
+    } catch (error) {
+        console.error("FAIL " + error.message);
+        process.exit(1);
+    }
+    const variant = VARIANTS[buildOptions.variant];
     const project = join(dirname(fileURLToPath(import.meta.url)), "..");
-    const stage = join(project, "build", "cf-webapp");
-    const dist = join(project, "dist-cf");
-    stageWebapp(join(project, "webapp"), stage);
+    const stage = join(project, "build", variant.stage);
+    const dist = join(project, variant.dist);
+    stageWebapp(join(project, "webapp"), stage, buildOptions);
     const ui5 = join(project, "node_modules", "@ui5", "cli", "bin", "ui5.cjs");
-    const result = spawnSync(process.execPath, [ui5, "build", "--config=ui5-cf.yaml", "--clean-dest", "--dest", "dist-cf"],
+    const result = spawnSync(process.execPath, [ui5, "build", "--config=" + variant.config, "--clean-dest", "--dest", variant.dist],
         { cwd: project, stdio: "inherit" });
     if (result.status !== 0) {
         console.error("ui5 build failed (exit " + result.status + ")");
         process.exit(result.status || 1);
     }
-    const report = verifyArtifact(dist);
+    const report = verifyArtifact(dist, buildOptions);
     for (const host of report.warnings) {
         console.warn("INFO preserved external host (CF capabilities OFF, CSP blocks connections): " + host);
     }
@@ -230,7 +398,12 @@ function main() {
         rmSync(dist, { recursive: true, force: true }); // brak częściowego artefaktu do przypadkowego wdrożenia
         process.exit(1);
     }
-    console.log("CF build PASS: " + report.files + " files in dist-cf (dataMode=rap, capabilities OFF, no tests/fixtures)");
+    if (buildOptions.variant === "default") {
+        console.log("CF build PASS: " + report.files + " files in dist-cf (dataMode=rap, capabilities OFF, no tests/fixtures)");
+    } else {
+        console.log("CF inbox-beta build PASS: " + report.files + " files in " + variant.dist + " (cockpit rap, Inbox read-only CAP "
+            + INBOX_BETA_ENTITY_SET + ", viewXml=" + buildOptions.xmlDownload + ", other capabilities OFF, no tests/fixtures)");
+    }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

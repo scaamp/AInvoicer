@@ -29,6 +29,7 @@ import com.sap.cds.services.runtime.CdsRuntime;
 
 import customer.cap_java.Application;
 import customer.cap_java.ksef.KsefDocumentStore;
+import customer.cap_java.ksef.KsefInboundAccess;
 import customer.cap_java.ksef.KsefFailure;
 import customer.cap_java.ksef.fa3.Fa3SchemaValidator;
 import customer.cap_java.ksef.inbound.*;
@@ -59,6 +60,7 @@ class HanaDocumentStoreInboundPipelineTest {
     CqnInboundDocumentRepository documents;
     CqnSyncCheckpointRepository checkpoints;
     InvoiceRetrievalService retrieval;
+    KSeFClient sdk;
     byte[] xml;
 
     @BeforeEach void reset() throws Exception {
@@ -69,7 +71,7 @@ class HanaDocumentStoreInboundPipelineTest {
             for (String entity : List.of(GRANTS, CONFLICTS, DOCUMENTS, CHECKPOINTS, LEASES, STORE)) { db.run(Delete.from(entity)); }
             return null;
         });
-        KSeFClient sdk = mock(KSeFClient.class);
+        sdk = mock(KSeFClient.class);
         retrieval = new InvoiceRetrievalService(inboundClient(sdk), ReadRetryPolicy.noRetry(CLOCK));
         xml = resource("fa3-purchase-synthetic.xml");
         when(sdk.getInvoice(anyString(), anyString())).thenReturn(xml);
@@ -174,6 +176,73 @@ class HanaDocumentStoreInboundPipelineTest {
         String reference = (String) rows(DOCUMENTS).getFirst().get("xmlStorageRef");
         var outboundView = root(db).forScope(DocumentScope.outbound(KsefEnvironment.TEST, CONTEXT_NIP));
         assertEquals("KSEF_DOCUMENT_ACCESS_DENIED", assertThrows(KsefFailure.class, () -> outboundView.get(reference)).getMessage());
+    }
+
+    /**
+     * KSEF-IN-05 (B2) — OFFLINE H2, nie HANA: pełny przebieg {@link InboundSynchronization} (lease + fake auth/SDK)
+     * z prawdziwym adapterem CQN {@link HanaKsefDocumentStore}. Dokładne bajty z BOM i CRLF, SHA-256, FA(3) PARSED,
+     * metadane i grant (contextNip, BUYER), checkpoint po trwałym zapisie, „restart” (nowe instancje repozytoriów,
+     * store i koordynatora) z utraconym checkpointem → idempotentny drugi przebieg bez drugiego GET XML,
+     * bez drugiego wiersza i bez UPDATE magazynu.
+     */
+    @Test void offlineH2SynchronizationKeepsBomCrlfAndIsIdempotentAcrossRestart() throws Exception {
+        byte[] bom = new byte[] {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
+        // CRLF budowane jawnie: końce linii fixture zależą od checkoutu Git (autocrlf na Windows vs LF w CI).
+        byte[] crlf = new String(xml, java.nio.charset.StandardCharsets.UTF_8).replace("\r\n", "\n").replace("\n", "\r\n")
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] original = new byte[bom.length + crlf.length];
+        System.arraycopy(bom, 0, original, 0, bom.length);
+        System.arraycopy(crlf, 0, original, bom.length, crlf.length);
+        assertTrue(new String(original, java.nio.charset.StandardCharsets.UTF_8).contains("\r\n"), "payload ma CRLF");
+        when(sdk.getInvoice(anyString(), anyString())).thenReturn(original);
+        when(sdk.queryInvoiceMetadata(eq(0), anyInt(), any(), any(), any())).thenReturn(response(false, false,
+                HWM.toString(), sdkItem(metadataJson(ksefNumber(1), "2026-11-02T09:00:00Z", hashOf(original)))));
+
+        var first = synchronization(CLOCK, freshStore()).runOnce();
+        assertEquals(InvoiceSyncRunner.Status.COMMITTED, first.orElseThrow().status());
+        var row = rows(DOCUMENTS).getFirst();
+        String sha = KsefInvoiceSnapshotRegistry.sha256Hex(original);
+        assertEquals(sha, row.get("sha256"), "hash z metadanych = SHA-256 oryginalnych bajtów z BOM");
+        assertEquals("ksefdoc:v1:TEST:INBOUND:-:" + sha, row.get("xmlStorageRef"));
+        assertEquals(List.of("STORED", "PARSED", "VERIFIED"),
+                List.of(row.get("ingestionStatus"), row.get("parseStatus"), row.get("integrityStatus")));
+        assertEquals((long) original.length, ((Number) row.get("sizeBytes")).longValue());
+        assertEquals(List.of(ksefNumber(1), "FZ/2026/11/0001", SELLER_NIP, "TEST"),
+                List.of(row.get("ksefNumber"), row.get("invoiceNumber"), row.get("sellerNip"), row.get("environment")));
+        assertNotNull(row.get("grossAmount"), "kwota autorytatywna z XML");
+        var grant = rows(GRANTS).getFirst();
+        assertEquals(List.of(row.get("ID"), CONTEXT_NIP, "BUYER"),
+                List.of(grant.get("documentId"), grant.get("contextNip"), grant.get("subjectRole")));
+        assertEquals(HWM, checkpoints.find(SCOPE).orElseThrow().continuationFrom());
+        Object storedAt = persistence.tx(() -> db.run(Select.from(STORE).columns("storedAt")).single().get("storedAt"));
+
+        // „Restart” po utracie checkpointu: nowe instancje, okno odtwarzane od initialFrom, zegar +1 h (koniec cooldown).
+        persistence.tx(() -> db.run(Delete.from(CHECKPOINTS)));
+        persistence = new InboundPersistence(db, runtime);
+        documents = new CqnInboundDocumentRepository(persistence, CLOCK);
+        checkpoints = new CqnSyncCheckpointRepository(persistence);
+        var second = synchronization(java.time.Clock.offset(CLOCK, Duration.ofHours(1)), freshStore()).runOnce();
+        assertEquals(InvoiceSyncRunner.Status.COMMITTED, second.orElseThrow().status());
+        verify(sdk, times(1)).getInvoice(anyString(), anyString());
+        assertEquals(1, storeRows().size());
+        assertEquals(1, rows(DOCUMENTS).size());
+        assertEquals(1, rows(GRANTS).size());
+        assertEquals(row.get("xmlStorageRef"), rows(DOCUMENTS).getFirst().get("xmlStorageRef"));
+        assertEquals(storedAt, persistence.tx(() -> db.run(Select.from(STORE).columns("storedAt")).single().get("storedAt")),
+                "brak UPDATE wiersza magazynu");
+        assertArrayEquals(original, freshStore().get((String) row.get("xmlStorageRef")), "odczyt po restarcie: te same bajty");
+        // Drugi put tych samych bajtów: ta sama referencja, nadal jeden wiersz (idempotencja adaptera).
+        assertEquals(row.get("xmlStorageRef"), freshStore().put(original.clone()));
+        assertEquals(1, storeRows().size());
+    }
+
+    InboundSynchronization synchronization(java.time.Clock clock, KsefDocumentStore storage) {
+        var access = mock(KsefInboundAccess.class);
+        var session = mock(KsefInboundAccess.AccessSession.class);
+        when(access.open()).thenReturn(session);
+        when(session.token()).thenReturn(token());
+        return new InboundSynchronization(SCOPE, START, clock, access, retrieval, documents, checkpoints,
+                new CqnInboundSyncLeaseRepository(persistence, clock), storage, new Fa3SchemaValidator());
     }
 
     static final class SimulatedProcessDeath extends Error { }

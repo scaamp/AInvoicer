@@ -35,6 +35,12 @@ class HanaReadinessConfigurationTest {
             assertThrows(IllegalStateException.class, () -> CloudHanaReadinessGuard.verifyFlags(env));
             env.setProperty(key, "false");
         }
+        for (String key : new String[]{"ainv.ksef.inbound.storage.hana.enabled", "ainv.ksef.inbound.xml-download.enabled"}) {
+            env.setProperty(key, "true");
+            assertThrows(IllegalStateException.class, () -> CloudHanaReadinessGuard.verifyFlags(env), key);
+            env.setProperty(key, "false");
+            assertDoesNotThrow(() -> CloudHanaReadinessGuard.verifyFlags(env));
+        }
         env.setProperty("ainv.ksef.storage.provider", "azure");
         assertThrows(IllegalStateException.class, () -> CloudHanaReadinessGuard.verifyFlags(env));
     }

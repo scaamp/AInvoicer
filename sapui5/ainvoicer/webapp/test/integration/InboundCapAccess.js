@@ -32,6 +32,14 @@ function (Opa5, opaTest, Startup, Adapter) {
         if (expectedStatus || scenario === "outage") {
             Then.onTheInboxPage.iShouldSeeControlVisible("inboxErrorStrip", true);
             Then.onTheInboxPage.iShouldSeeEmptyState("error");
+            // BETA-01: czytelna przyczyna zamiast surowego HTTP; 401 proponuje ponowne logowanie.
+            if (expectedStatus === 401) {
+                Then.onTheInboxPage.iShouldSeeTextContaining("inboxErrorStrip", "Sign in again");
+                Then.onTheInboxPage.iShouldSeeControlVisible("inboxSignInAgainLink", true);
+            } else if (expectedStatus === 403) {
+                Then.onTheInboxPage.iShouldSeeTextContaining("inboxErrorStrip", "not authorized to read the KSeF Inbox");
+                Then.onTheInboxPage.iShouldSeeControlVisible("inboxSignInAgainLink", false);
+            }
         } else {
             Then.onTheInboxPage.iShouldSeeControlVisible("inboxErrorStrip", false);
             if (!count) { Then.onTheInboxPage.iShouldSeeEmptyState("noData"); }

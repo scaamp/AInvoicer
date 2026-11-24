@@ -1,12 +1,21 @@
 ---
 title: "AInvoicer — plan rozwoju"
-date: 2026-11-15
+date: 2026-11-23
 type: roadmap
 status: aktywny
 tags: [ainvoicer, roadmap, cap-java, ksef]
 ---
 
 # Plan rozwoju
+
+**BETA-01 — 23.11.2026:** produktowy widok statusu Beta 0.1 / 0.2 / Production jest teraz w
+[BETA_ROADMAP.md](BETA_ROADMAP.md) (źródło aktualnego statusu Bety); poniższe wpisy pozostają historią etapów.
+
+- [x] BETA-01 offline: wiring storage INBOUND, pipeline E2E offline, manual import (flaga), download XML (flaga),
+  opt-in build Inboxa CF, testy A/B, pełna regresja. [Raport](guides/BETA_01_INBOUND_READINESS.md).
+- [ ] BETA-01 LIVE: PRECHECK EU20 (BLOCKED_AUTH), R-1, CURRENT G1, HDI STOR-04, NEW G1, release srv/AppRouter/UI beta,
+  twardy budżet fizycznych HTTP manual importu, zatwierdzony kontekst NIP/CompanyCode, decyzja o blokadach chmurowych,
+  jeden import KSeF TEST i smoke/security w BTP. Każda pozycja wymaga osobnej zgody.
 
 **ORCH-09 — 15.11.2026, workstreamy MERGED:** PR #26 (Codex) i #27 (Claude Code) review **PASS WITH NOTES**, CI dokładnych HEAD SUCCESS; merge kolejno `40e6c12` → `8e6a5c6`. Wspólna regresja **OFFLINE PASS**: Maven671/0/0/6 + Azurite6, G1 stary63/nowy86, deploy199/1 Go SKIP, R2 6+self-test, JAR security10, QUnit112, OPA21, Inbox16/73, oba MTAR i release +1/0/0. **LIVE PENDING; SEND BLOCKED; HANA DEPLOY PENDING.** Default G1 nadal 15/5/6/15; osobny 16/5/6/16 przygotowany, niewykonany. **R-1 BLOCKED dla wykonania LIVE** (mixed-version MTA i zakres zasobów `-m` wymagają preflightu). [Review / wyniki / merge](journal/2026-11-15-orch-09-outbound-hana-integration.md). [E2E-01C — projekt approval](guides/E2E_01C_APPROVED_SNAPSHOT_DESIGN.md), ADR-0010 nadal PROPOSED; brak zmian CDS i odblokowania SEND. Końcowy SHA/CI main po PR dokumentacji w raporcie sesji.
 

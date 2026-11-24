@@ -157,6 +157,24 @@
                         />
                         <Label text="{i18n>inboxDetailsXmlStored}" />
                         <Text text="{ path: 'inboxDetails>/invoice/xmlAvailable', formatter: '.formatter.yesNo' }" />
+                        <!-- BETA-01: pobranie oryginalnego XML tylko przy capability viewXml ORAZ jawnym xmlAvailable=true.
+                             W innym wypadku brak przycisku i tekst z powodem (bez atrapy pobierania). -->
+                        <Label text="{i18n>inboxDetailsOriginalXml}" />
+                        <!-- Dwa pola tej samej etykiety (SimpleForm nie przyjmuje kontenerów typu HBox); widoczne jest jedno. -->
+                        <Button
+                            id="inboxDownloadXmlButton"
+                            text="{i18n>inboxActionViewXml}"
+                            icon="sap-icon://download"
+                            tooltip="{i18n>inboxDownloadXmlTooltip}"
+                            visible="{= ${inbox>/actions/viewXml/enabled} === true &amp;&amp; ${inboxDetails>/invoice/xmlAvailable} === true }"
+                            enabled="{= !${inboxDetails>/downloading} }"
+                            press=".onDownloadXml"
+                        />
+                        <Text
+                            id="inboxDownloadXmlInfo"
+                            text="{ parts: ['inbox>/actions/viewXml/enabled', 'inboxDetails>/invoice/xmlAvailable'], formatter: '.xmlDownloadInfo' }"
+                            visible="{= !(${inbox>/actions/viewXml/enabled} === true &amp;&amp; ${inboxDetails>/invoice/xmlAvailable} === true) }"
+                        />
                         <Label text="{i18n>inboxDetailsParse}" />
                         <ObjectStatus
                             id="inboxDetailsParse"
@@ -194,16 +212,6 @@
                     <VBox renderType="Bare">
                         <Text id="inboxDetailsReadOnlyNote" text="{i18n>inboxDetailsFutureNote}" class="sapUiTinyMarginBottom" />
                         <OverflowToolbar id="inboxDetailsFutureToolbar" style="Clear">
-                            <Button
-                                id="inboxViewXmlButton"
-                                text="{i18n>inboxActionViewXml}"
-                                icon="sap-icon://source-code"
-                                enabled="{inbox>/actions/viewXml/enabled}"
-                                tooltip="{inbox>/actions/viewXml/reason}"
-                                press=".onFutureAction"
-                            >
-                                <customData><core:CustomData key="action" value="viewXml" /></customData>
-                            </Button>
                             <Button
                                 id="inboxCheckDuplicateButton"
                                 text="{i18n>inboxActionCheckDuplicate}"

@@ -81,8 +81,9 @@ sap.ui.define([], function () {
     });
 
     /**
-     * Akcje przyszłe (podgląd XML, duplikaty, powiązanie FI/MM, zatwierdzanie/księgowanie).
-     * Backend nie ma tych operacji — adapter zwraca je zawsze jako niedostępne, niezależnie od manifestu.
+     * Akcje przyszłe (pobranie XML, duplikaty, powiązanie FI/MM, zatwierdzanie/księgowanie).
+     * Duplikaty/FI/MM/księgowanie: zawsze niedostępne, niezależnie od manifestu. `viewXml` (BETA-01: pobranie
+     * oryginalnego XML, tylko odczyt) adapter włącza wyłącznie w trybie CAP przy jawnym `capabilities.viewXml === true`.
      */
     var FutureActions = Object.freeze(["viewXml", "checkDuplicate", "linkSapDocument", "approveAndPost"]);
 

@@ -23,10 +23,12 @@ try {
     $env:GITHUB_REF_NAME = 'v3.0.29'
     Push-Location -LiteralPath $sourcePath
     try {
+        # Budujemy bibliotekę. Konfiguracja demo-web-app wymaga niezależnych pluginów z Gradle Plugin Portal.
+        $gradleArgs = @(':ksef-client:publishToMavenLocal', '--no-daemon', '--configure-on-demand')
         if ([System.Environment]::OSVersion.Platform -eq 'Win32NT') {
-            & ./gradlew.bat :ksef-client:publishToMavenLocal --no-daemon
+            & ./gradlew.bat @gradleArgs
         } else {
-            & bash ./gradlew :ksef-client:publishToMavenLocal --no-daemon
+            & bash ./gradlew @gradleArgs
         }
         if ($LASTEXITCODE -ne 0) { throw 'SDK_BUILD_FAILED' }
     } finally { Pop-Location }

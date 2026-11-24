@@ -229,7 +229,8 @@ class XsuaaJwtODataContractTest {
         }
         for (String path : new String[]{"$metadata", "", "KsefOperations(" + foreignOperation + ")",
                 "KsefInvoices(" + invoice + ")", "InvoiceIntegrationStatus(" + foreignOperation + ")",
-                "InboundInvoiceOverview(" + InboundFixtures.OWN + ")"}) {
+                "InboundInvoiceOverview(" + InboundFixtures.OWN + ")",
+                "InboundInvoiceXml(" + InboundFixtures.OWN + ")/content"}) {
             assertEquals(401, get("Bearer " + token, path).statusCode(), path);
         }
         for (String path : new String[]{"requestSend", "$batch", "KsefOperations"}) {
@@ -404,6 +405,26 @@ class XsuaaJwtODataContractTest {
     }
 
     // ---- Pomocnicze -----------------------------------------------------------------------------
+
+    /** KSEF-IN-05: pobranie XML wymaga JWT, roli i zaufanego tenanta; w identity-smoke magazyn i flaga są OFF (404). */
+    @Test void inboundXmlDownloadRequiresJwtRoleTenantAndStaysOffInIdentitySmoke() throws Exception {
+        assertTrue(applicationContext.getBeansOfType(customer.cap_java.ksef.storage.InboundDocumentStorage.class).isEmpty());
+        String path = "InboundInvoiceXml(" + InboundFixtures.OWN + ")/content";
+        assertEquals(401, get(null, path).statusCode());
+        assertEquals(401, get("Bearer not-a-jwt", path).statusCode());
+        String foreignTenant = operator(NIP_A, "1000").withClaimValue("zid", "foreign-test-tenant")
+            .withClaimValue("app_tid", "foreign-test-tenant").createToken().getTokenValue();
+        assertEquals(401, get("Bearer " + foreignTenant, path).statusCode());
+        String noRole = trustedTenant().withClaimValue("user_name", "jwt-no-role")
+            .withClaimValue("xs.user.attributes", attributes(new String[]{NIP_A}, new String[]{"1000"}))
+            .createToken().getTokenValue();
+        var forbidden = get("Bearer " + noRole, path);
+        assertEquals(403, forbidden.statusCode());
+        assertSafeError(forbidden);
+        var disabled = get("Bearer " + inboxToken(), path);
+        assertEquals(404, disabled.statusCode(), disabled::body);
+        assertSafeError(disabled);
+    }
 
     @Test void inboxJwtAuthenticationAndRoleAreRequired() throws Exception {
         assertEquals(401, get(null, "InboundInvoiceOverview").statusCode());

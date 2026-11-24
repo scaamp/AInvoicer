@@ -105,5 +105,12 @@ jobs:
           npm test
       - name: Inbox against actual local CAP HTTP (A/B, access failures and restart)
         run: npm run test:inbox:e2e --prefix sapui5/ainvoicer
+      # Obie odmiany beta zapisują do dist-cf-inbox-beta. Każdy build weryfikuje swój wynik przed kolejnym.
+      - name: Build and verify default CF UI (Inbox disabled)
+        run: npm run build:cf --prefix sapui5/ainvoicer
+      - name: Build and verify read-only CF Inbox Beta
+        run: npm run build:cf:inbox-beta --prefix sapui5/ainvoicer
+      - name: Build and verify CF Inbox Beta with XML download
+        run: npm run build:cf:inbox-beta --prefix sapui5/ainvoicer -- --with-xml-download
       - name: Whitespace check
         run: git diff --check

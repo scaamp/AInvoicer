@@ -8,6 +8,11 @@ tags: [ainvoicer, dokumentacja]
 
 # AInvoicer — baza wiedzy projektu
 
+**BETA-01 (23.11.2026):** [raport gotowości Beta 0.1 INBOUND](guides/BETA_01_INBOUND_READINESS.md) ·
+[roadmapa produktowa Beta](BETA_ROADMAP.md) · [dziennik](journal/2026-11-23-beta-01-inbound-readiness.md) ·
+[KSEF-IN-05 storage/import/download](guides/KSEF_IN_05_PRIVATE_INBOUND_STORAGE.md) ·
+[UI5 Inbox CF beta](guides/BETA_01_UI5_INBOX_CF.md). Kandydat offline; LIVE zablokowane (BLOCKED_AUTH, R-1).
+
 **ORCH-09 (15.11.2026):** [niezależny review OUTBOUND/HANA, wspólna regresja i stan integracji](journal/2026-11-15-orch-09-outbound-hana-integration.md).
 [Projekt E2E-01C — approval niezmiennego snapshotu](guides/E2E_01C_APPROVED_SNAPSHOT_DESIGN.md)
 rozwija [ADR-0010 PROPOSED](decisions/ADR-0010-outbound-approved-snapshot-proposal.md).
