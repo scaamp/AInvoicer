@@ -126,6 +126,12 @@ pozostaje taki sam. Działanie filtra `ksefNumber` w TEST nadal wymaga potwierdz
 [OpenAPI MF](https://github.com/CIRFMF/ksef-api/blob/d4460b6c77616c423924254d8be1cbc2858027c6/open-api.json) ·
 [HWM MF](https://github.com/CIRFMF/ksef-api/blob/d4460b6c77616c423924254d8be1cbc2858027c6/pobieranie-faktur/hwm.md).
 
+> **Aktualizacja BETA-02 (24.11.2026):** poniższy bloker domknięto offline. Bean manual importu tworzy na każdy przebieg
+> własny SDK/auth/klienta na `BudgetedKsefTransport` (≤ 9 fizycznych żądań, termin, fencing lease, jedno połączenie TLS
+> na żądanie — replay JDK odcięty przed I/O, bez flag JVM i bez wpływu na OUTBOUND). Dowód i ograniczenia:
+> [BETA-02 §5](BETA_02_LIVE_RELEASE_READINESS.md#5-manual-import--twardy-budżet-fizycznych-żądań-http-pass-offline).
+> Akapit niżej opisuje stan sprzed BETA-02.
+
 **Budżet fizycznych żądań HTTP — BLOCKED LIVE.** Produkcyjny manual import używa współdzielonego SDK MF 3.0.29
 i JDK `HttpClient`. Jedno `open()` obejmuje challenge, TOKEN/XAdES, do 15 odczytów statusu w limicie rozpoczęcia
 pollingu 60 s i jeden redeem. TOKEN może pobrać certyfikaty MF przy inicjalizacji kryptografii. Przed metadata i GET
