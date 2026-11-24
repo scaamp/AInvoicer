@@ -8,6 +8,11 @@ tags: [ainvoicer, dokumentacja]
 
 # AInvoicer — baza wiedzy projektu
 
+**BETA-02 (24.11.2026):** [gotowość LIVE i wydania Beta 0.1](guides/BETA_02_LIVE_RELEASE_READINESS.md) ·
+[ręczny UAT właściciela (LOCAL / LIVE)](guides/BETA_02_MANUAL_UAT.md) ·
+[dziennik](journal/2026-11-24-beta-02-live-readiness.md). PR #29 MERGED; CF PRECHECK BLOCKED_ENV, R-1 BLOCKED;
+lokalny UAT: `npm run start:beta-uat --prefix sapui5/ainvoicer`.
+
 **BETA-01 (23.11.2026):** [raport gotowości Beta 0.1 INBOUND](guides/BETA_01_INBOUND_READINESS.md) ·
 [roadmapa produktowa Beta](BETA_ROADMAP.md) · [dziennik](journal/2026-11-23-beta-01-inbound-readiness.md) ·
 [KSEF-IN-05 storage/import/download](guides/KSEF_IN_05_PRIVATE_INBOUND_STORAGE.md) ·

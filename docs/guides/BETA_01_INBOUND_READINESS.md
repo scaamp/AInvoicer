@@ -19,6 +19,11 @@ tags: [ainvoicer, beta, inbound, ksef, hana, sapui5, security, release]
 > **BETA-01.1:** hardening i werdykt merge readiness opisano w [dzienniku BETA-01.1](../journal/2026-11-23-beta-01-inbound-readiness.md#beta-011--final-hardening).
 > **BETA LIVE NO-GO** z powodu bramek CF/HANA, budżetu fizycznych żądań i weryfikacji jednej pary XSUAA.
 
+> **Aktualizacja BETA-02 (24.11.2026):** PR #29 scalony do `main` (`aa30143`, CI SUCCESS). Twardy budżet fizycznych
+> żądań manual importu zaimplementowany i udowodniony offline (`BudgetedKsefTransport`); dostępne opt-in kompletne Beta
+> MTAR 0.7.5/0.7.6 i lokalny UAT. CF PRECHECK nadal zablokowany (**BLOCKED_ENV**), R-1 **R1_BLOCKED**.
+> Aktualny stan: [BETA-02 Live Release Readiness](BETA_02_LIVE_RELEASE_READINESS.md). Treść poniżej to historia BETA-01.
+
 Branch `feature/beta-01-inbound-readiness` z `origin/main=603e171b5467f6d1600193eed666a91e9297b3a9`
 (po `git fetch` nadal najnowszy; CI tego SHA, run 43739912629, sprawdzone przez API GitHub: **SUCCESS**).
 Prace równoległe w osobnych worktree: Agent B (`beta-01/in-05-storage`), Agent C (`beta-01/ui5-inbox`), scalone

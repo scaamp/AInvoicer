@@ -1,12 +1,24 @@
 ---
 title: "AInvoicer — aktualny stan"
-date: 2026-11-23
+date: 2026-11-24
 type: status
 status: w-trakcie
 tags: [ainvoicer, cap-java, status]
 ---
 
 # Stan projektu
+
+**BETA-02 — 24.11.2026:** PR #29 (BETA-01) **MERGED** do `main` jako `aa30143` (review PASS, CI HEAD `845406c` i CI
+main `45369224329` SUCCESS). **CF PRECHECK EU20 = BLOCKED_ENV**: proces agenta widzi tylko `cf.exe` 7.8.0 z
+`%USERPROFILE%\.cf` (US10, bez org/space, bez MultiApps); sesja EU20 właściciela niewidoczna → **R-1 R1_BLOCKED**,
+inwentarz CF/HANA/MTA NOT VERIFIED. Offline na `feature/beta-02-live-readiness`: `BudgetedKsefTransport` — twardy budżet
+≤ 9 fizycznych żądań manual importu (replay JDK zablokowany, dowód TLS loopback; fencing lease; bez flag JVM; OUTBOUND
+bez zmian); opt-in kompletne Beta MTAR 0.7.5 / 0.7.6 (srv/HDI bajt w bajt z 0.7.4, +1/0/0); lokalny UAT
+`npm run start:beta-uat --prefix sapui5/ainvoicer` (smoke 10/10). Regresja: Maven **727/0/0/6**, deploy 206/205/1 SKIP,
+hana-it 6, łańcuch MTAR 15/15 EXIT 0, Inbox E2E PASS. CURRENT G1 gotowy (`6ebdfd14…`/4071), **niewykonany**.
+Żadnej operacji LIVE. Najbliższa zgoda: udostępnienie sesji EU20 agentowi + read-only PRECHECK.
+[Gotowość LIVE](guides/BETA_02_LIVE_RELEASE_READINESS.md) · [UAT](guides/BETA_02_MANUAL_UAT.md) ·
+[Dziennik](journal/2026-11-24-beta-02-live-readiness.md).
 
 **BETA-01.1 — 23.11.2026:** obowiązkowe buildy CF Inbox Beta w CI, ścisła integralność XML i opis ograniczonego
 `NOT_FOUND`. **BETA LIVE NO-GO**. CF PRECHECK i R-1 nadal zablokowane. Pozostają STOR-04/G1, udowodnienie

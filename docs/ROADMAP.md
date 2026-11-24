@@ -1,12 +1,22 @@
 ---
 title: "AInvoicer — plan rozwoju"
-date: 2026-11-23
+date: 2026-11-24
 type: roadmap
 status: aktywny
 tags: [ainvoicer, roadmap, cap-java, ksef]
 ---
 
 # Plan rozwoju
+
+**BETA-02 — 24.11.2026:** [gotowość LIVE](guides/BETA_02_LIVE_RELEASE_READINESS.md) · [UAT](guides/BETA_02_MANUAL_UAT.md).
+
+- [x] PR #29 (BETA-01) review + merge `aa30143`, CI main SUCCESS.
+- [x] Twardy budżet fizycznych żądań HTTP manual importu (`BudgetedKsefTransport`, dowód TLS loopback) — offline.
+- [x] Opt-in kompletne Beta MTAR 0.7.5 / 0.7.6 (srv/HDI bajt w bajt z 0.7.4) + CI; `mta.yaml` bez zmian.
+- [x] Lokalny UAT właściciela `start:beta-uat` (+ `--smoke` w CI) i checklisty LOCAL/LIVE.
+- [ ] CF PRECHECK EU20 — **BLOCKED_ENV** (agent nie widzi sesji EU20; brak MultiApps) → R-1 nadal BLOCKED.
+- [ ] Kolejka zgód: CURRENT G1 → HDI STOR-04 → NEW G1 → R2 → deploy Beta → guard storage/download → kod wywołującego
+  manual importu → jeden import KSeF TEST → LIVE UAT.
 
 **BETA-01 — 23.11.2026:** produktowy widok statusu Beta 0.1 / 0.2 / Production jest teraz w
 [BETA_ROADMAP.md](BETA_ROADMAP.md) (źródło aktualnego statusu Bety); poniższe wpisy pozostają historią etapów.
